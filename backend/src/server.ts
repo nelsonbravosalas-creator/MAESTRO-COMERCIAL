@@ -5,6 +5,10 @@ import { Pool } from 'pg'
 import dotenv from 'dotenv'
 import { logger } from './utils/logger'
 import { createAuthRouter } from './api/auth'
+import { createClientsRouter } from './api/clients'
+import { createQuotationsRouter } from './api/quotations'
+import { createProjectsRouter } from './api/projects'
+import { createInvoicesRouter } from './api/invoices'
 
 dotenv.config()
 
@@ -43,9 +47,18 @@ app.get('/api/health', (req: Request, res: Response) => {
   })
 })
 
-// Auth routes
+// API Routes
 const authRouter = createAuthRouter(pool)
+const clientsRouter = createClientsRouter(pool)
+const quotationsRouter = createQuotationsRouter(pool)
+const projectsRouter = createProjectsRouter(pool)
+const invoicesRouter = createInvoicesRouter(pool)
+
 app.use('/api/auth', authRouter)
+app.use('/api/clients', clientsRouter)
+app.use('/api/quotations', quotationsRouter)
+app.use('/api/projects', projectsRouter)
+app.use('/api/invoices', invoicesRouter)
 
 // Centralized error handling middleware (FIX BUG #4)
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

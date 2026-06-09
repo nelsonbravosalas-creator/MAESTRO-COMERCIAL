@@ -9,6 +9,7 @@ import { createClientsRouter } from './api/clients'
 import { createQuotationsRouter } from './api/quotations'
 import { createProjectsRouter } from './api/projects'
 import { createInvoicesRouter } from './api/invoices'
+import { createDashboardRouter } from './api/dashboard'
 
 dotenv.config()
 
@@ -53,12 +54,14 @@ const clientsRouter = createClientsRouter(pool)
 const quotationsRouter = createQuotationsRouter(pool)
 const projectsRouter = createProjectsRouter(pool)
 const invoicesRouter = createInvoicesRouter(pool)
+const dashboardRouter = createDashboardRouter(pool)
 
 app.use('/api/auth', authRouter)
 app.use('/api/clients', clientsRouter)
 app.use('/api/quotations', quotationsRouter)
 app.use('/api/projects', projectsRouter)
 app.use('/api/invoices', invoicesRouter)
+app.use('/api/dashboard', dashboardRouter)
 
 // Centralized error handling middleware (FIX BUG #4)
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

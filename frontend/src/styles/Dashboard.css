@@ -1,0 +1,262 @@
+.dashboard-container {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+  font-size: 2.5rem;
+  color: var(--primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.dashboard-header p {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.dashboard-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: all 0.3s;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary);
+  box-shadow: 0 15px 35px rgba(37, 99, 235, 0.2);
+}
+
+.dashboard-card h3 {
+  color: var(--primary);
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.dashboard-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dashboard-card li {
+  padding: 0.5rem 0;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dashboard-card li:last-child {
+  border-bottom: none;
+}
+
+.version-info {
+  margin: 1rem 0;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.version-status,
+.version-backend {
+  margin: 0.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: rgba(37, 99, 235, 0.2);
+  color: #93c5fd;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badge.dev {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+}
+
+/* FEATURES */
+.dashboard-features {
+  margin: 3rem 0;
+}
+
+.dashboard-features h2 {
+  color: var(--text);
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.feature {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.feature:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary);
+  box-shadow: 0 15px 35px rgba(37, 99, 235, 0.2);
+}
+
+.feature-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.feature h4 {
+  color: var(--primary);
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.feature p {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* PHASES */
+.dashboard-info {
+  margin: 3rem 0;
+}
+
+.dashboard-info h2 {
+  color: var(--text);
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+}
+
+.phases {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.phase {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.phase.completed {
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.phase.completed:hover {
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);
+}
+
+.phase.pending {
+  border-color: var(--warning);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.phase.pending:hover {
+  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.2);
+}
+
+.phase-number {
+  display: inline-block;
+  background: var(--primary);
+  color: white;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+.phase.completed .phase-number {
+  background: var(--success);
+}
+
+.phase.pending .phase-number {
+  background: var(--warning);
+}
+
+.phase h4 {
+  color: var(--text);
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.phase p {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.phase.completed p {
+  color: var(--success);
+}
+
+.phase.pending p {
+  color: var(--warning);
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .dashboard-header p {
+    font-size: 1rem;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .phases {
+    grid-template-columns: 1fr;
+  }
+
+  .phase-number {
+    position: static;
+    margin-right: 0.5rem;
+  }
+}

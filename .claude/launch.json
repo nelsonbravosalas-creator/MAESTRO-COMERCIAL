@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Dev (Express + Vite)",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-Command", "Set-Location 'C:\\Users\\The Pirata\\Documents\\Google Drive\\APPS\\HVAC PRO - 15-05\\CMMS-HVAC-PRO--IA-STUDIO'; npm run dev"],
+      "port": 3000
+    },
+    {
+      "name": "Production Preview",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-Command", "Set-Location 'C:\\Users\\The Pirata\\Documents\\Google Drive\\APPS\\HVAC PRO - 15-05\\CMMS-HVAC-PRO--IA-STUDIO'; npm run start"],
+      "port": 3000
+    }
+  ]
+}

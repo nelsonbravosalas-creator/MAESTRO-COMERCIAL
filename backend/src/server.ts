@@ -3,23 +3,10 @@ import cors from 'cors'
 import bodyParser from 'body-parser'
 import { Pool } from 'pg'
 import dotenv from 'dotenv'
-import winston from 'winston'
+import { logger } from './utils/logger'
+import { createAuthRouter } from './api/auth'
 
 dotenv.config()
-
-// Logger configuration (FIX BUG #4)
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: winston.format.json(),
-  defaultMeta: { service: 'bravocrm-api' },
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.simple(),
-    }),
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
-  ],
-})
 
 const app: Express = express()
 const port = process.env.PORT || 3000
@@ -31,9 +18,12 @@ const pool = new Pool({
 })
 
 // Middleware
-app.use(cors())
-app.use(bodyParser.json())
-app.use(bodyParser.urlencoded({ extended: true }))
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+}))
+app.use(bodyParser.json({ limit: '10mb' }))
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }))
 
 // Request logging middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -52,6 +42,10 @@ app.get('/api/health', (req: Request, res: Response) => {
     database: 'connected',
   })
 })
+
+// Auth routes
+const authRouter = createAuthRouter(pool)
+app.use('/api/auth', authRouter)
 
 // Centralized error handling middleware (FIX BUG #4)
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

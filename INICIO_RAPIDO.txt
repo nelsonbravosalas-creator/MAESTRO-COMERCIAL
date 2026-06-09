@@ -1,0 +1,140 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        BravoCRM - INICIO RÁPIDO                              ║
+║                      Sistema de Gestión Comercial                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📦 REQUISITOS PREVIOS:
+├── Docker Desktop: https://www.docker.com/products/docker-desktop
+├── Node.js 18+: https://nodejs.org
+└── Git (opcional)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🚀 INICIO EN 3 CLICS:
+
+1. Abre Explorador de Archivos
+2. Ve a: C:\Users\The Pirata\Documents\Google Drive\APPS\MAESTRO COMERCIAL
+3. DOBLE-CLICK en: start-bravocrm.bat
+
+   ⏳ Espera 30-60 segundos...
+   ✓ Se abrirán 2 ventanas automáticamente
+   ✓ Frontend estará listo en: http://localhost:5173
+   ✓ Backend estará listo en: http://localhost:3000
+
+═══════════════════════════════════════════════════════════════════════════════
+
+👤 CREDENCIALES DE PRUEBA:
+
+   ADMIN (Acceso Total)
+   Email: nbravo.nbyb@gmail.com
+   Pass:  3571
+
+   MANAGER (Acceso Limitado)
+   Email: hmeza.nbyb@gmail.com
+   Pass:  4321
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🌐 SERVICIOS DISPONIBLES:
+
+   Frontend (React):    http://localhost:5173
+   Backend (API):       http://localhost:3000
+   Admin DB (PgAdmin):  http://localhost:5050
+                        User: admin@bravocrm.local
+                        Pass: admin
+
+   Base de Datos:       localhost:5432
+                        User: bravocrm_user
+                        Pass: bravocrm_password
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 FLUJO DE TESTING QA:
+
+   1. Abre http://localhost:5173
+   2. Haz LOGIN con credenciales arriba ↑
+   3. Prueba crear:
+      ✓ CLIENTE
+      ✓ COTIZACIÓN (con items)
+      ✓ PROYECTO (desde cotización)
+      ✓ FACTURA
+   4. Verifica Dashboard con indicadores de costos
+
+   📖 Ver: QA_TESTING_GUIDE.md para casos de prueba completos
+
+═══════════════════════════════════════════════════════════════════════════════
+
+⚙️ PARA INICIAR MANUALMENTE (Sin ejecutable):
+
+   Terminal 1 - Backend:
+   $ cd backend
+   $ npm run dev
+
+   Terminal 2 - Frontend:
+   $ cd frontend
+   $ npm run dev
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🛑 DETENER SERVICIOS:
+
+   Opción 1: DOBLE-CLICK en: stop-bravocrm.bat
+
+   Opción 2: Terminal
+   $ docker-compose down
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📁 DOCUMENTACIÓN:
+
+   SETUP_LOCAL.md         → Instrucciones detalladas de setup
+   QA_TESTING_GUIDE.md    → Casos de prueba completos
+   README.md              → Documentación técnica del proyecto
+   docker-compose.yml     → Configuración de servicios
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✨ CARACTERÍSTICAS IMPLEMENTADAS:
+
+   ✓ FASE 1: Setup Base (Frontend + Backend)
+   ✓ FASE 2: Autenticación JWT
+   ✓ FASE 3: CRUD Completo (Clientes, Cotizaciones, Proyectos, Facturas)
+   ✓ FASE 4: Dashboard con KPIs de costos
+
+   ⏳ FASE 5-8: Sincronización, deploy a Vercel y Neon (después de QA)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+❓ TROUBLESHOOTING RÁPIDO:
+
+   Q: "Docker no abre el servicio"
+   A: Verifica que Docker Desktop esté corriendo (bandeja del sistema)
+
+   Q: "Puerto 5432 ya en uso"
+   A: Ejecuta: docker-compose down
+      Luego: start-bravocrm.bat nuevamente
+
+   Q: "No puedo conectarme a la BD"
+   A: Espera 15 segundos después de ejecutar el script
+      La BD tarda en inicializarse
+
+   Q: "Error de credenciales"
+   A: Las credenciales están en: backend/.env
+      Usuario BD: bravocrm_user / bravocrm_password
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 PRÓXIMOS PASOS (Después del QA):
+
+   1. Reporta bugs encontrados
+   2. Fase 5: Sincronización online-first con Neon
+   3. Fase 6: Error handling y logging
+   4. Fase 7: Refactorización frontend
+   5. Fase 8: Deploy a Vercel + Neon PostgreSQL
+
+═══════════════════════════════════════════════════════════════════════════════
+
+¡Listo para hacer QA! 🎉
+Abre http://localhost:5173 y comienza a probar.
+
+═══════════════════════════════════════════════════════════════════════════════

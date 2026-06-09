@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bravocrm_db
+    environment:
+      POSTGRES_USER: bravocrm_user
+      POSTGRES_PASSWORD: bravocrm_password
+      POSTGRES_DB: bravocrm
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bravocrm_user -d bravocrm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bravocrm_network
+
+  # Optional: pgAdmin para administrar la BD
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bravocrm_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@bravocrm.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    networks:
+      - bravocrm_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  bravocrm_network:
+    driver: bridge

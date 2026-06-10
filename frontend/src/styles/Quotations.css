@@ -762,6 +762,68 @@
 .doc-total td { background: #0f172a; color: #f8fafc; font-weight: 700; font-size: 1rem; padding: 12px 14px; }
 .doc-uf td { background: #1e293b; color: #64748b; font-size: 0.8rem; padding: 7px 14px; }
 
+/* ── Expand toggle ──────────────────────────────────────────────────────────── */
+.doc-expand-cell {
+  width: 42px;
+  text-align: center;
+  padding: 0 !important;
+  border-bottom: 1px solid #f1f5f9;
+}
+.doc-expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  transition: background 0.15s;
+}
+.doc-expand-toggle:hover { background: #e2e8f0; }
+.doc-expand-toggle input[type="checkbox"] { display: none; }
+.doc-expand-icon {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.doc-row-expanded > td { border-bottom: none; }
+
+/* ── Detail rows ────────────────────────────────────────────────────────────── */
+.doc-detail-row td {
+  padding: 4px 14px 4px 0;
+  border-bottom: none;
+  background: #f8fafc;
+  font-size: 0.8rem;
+}
+.doc-detail-row:last-of-type td { border-bottom: 1px solid #e2e8f0; }
+.doc-detail-indent { width: 42px; border-right: 2px solid #cbd5e1 !important; }
+.doc-detail-desc {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-left: 12px !important;
+  color: #475569;
+}
+.doc-detail-bullet {
+  color: #94a3b8;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.doc-detail-name { color: #334155; }
+.doc-detail-meta {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.doc-detail-value {
+  color: #64748b !important;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
 .doc-footer {
   padding: 20px 36px;
   background: #f8fafc;
@@ -911,7 +973,10 @@
   .btn-icon-sm,
   .btn-add-row,
   .btn-add-list,
-  .doc-list-item button { display: none !important; }
+  .doc-list-item button,
+  .doc-expand-cell { display: none !important; }
+
+  .doc-detail-row { display: none !important; }
 
   .coti-doc { box-shadow: none; border-radius: 0; }
   .tab-coti { max-width: 100%; }
@@ -921,4 +986,7 @@
     background: transparent !important;
     padding: 0;
   }
+
+  .doc-valuation th:first-child,
+  .doc-valuation-row td:first-child { display: none !important; }
 }

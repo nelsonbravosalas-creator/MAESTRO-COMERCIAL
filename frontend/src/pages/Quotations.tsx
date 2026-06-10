@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import '../styles/Quotations.css'
 import {
   useMaestro, useActiveQuotation, calcCat, calcTotals, fmtCLP,
 } from '../stores/maestro-store'
 import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
+import { downloadDocx } from '../utils/docxExport'
+import { downloadHtml } from '../utils/htmlExport'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -545,39 +547,108 @@ function TabCosteo() {
 
 // ── Tab Cotización (Document) ──────────────────────────────────────────────────
 
+function AutoTextarea({ value, onChange, ariaLabel }: {
+  value: string
+  onChange: (v: string) => void
+  ariaLabel: string
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  const resize = useCallback(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [])
+
+  useEffect(() => { resize() }, [value, resize])
+
+  return (
+    <textarea
+      ref={ref}
+      className="doc-list-textarea"
+      aria-label={ariaLabel}
+      value={value}
+      rows={1}
+      onChange={e => onChange(e.target.value)}
+      onInput={resize}
+    />
+  )
+}
+
 function EditableList({ items, listKey }: { items: string[]; listKey: 'scope' | 'exclusions' | 'commercial' }) {
   const { addListItem, removeListItem, patchListItem } = useMaestro()
   return (
-    <ul className="doc-list">
+    <ol className="doc-list">
       {items.map((item, i) => (
         <li key={i} className="doc-list-item">
-          <input
-            className="doc-list-input"
-            aria-label={`Ítem ${i + 1}`}
+          <span className="doc-list-num">{i + 1}.</span>
+          <AutoTextarea
+            ariaLabel={`Ítem ${i + 1}`}
             value={item}
-            onChange={e => patchListItem(listKey, i, e.target.value)}
+            onChange={v => patchListItem(listKey, i, v)}
           />
           <button type="button" className="btn-icon-sm btn-del-row" onClick={() => removeListItem(listKey, i)}>✕</button>
         </li>
       ))}
-      <li>
+      <li className="doc-list-add">
         <button type="button" className="btn-add-list" onClick={() => addListItem(listKey)}>+ Agregar ítem</button>
       </li>
-    </ul>
+    </ol>
   )
 }
 
+const fmtDateLong = (d: string) =>
+  new Date(d + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
+
 function TabCotizacion() {
   const q = useActiveQuotation()
-  const { clients } = useMaestro()
+  const { clients, saveActive } = useMaestro()
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set())
+  const [toast, setToast]   = useState<{ msg: string; ok: boolean } | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [loadingDocx, setLoadingDocx] = useState(false)
+
+  const sessionUser = useMemo(() => {
+    try { const u = localStorage.getItem('user'); return u ? JSON.parse(u) : null }
+    catch { return null }
+  }, [])
+
+  const showToast = useCallback((msg: string, ok = true) => {
+    setToast({ msg, ok })
+    setTimeout(() => setToast(null), 3200)
+  }, [])
+
   if (!q) return null
 
   const client = clients.find(c => c.id === q.client_id)
   const totals = calcTotals(q)
-  const iva = totals.venta * (q.iva / 100)
+  const iva    = totals.venta * (q.iva / 100)
   const conIva = totals.venta + iva
-  const enUF = q.uf > 0 ? totals.venta / q.uf : 0
+  const enUF   = q.uf > 0 ? totals.venta / q.uf : 0
+
+  const handleSave = async () => {
+    setSaving(true)
+    try   { await saveActive(); showToast('Cambios guardados correctamente') }
+    catch { showToast('Error al guardar. Intente nuevamente.', false) }
+    finally { setSaving(false) }
+  }
+
+  const handleDocx = async () => {
+    setLoadingDocx(true)
+    try {
+      await downloadDocx({ q, client, sessionUserName: sessionUser?.name || '—' })
+      showToast('Documento DOCX generado')
+    } catch { showToast('Error al generar DOCX', false) }
+    finally { setLoadingDocx(false) }
+  }
+
+  const handleHtml = () => {
+    try {
+      downloadHtml({ q, client, sessionUserName: sessionUser?.name || '—' })
+      showToast('Documento HTML generado')
+    } catch { showToast('Error al generar HTML', false) }
+  }
 
   const toggleCat = (catId: string) => {
     setExpandedCats(prev => {
@@ -587,104 +658,124 @@ function TabCotizacion() {
     })
   }
 
-  const handlePrint = () => window.print()
-
   return (
     <div className="tab-coti">
-      <div className="coti-actions no-print">
-        <button type="button" className="btn-primary-sm" onClick={handlePrint}>🖨 Imprimir / Exportar PDF</button>
+
+      {/* Toast notification */}
+      {toast && (
+        <div className={`coti-toast ${toast.ok ? 'coti-toast-ok' : 'coti-toast-err'}`}>
+          <span className="coti-toast-icon">{toast.ok ? '✓' : '✕'}</span>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Action toolbar */}
+      <div className="coti-toolbar no-print">
+        <button className="btn-act btn-act-save" onClick={handleSave} disabled={saving}>
+          {saving ? <span className="btn-spinner" /> : <span>💾</span>}
+          {saving ? 'Guardando…' : 'Guardar cambios'}
+        </button>
+        <div className="coti-toolbar-sep" />
+        <button className="btn-act btn-act-docx" onClick={handleDocx} disabled={loadingDocx}>
+          {loadingDocx ? <span className="btn-spinner" /> : <span className="btn-act-icon">W</span>}
+          {loadingDocx ? 'Generando…' : 'Descargar DOCX'}
+        </button>
+        <button className="btn-act btn-act-html" onClick={handleHtml}>
+          <span className="btn-act-icon">&lt;/&gt;</span>
+          Descargar HTML
+        </button>
+        <button className="btn-act btn-act-print" onClick={() => window.print()}>
+          <span>🖨</span>
+          Imprimir / PDF
+        </button>
       </div>
 
+      {/* ── Document (letter format) ── */}
       <div className="coti-doc">
+
         {/* Letterhead */}
-        <div className="doc-header">
-          <div className="doc-header-brand">
-            <div className="doc-brand-name">MAESTRO COMERCIAL</div>
-            <div className="doc-brand-tagline">Ingeniería y Servicios Técnicos</div>
+        <div className="doc-letterhead">
+          <div className="doc-lh-brand">
+            <img src="/logo-nbyb.svg" alt="NβyB" className="doc-logo" />
           </div>
-          <div className="doc-header-meta">
-            <div className="doc-correlative">{q.correlative}</div>
-            <div className="doc-date">Fecha: {fmtDate(q.date)}</div>
+          <div className="doc-lh-docinfo">
+            <div className="doc-doctype">Cotización de Servicios</div>
+            <div className="doc-docnum">{q.correlative}</div>
+            <div className="doc-docdate">Fecha: {fmtDateLong(q.date)}</div>
           </div>
         </div>
+        <div className="doc-accent-rule" />
 
         {/* Client block */}
-        <div className="doc-client-block">
+        <div className="doc-section-group">
+          <div className="doc-group-title">Datos del Cliente</div>
           <table className="doc-client-table">
             <tbody>
               <tr>
-                <td className="doc-label">Empresa</td>
-                <td>{q.client_name || '—'}</td>
-                <td className="doc-label">RUT</td>
-                <td>{client?.rut || '—'}</td>
+                <th>Empresa</th><td>{q.client_name || '—'}</td>
+                <th>RUT</th>   <td>{client?.rut || '—'}</td>
               </tr>
               <tr>
-                <td className="doc-label">Contacto</td>
-                <td>{q.contact || '—'}</td>
-                <td className="doc-label">Cargo</td>
-                <td>{client?.cargo || '—'}</td>
+                <th>Contacto</th><td>{q.contact || '—'}</td>
+                <th>Cargo</th>  <td>{client?.cargo || '—'}</td>
               </tr>
               <tr>
-                <td className="doc-label">Referencia</td>
-                <td colSpan={3}>{q.ref || '—'}</td>
+                <th>Referencia</th><td colSpan={3}>{q.ref || '—'}</td>
               </tr>
               {q.enduser && (
                 <tr>
-                  <td className="doc-label">Usuario Final</td>
-                  <td colSpan={3}>{q.enduser}</td>
+                  <th>Usuario Final</th><td colSpan={3}>{q.enduser}</td>
                 </tr>
               )}
+              <tr className="doc-row-elaborado">
+                <th>Elaborado por</th><td colSpan={3}>{sessionUser?.name || '—'}</td>
+              </tr>
             </tbody>
           </table>
         </div>
 
-        {/* Scope */}
+        {/* I. Scope */}
         <div className="doc-section">
           <div className="doc-section-title">I. ALCANCE DE LOS TRABAJOS</div>
           <EditableList items={q.scope} listKey="scope" />
         </div>
 
-        {/* Valuación table */}
+        {/* II. Valuation */}
         <div className="doc-section">
           <div className="doc-section-title">II. VALORIZACIÓN DE TRABAJOS</div>
           <table className="doc-valuation">
             <thead>
               <tr>
-                <th style={{ width: '42px' }}></th>
-                <th style={{ width: '40px' }}>N°</th>
+                <th className="val-expand no-print" />
+                <th className="val-num">N°</th>
                 <th>Descripción</th>
                 <th className="text-right">Valor Neto CLP</th>
               </tr>
             </thead>
             <tbody>
               {q.categories.map((cat, i) => {
-                const r = calcCat(cat.id, q.categories, q.items)
+                const r     = calcCat(cat.id, q.categories, q.items)
                 if (r.venta === 0) return null
-                const items = (q.items[cat.id] || []).filter(it => it.cant > 0 && it.desc)
+                const items  = (q.items[cat.id] || []).filter(it => it.cant > 0 && it.desc)
                 const isOpen = expandedCats.has(cat.id)
-                const rowNum = i + 1
                 return (
                   <React.Fragment key={cat.id}>
                     <tr className={`doc-valuation-row ${isOpen ? 'doc-row-expanded' : ''}`}>
-                      <td className="doc-expand-cell no-print">
+                      <td className="val-expand no-print">
                         {items.length > 0 && (
                           <label className="doc-expand-toggle" title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}>
-                            <input
-                              type="checkbox"
-                              checked={isOpen}
-                              onChange={() => toggleCat(cat.id)}
-                            />
+                            <input type="checkbox" checked={isOpen} onChange={() => toggleCat(cat.id)} />
                             <span className="doc-expand-icon">{isOpen ? '▾' : '▸'}</span>
                           </label>
                         )}
                       </td>
-                      <td>{rowNum}</td>
+                      <td className="val-num">{i + 1}</td>
                       <td>{cat.label}</td>
                       <td className="text-right mono">{fmtCLP.format(r.venta)}</td>
                     </tr>
-                    {isOpen && items.map((item) => (
+                    {isOpen && items.map(item => (
                       <tr key={item.id} className="doc-detail-row no-print-detail">
-                        <td className="doc-detail-indent" colSpan={2}></td>
+                        <td className="doc-detail-indent" colSpan={2} />
                         <td className="doc-detail-desc">
                           <span className="doc-detail-bullet">·</span>
                           <span className="doc-detail-name">{item.desc}</span>
@@ -706,19 +797,17 @@ function TabCotizacion() {
                 <td colSpan={3}>Subtotal Neto</td>
                 <td className="text-right mono">{fmtCLP.format(totals.venta)}</td>
               </tr>
-              <tr>
+              <tr className="doc-iva-row">
                 <td colSpan={3}>IVA ({q.iva}%)</td>
                 <td className="text-right mono">{fmtCLP.format(iva)}</td>
               </tr>
               <tr className="doc-total">
-                <td colSpan={3}>TOTAL</td>
+                <td colSpan={3}>TOTAL CON IVA</td>
                 <td className="text-right mono">{fmtCLP.format(conIva)}</td>
               </tr>
               {q.uf > 0 && (
                 <tr className="doc-uf">
-                  <td colSpan={3}>
-                    Equivalente en UF (ref. {fmtCLP.format(q.uf)}/UF)
-                  </td>
+                  <td colSpan={3}>Equivalente en UF (ref. {fmtCLP.format(q.uf)}/UF)</td>
                   <td className="text-right mono">{enUF.toFixed(2)} UF</td>
                 </tr>
               )}
@@ -726,13 +815,13 @@ function TabCotizacion() {
           </table>
         </div>
 
-        {/* Exclusions */}
+        {/* III. Exclusions */}
         <div className="doc-section">
           <div className="doc-section-title">III. EXCLUSIONES</div>
           <EditableList items={q.exclusions} listKey="exclusions" />
         </div>
 
-        {/* Commercial conditions */}
+        {/* IV. Commercial */}
         <div className="doc-section">
           <div className="doc-section-title">IV. CONDICIONES COMERCIALES</div>
           <EditableList items={q.commercial} listKey="commercial" />
@@ -740,8 +829,15 @@ function TabCotizacion() {
 
         {/* Footer */}
         <div className="doc-footer">
-          <p>Esta cotización es válida según las condiciones indicadas en el punto IV.</p>
-          <p>Documento generado por Maestro Comercial · {q.correlative}</p>
+          <div className="doc-footer-text">
+            <p>Esta cotización es válida según las condiciones indicadas en el punto IV.</p>
+            <p>Ingeniería y Servicios Bravo SPA &nbsp;·&nbsp; RUT: 77.175.319-1 &nbsp;·&nbsp; Tel. +56 (9) 90943080</p>
+          </div>
+          <div className="doc-footer-stamp">
+            <div className="doc-footer-stamp-line" />
+            <p>Firma y Timbre</p>
+            <p>Representante Autorizado</p>
+          </div>
         </div>
       </div>
     </div>

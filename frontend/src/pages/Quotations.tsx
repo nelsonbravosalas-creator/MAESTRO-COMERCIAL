@@ -682,7 +682,7 @@ function TabCotizacion() {
                       <td>{cat.label}</td>
                       <td className="text-right mono">{fmtCLP.format(r.venta)}</td>
                     </tr>
-                    {isOpen && items.map((item, j) => (
+                    {isOpen && items.map((item) => (
                       <tr key={item.id} className="doc-detail-row no-print-detail">
                         <td className="doc-detail-indent" colSpan={2}></td>
                         <td className="doc-detail-desc">

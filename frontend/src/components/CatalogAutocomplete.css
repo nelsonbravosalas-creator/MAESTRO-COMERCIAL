@@ -9,7 +9,7 @@
   width: 100%;
 }
 
-/* ── Animación de entrada ── */
+/* ── Animaciones de entrada ── */
 @keyframes cat-drop-in {
   from {
     opacity: 0;
@@ -23,6 +23,19 @@
   }
 }
 
+@keyframes cat-drop-in-above {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scaleY(0.97);
+    transform-origin: bottom center;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    transform-origin: bottom center;
+  }
+}
+
 @keyframes cat-item-in {
   from { opacity: 0; transform: translateX(-6px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -32,8 +45,10 @@
 .cat-ac-dropdown {
   position: fixed;
   top: var(--drop-top, 0);
+  bottom: var(--drop-bottom, auto);
   left: var(--drop-left, 0);
   width: var(--drop-width, 340px);
+  max-height: var(--drop-max-height, 420px);
   background: #0f1929;
   border: 1px solid rgba(96, 165, 250, 0.22);
   border-radius: 10px;
@@ -48,6 +63,10 @@
   flex-direction: column;
   animation: cat-drop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
   overflow: hidden;
+}
+
+.cat-ac-dropdown--above {
+  animation-name: cat-drop-in-above;
 }
 
 /* ── Header con contador ── */
@@ -80,13 +99,12 @@
   letter-spacing: 0.04em;
 }
 
-/* ── Lista con scroll ── */
+/* ── Lista con scroll — altura dinámica según espacio disponible ── */
 .cat-ac-list {
   overflow-y: auto;
   overflow-x: hidden;
   flex: 1;
-  /* ~6 filas × 40px */
-  max-height: calc(6 * 40px);
+  min-height: 0;
 }
 
 @supports (scrollbar-width: thin) {

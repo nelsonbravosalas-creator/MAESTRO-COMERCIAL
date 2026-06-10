@@ -86,24 +86,26 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
 
       {showDropdown && (
         <div className="cat-ac-dropdown" role="listbox">
-          {suggestions.map((item, i) => (
-            <div
-              key={i}
-              role="option"
-              aria-selected={i === cursor}
-              className={`cat-ac-item ${i === cursor ? 'cat-ac-item-focused' : ''}`}
-              onMouseDown={e => { e.preventDefault(); handleSelect(item) }}
-              onMouseEnter={() => setCursor(i)}
-            >
-              <span className="cat-ac-desc">{item.desc}</span>
-              <span className="cat-ac-meta">
-                <span className="cat-ac-unit">{item.unidad}</span>
-                <span className="cat-ac-price">
-                  {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(item.price)}
+          <div className="cat-ac-list">
+            {suggestions.map((item, i) => (
+              <div
+                key={i}
+                role="option"
+                aria-selected={i === cursor ? 'true' : 'false'}
+                className={`cat-ac-item ${i === cursor ? 'cat-ac-item-focused' : ''}`}
+                onMouseDown={e => { e.preventDefault(); handleSelect(item) }}
+                onMouseEnter={() => setCursor(i)}
+              >
+                <span className="cat-ac-desc">{item.desc}</span>
+                <span className="cat-ac-meta">
+                  <span className="cat-ac-unit">{item.unidad}</span>
+                  <span className="cat-ac-price">
+                    {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(item.price)}
+                  </span>
                 </span>
-              </span>
-            </div>
-          ))}
+              </div>
+            ))}
+          </div>
           <div className="cat-ac-hint">↑↓ navegar · Enter seleccionar · Esc cerrar</div>
         </div>
       )}

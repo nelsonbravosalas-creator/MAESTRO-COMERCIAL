@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import '../styles/Login.css'
 
 interface LoginProps {
@@ -6,13 +6,16 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const email = emailRef.current?.value.trim() ?? ''
+    const password = passwordRef.current?.value ?? ''
+
     setError('')
     setLoading(true)
 
@@ -46,8 +49,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   }
 
   const quickLogin = (testEmail: string, testPassword: string) => {
-    setEmail(testEmail)
-    setPassword(testPassword)
+    if (emailRef.current) emailRef.current.value = testEmail
+    if (passwordRef.current) passwordRef.current.value = testPassword
+    passwordRef.current?.focus()
   }
 
   return (
@@ -63,13 +67,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <label htmlFor="email">Email</label>
             <input
               id="email"
+              ref={emailRef}
               type="email"
               placeholder="tu@email.com"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
+              autoComplete="email"
             />
           </div>
 
@@ -77,12 +80,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <label htmlFor="password">Contraseña</label>
             <input
               id="password"
+              ref={passwordRef}
               type="password"
               placeholder="••••••••"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              required
               disabled={loading}
+              autoComplete="current-password"
             />
           </div>
 

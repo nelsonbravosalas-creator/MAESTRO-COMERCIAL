@@ -1,4 +1,4 @@
-/* ── CatalogAutocomplete ──────────────────────────────────────────────────── */
+/* ── CatalogAutocomplete — Industrial Precision Panel ────────────────────── */
 
 .cat-ac-wrap {
   position: relative;
@@ -9,107 +9,277 @@
   width: 100%;
 }
 
-.cat-ac-dropdown {
-  position: absolute;
-  top: calc(100% + 3px);
-  left: 0;
-  right: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
-  z-index: 500;
-  min-width: 340px;
-  /* Muestra ~6 filas (cada item ~38px) + hint ~28px */
-  max-height: calc(6 * 38px + 28px);
-  display: flex;
-  flex-direction: column;
+/* ── Animación de entrada ── */
+@keyframes cat-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scaleY(0.97);
+    transform-origin: top center;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    transform-origin: top center;
+  }
 }
 
+@keyframes cat-item-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Dropdown panel ── */
+.cat-ac-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: -2px;
+  right: -2px;
+  background: #0f1929;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 10px;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.4),
+    0 20px 60px -8px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 1px 0 rgba(96, 165, 250, 0.15) inset;
+  z-index: 500;
+  min-width: 340px;
+  display: flex;
+  flex-direction: column;
+  animation: cat-drop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+  overflow: hidden;
+}
+
+/* ── Header con contador ── */
+.cat-ac-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+.cat-ac-header-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: rgba(148, 163, 184, 0.7);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: 'Space Mono', monospace;
+}
+
+.cat-ac-header-count {
+  font-size: 0.65rem;
+  font-family: 'Space Mono', monospace;
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  padding: 1px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Lista con scroll ── */
 .cat-ac-list {
   overflow-y: auto;
   overflow-x: hidden;
   flex: 1;
+  /* ~6 filas × 40px */
+  max-height: calc(6 * 40px);
 }
+
 @supports (scrollbar-width: thin) {
   .cat-ac-list {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: rgba(96, 165, 250, 0.25) transparent;
   }
 }
-.cat-ac-list::-webkit-scrollbar {
-  width: 5px;
-}
-.cat-ac-list::-webkit-scrollbar-track {
-  background: transparent;
-}
+.cat-ac-list::-webkit-scrollbar { width: 4px; }
+.cat-ac-list::-webkit-scrollbar-track { background: transparent; }
 .cat-ac-list::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: rgba(96, 165, 250, 0.25);
   border-radius: 4px;
 }
+.cat-ac-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 165, 250, 0.45);
+}
 
+/* ── Ítem ── */
 .cat-ac-item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 12px;
+  padding: 9px 12px 9px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #f8fafc;
-  transition: background 0.08s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  transition: background 0.1s ease;
   gap: 12px;
-  min-height: 38px;
+  min-height: 40px;
+  /* stagger animation */
+  animation: cat-item-in 0.18s ease both;
 }
+.cat-ac-item:nth-child(1)  { animation-delay: 0.03s; }
+.cat-ac-item:nth-child(2)  { animation-delay: 0.06s; }
+.cat-ac-item:nth-child(3)  { animation-delay: 0.09s; }
+.cat-ac-item:nth-child(4)  { animation-delay: 0.12s; }
+.cat-ac-item:nth-child(5)  { animation-delay: 0.15s; }
+.cat-ac-item:nth-child(6)  { animation-delay: 0.18s; }
+.cat-ac-item:nth-child(n+7){ animation-delay: 0.18s; }
+
 .cat-ac-item:last-of-type { border-bottom: none; }
+
+/* Barra izquierda de acento */
+.cat-ac-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: #3b82f6;
+  opacity: 0;
+  transform: scaleY(0.4);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
 .cat-ac-item:hover,
-.cat-ac-item-focused { background: #eff6ff; }
+.cat-ac-item-focused {
+  background: rgba(59, 130, 246, 0.1);
+}
+.cat-ac-item:hover::before,
+.cat-ac-item-focused::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* Número de índice */
+.cat-ac-idx {
+  font-size: 0.62rem;
+  font-family: 'Space Mono', monospace;
+  color: rgba(100, 116, 139, 0.5);
+  min-width: 14px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.cat-ac-item:hover .cat-ac-idx,
+.cat-ac-item-focused .cat-ac-idx {
+  color: rgba(96, 165, 250, 0.6);
+}
 
 .cat-ac-desc {
-  font-size: 0.85rem;
-  color: #0f172a;
+  font-size: 0.84rem;
+  color: #e2e8f0;
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color 0.1s;
 }
+.cat-ac-item:hover .cat-ac-desc,
+.cat-ac-item-focused .cat-ac-desc { color: #f8fafc; }
 
 .cat-ac-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   flex-shrink: 0;
 }
 
 .cat-ac-unit {
-  font-size: 0.72rem;
-  color: #94a3b8;
-  background: #f1f5f9;
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: rgba(148, 163, 184, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: 4px;
   font-family: 'Space Mono', monospace;
+  letter-spacing: 0.02em;
 }
 
 .cat-ac-price {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #1e40af;
+  color: #60a5fa;
   font-family: 'Space Mono', monospace;
-  min-width: 90px;
+  min-width: 88px;
   text-align: right;
+  letter-spacing: -0.01em;
 }
+.cat-ac-item-focused .cat-ac-price { color: #93c5fd; }
 
+/* ── Footer de teclado ── */
 .cat-ac-hint {
-  padding: 5px 12px;
-  font-size: 0.68rem;
-  color: #94a3b8;
-  background: #f8fafc;
-  border-top: 1px solid #f1f5f9;
-  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 6px 12px;
+  font-size: 0.62rem;
+  color: rgba(100, 116, 139, 0.6);
+  background: rgba(0, 0, 0, 0.25);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  letter-spacing: 0.03em;
   flex-shrink: 0;
+  font-family: 'Space Mono', monospace;
 }
 
-/* ── Móvil / PWA ── */
+.cat-ac-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  font-size: 0.6rem;
+  color: rgba(148, 163, 184, 0.7);
+  font-family: inherit;
+}
+
+/* ── Estado vacío ── */
+.cat-ac-empty {
+  padding: 20px 16px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: rgba(100, 116, 139, 0.6);
+  font-style: italic;
+}
+
+/* ─────────────────────────────────────────────────────────── */
+/* ── Móvil / PWA — Bottom Sheet ── */
+/* ─────────────────────────────────────────────────────────── */
+
+/* Backdrop oscuro detrás del sheet */
+.cat-ac-backdrop {
+  display: none;
+}
+
 @media (max-width: 640px) {
+  .cat-ac-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 999;
+    animation: cat-backdrop-in 0.2s ease both;
+  }
+
+  @keyframes cat-backdrop-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes cat-sheet-in {
+    from { transform: translateY(30px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
   .cat-ac-dropdown {
     position: fixed;
     top: auto;
@@ -118,46 +288,57 @@
     right: 0;
     width: 100%;
     min-width: unset;
-    max-height: 60vh;
-    border-radius: 16px 16px 0 0;
+    max-height: 65vh;
+    border-radius: 18px 18px 0 0;
     border: none;
-    border-top: 2px solid #e2e8f0;
-    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18);
+    border-top: 1px solid rgba(96, 165, 250, 0.3);
+    box-shadow: 0 -12px 60px rgba(0, 0, 0, 0.6);
     z-index: 1000;
+    animation: cat-sheet-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+    padding-top: 4px;
   }
 
-  /* Tirón visual tipo bottom-sheet */
+  /* Tirón / handle */
   .cat-ac-dropdown::before {
     content: '';
     display: block;
-    width: 40px;
+    width: 36px;
     height: 4px;
-    background: #cbd5e1;
+    background: rgba(148, 163, 184, 0.3);
     border-radius: 2px;
-    margin: 8px auto 4px;
+    margin: 6px auto 2px;
     flex-shrink: 0;
   }
 
   .cat-ac-list {
-    max-height: calc(60vh - 80px);
+    max-height: calc(65vh - 110px);
   }
 
   .cat-ac-item {
-    padding: 12px 16px;
-    min-height: 48px;
+    padding: 12px 16px 12px 20px;
+    min-height: 52px;
   }
 
   .cat-ac-desc {
-    font-size: 0.92rem;
+    font-size: 0.95rem;
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  .cat-ac-unit {
+    font-size: 0.7rem;
   }
 
   .cat-ac-price {
-    font-size: 0.88rem;
+    font-size: 0.9rem;
+  }
+
+  .cat-ac-header {
+    padding: 8px 16px 7px;
   }
 
   .cat-ac-hint {
-    padding: 8px 16px;
-    font-size: 0.72rem;
-    text-align: center;
+    padding: 9px 16px;
+    font-size: 0.65rem;
   }
 }

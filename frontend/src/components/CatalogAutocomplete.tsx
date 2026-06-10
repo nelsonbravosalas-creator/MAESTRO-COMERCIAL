@@ -68,6 +68,7 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
   }
 
   const showDropdown = open && suggestions.length > 0
+  const totalInCatalog = catalogs[catId].length
 
   return (
     <div className="cat-ac-wrap" ref={wrapRef}>
@@ -85,29 +86,54 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
       />
 
       {showDropdown && (
-        <div className="cat-ac-dropdown" role="listbox">
-          <div className="cat-ac-list">
-            {suggestions.map((item, i) => (
-              <div
-                key={i}
-                role="option"
-                aria-selected={i === cursor ? 'true' : 'false'}
-                className={`cat-ac-item ${i === cursor ? 'cat-ac-item-focused' : ''}`}
-                onMouseDown={e => { e.preventDefault(); handleSelect(item) }}
-                onMouseEnter={() => setCursor(i)}
-              >
-                <span className="cat-ac-desc">{item.desc}</span>
-                <span className="cat-ac-meta">
-                  <span className="cat-ac-unit">{item.unidad}</span>
-                  <span className="cat-ac-price">
-                    {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(item.price)}
+        <>
+          {/* Backdrop para móvil */}
+          <div
+            className="cat-ac-backdrop"
+            onMouseDown={e => { e.preventDefault(); setOpen(false) }}
+          />
+
+          <div className="cat-ac-dropdown" role="listbox" aria-label="Opciones del catálogo">
+            {/* Header con contador */}
+            <div className="cat-ac-header">
+              <span className="cat-ac-header-label">
+                {value.trim() ? 'Resultados' : 'Catálogo'}
+              </span>
+              <span className="cat-ac-header-count">
+                {suggestions.length}
+                {value.trim() ? ` / ${totalInCatalog}` : ''}
+              </span>
+            </div>
+
+            <div className="cat-ac-list">
+              {suggestions.map((item, i) => (
+                <div
+                  key={i}
+                  role="option"
+                  aria-selected={i === cursor ? 'true' : 'false'}
+                  className={`cat-ac-item ${i === cursor ? 'cat-ac-item-focused' : ''}`}
+                  onMouseDown={e => { e.preventDefault(); handleSelect(item) }}
+                  onMouseEnter={() => setCursor(i)}
+                >
+                  <span className="cat-ac-idx">{i + 1}</span>
+                  <span className="cat-ac-desc">{item.desc}</span>
+                  <span className="cat-ac-meta">
+                    <span className="cat-ac-unit">{item.unidad}</span>
+                    <span className="cat-ac-price">
+                      {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(item.price)}
+                    </span>
                   </span>
-                </span>
-              </div>
-            ))}
+                </div>
+              ))}
+            </div>
+
+            <div className="cat-ac-hint">
+              <span><kbd>↑↓</kbd> navegar</span>
+              <span><kbd>↵</kbd> seleccionar</span>
+              <span><kbd>Esc</kbd> cerrar</span>
+            </div>
           </div>
-          <div className="cat-ac-hint">↑↓ navegar · Enter seleccionar · Esc cerrar</div>
-        </div>
+        </>
       )}
     </div>
   )

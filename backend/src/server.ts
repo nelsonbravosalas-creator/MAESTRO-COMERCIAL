@@ -5,6 +5,8 @@ import { Pool } from 'pg'
 import dotenv from 'dotenv'
 import { logger } from './utils/logger'
 import { createAuthRouter } from './api/auth'
+import { createConfigRouter } from './api/config'
+import { createCatalogRouter } from './api/catalog'
 import { createClientsRouter } from './api/clients'
 import { createQuotationsRouter } from './api/quotations'
 import { createProjectsRouter } from './api/projects'
@@ -50,6 +52,8 @@ app.get('/api/health', (req: Request, res: Response) => {
 
 // API Routes
 const authRouter = createAuthRouter(pool)
+const configRouter = createConfigRouter(pool)
+const catalogRouter = createCatalogRouter(pool)
 const clientsRouter = createClientsRouter(pool)
 const quotationsRouter = createQuotationsRouter(pool)
 const projectsRouter = createProjectsRouter(pool)
@@ -57,6 +61,8 @@ const invoicesRouter = createInvoicesRouter(pool)
 const dashboardRouter = createDashboardRouter(pool)
 
 app.use('/api/auth', authRouter)
+app.use('/api/config', configRouter)
+app.use('/api/catalog', catalogRouter)
 app.use('/api/clients', clientsRouter)
 app.use('/api/quotations', quotationsRouter)
 app.use('/api/projects', projectsRouter)

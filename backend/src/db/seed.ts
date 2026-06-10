@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import { logger } from '../utils/logger'
 
 dotenv.config()
+dotenv.config({ path: '../.env.development.local', override: true })
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -37,13 +38,24 @@ async function seedUsers() {
         [user.email]
       )
 
-      if (result.rows.length > 0) {
-        logger.info(`User ${user.email} already exists, skipping...`)
-        continue
-      }
-
       // Hash password
       const passwordHash = await bcrypt.hash(user.password, 10)
+
+      if (result.rows.length > 0) {
+        await pool.query(
+          `UPDATE users
+              SET password_hash = $1,
+                  name = $2,
+                  role = $3,
+                  is_active = true,
+                  updated_at = NOW()
+            WHERE lower(email) = lower($4)
+              AND deleted_at IS NULL`,
+          [passwordHash, user.name, user.role, user.email]
+        )
+        logger.info(`User ${user.email} already exists, password refreshed.`)
+        continue
+      }
 
       // Insert user
       const insertResult = await pool.query(

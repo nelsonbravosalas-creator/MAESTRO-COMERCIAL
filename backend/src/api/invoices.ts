@@ -3,18 +3,21 @@ import { Pool } from 'pg'
 import { logger } from '../utils/logger'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 
+const VALID_STATUS = ['draft', 'issued', 'paid', 'cancelled']
+const VALID_PAYMENT = ['cash', 'credit', 'partial']
+
 export const createInvoicesRouter = (pool: Pool) => {
   const router = Router()
   router.use(authMiddleware)
 
-  // GET all invoices
-  router.get('/', async (req: AuthRequest, res) => {
+  router.get('/', async (_req: AuthRequest, res) => {
     try {
       const result = await pool.query(
-        `SELECT i.*, c.name as client_name FROM invoices i
-         LEFT JOIN clients c ON i.client_id = c.id
-         WHERE i.deleted_at IS NULL
-         ORDER BY i.created_at DESC`
+        `SELECT i.*, c.name AS client_name
+           FROM invoices i
+           LEFT JOIN clients c ON c.id = i.client_id
+          WHERE i.deleted_at IS NULL
+          ORDER BY i.date DESC, i.created_at DESC`
       )
       return res.json(result.rows)
     } catch (error: any) {
@@ -23,153 +26,144 @@ export const createInvoicesRouter = (pool: Pool) => {
     }
   })
 
-  // GET single invoice with items
   router.get('/:id', async (req: AuthRequest, res) => {
     try {
-      const { id } = req.params
       const invoice = await pool.query(
-        `SELECT i.*, c.name as client_name FROM invoices i
-         LEFT JOIN clients c ON i.client_id = c.id
-         WHERE i.id = $1 AND i.deleted_at IS NULL`,
-        [id]
+        `SELECT i.*, c.name AS client_name
+           FROM invoices i
+           LEFT JOIN clients c ON c.id = i.client_id
+          WHERE i.id = $1
+            AND i.deleted_at IS NULL`,
+        [req.params.id]
       )
 
-      if (invoice.rows.length === 0) {
-        return res.status(404).json({ error: 'Invoice not found' })
-      }
+      if (invoice.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
 
       const items = await pool.query(
-        'SELECT * FROM invoice_items WHERE invoice_id = $1 ORDER BY created_at',
-        [id]
+        `SELECT *
+           FROM invoice_items
+          WHERE invoice_id = $1
+          ORDER BY sort_order, created_at`,
+        [req.params.id]
       )
 
-      return res.json({
-        ...invoice.rows[0],
-        items: items.rows,
-      })
+      return res.json({ ...invoice.rows[0], items: items.rows })
     } catch (error: any) {
-      logger.error('Get invoice error', { error: error.message })
+      logger.error('Get invoice error', { error: error.message, invoiceId: req.params.id })
       return res.status(500).json({ error: 'Failed to fetch invoice' })
     }
   })
 
-  // POST create invoice
   router.post('/', async (req: AuthRequest, res) => {
+    const db = await pool.connect()
     try {
-      const { project_id, client_id, items, payment_condition, due_date } = req.body
+      const { project_id, client_id, number, date, payment_cond, due_date, items } = req.body
+      if (!client_id) return res.status(400).json({ error: 'client_id is required' })
 
-      if (!client_id) {
-        return res.status(400).json({ error: 'Client ID is required' })
+      let netAmount = 0
+      const lineItems = Array.isArray(items) ? items : []
+      for (const item of lineItems) {
+        netAmount += (Number(item.quantity) || 0) * (Number(item.unit_price) || 0)
       }
 
-      // Generate invoice number
-      const countResult = await pool.query(
-        "SELECT COUNT(*) as count FROM invoices WHERE created_at > NOW() - INTERVAL '1 month'"
-      )
-      const invoiceNumber = `F-${String(countResult.rows[0].count + 1).padStart(6, '0')}`
+      const config = await db.query("SELECT value FROM app_config WHERE key = 'iva_pct'")
+      const ivaPct = Number(config.rows[0]?.value) || 19
+      const taxAmount = netAmount * (ivaPct / 100)
+      const totalAmount = netAmount + taxAmount
+      const invoiceNumber = number || `F-${String(Date.now()).slice(-6)}`
 
-      // Calculate totals
-      let subtotal = 0
-      if (items && Array.isArray(items)) {
-        items.forEach((item: any) => {
-          subtotal += (item.quantity || 0) * (item.unit_price || 0)
-        })
-      }
-      const tax = subtotal * 0.18 // 18% IGV for Peru
-      const total = subtotal + tax
-
-      // Create invoice
-      const invoiceResult = await pool.query(
-        `INSERT INTO invoices (project_id, client_id, number, date, payment_condition, due_date, subtotal, tax, total, status)
-         VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, $8, $9)
+      await db.query('BEGIN')
+      const invoice = await db.query(
+        `INSERT INTO invoices
+          (project_id, client_id, number, date, payment_cond, due_date,
+           net_amount, tax_amount, total_amount, status, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10)
          RETURNING *`,
-        [project_id || null, client_id, invoiceNumber, payment_condition || 'cash', due_date, subtotal, tax, total, 'draft']
+        [
+          project_id || null,
+          client_id,
+          invoiceNumber,
+          date || new Date().toISOString().slice(0, 10),
+          VALID_PAYMENT.includes(payment_cond) ? payment_cond : 'credit',
+          due_date || null,
+          netAmount,
+          taxAmount,
+          totalAmount,
+          req.user?.id ?? null,
+        ]
       )
 
-      const invoiceId = invoiceResult.rows[0].id
-
-      // Insert items
-      if (items && Array.isArray(items)) {
-        for (const item of items) {
-          const itemTotal = (item.quantity || 0) * (item.unit_price || 0)
-          await pool.query(
-            `INSERT INTO invoice_items (invoice_id, project_item_id, description, quantity, unit_price, total)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [invoiceId, item.project_item_id || null, item.description, item.quantity, item.unit_price, itemTotal]
-          )
-        }
+      for (const [idx, item] of lineItems.entries()) {
+        if (!item.description) continue
+        await db.query(
+          `INSERT INTO invoice_items
+            (invoice_id, quotation_line_item_id, description, quantity, unit_price, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            invoice.rows[0].id,
+            item.quotation_line_item_id || null,
+            item.description,
+            Number(item.quantity) || 1,
+            Number(item.unit_price) || 0,
+            Number(item.sort_order ?? idx),
+          ]
+        )
       }
 
-      logger.info('Invoice created', {
-        invoiceId,
-        number: invoiceNumber,
-        clientId: client_id,
-        userId: req.user?.id,
-      })
-
-      return res.status(201).json(invoiceResult.rows[0])
+      await db.query('COMMIT')
+      return res.status(201).json(invoice.rows[0])
     } catch (error: any) {
-      logger.error('Create invoice error', { error: error.message })
+      await db.query('ROLLBACK')
+      logger.error('Create invoice error', { error: error.message, userId: req.user?.id })
+      if (error.code === '23505') return res.status(409).json({ error: 'Invoice number already exists' })
       return res.status(500).json({ error: 'Failed to create invoice' })
+    } finally {
+      db.release()
     }
   })
 
-  // PUT update invoice status
-  router.put('/:id/status', async (req: AuthRequest, res) => {
+  const updateStatus = async (req: AuthRequest, res: any) => {
     try {
-      const { id } = req.params
       const { status, is_factored } = req.body
-
-      if (!['draft', 'issued', 'paid', 'cancelled'].includes(status)) {
-        return res.status(400).json({ error: 'Invalid status' })
-      }
+      if (!VALID_STATUS.includes(status)) return res.status(400).json({ error: 'Invalid status' })
 
       const result = await pool.query(
-        `UPDATE invoices SET status = $1, is_factored = $2, updated_at = NOW()
-         WHERE id = $3 AND deleted_at IS NULL
-         RETURNING *`,
-        [status, is_factored || false, id]
+        `UPDATE invoices
+            SET status = $1,
+                is_factored = COALESCE($2, is_factored),
+                updated_at = NOW()
+          WHERE id = $3
+            AND deleted_at IS NULL
+          RETURNING *`,
+        [status, is_factored, req.params.id]
       )
 
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Invoice not found' })
-      }
-
-      logger.info('Invoice status updated', {
-        invoiceId: id,
-        newStatus: status,
-        userId: req.user?.id,
-      })
-
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
       return res.json(result.rows[0])
     } catch (error: any) {
-      logger.error('Update invoice status error', { error: error.message })
-      return res.status(500).json({ error: 'Failed to update invoice' })
+      logger.error('Update invoice status error', { error: error.message, invoiceId: req.params.id })
+      return res.status(500).json({ error: 'Failed to update invoice status' })
     }
-  })
+  }
 
-  // DELETE invoice (soft delete)
+  router.patch('/:id/status', updateStatus)
+  router.put('/:id/status', updateStatus)
+
   router.delete('/:id', async (req: AuthRequest, res) => {
     try {
-      const { id } = req.params
-
       const result = await pool.query(
-        'UPDATE invoices SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING *',
-        [id]
+        `UPDATE invoices
+            SET deleted_at = NOW()
+          WHERE id = $1
+            AND deleted_at IS NULL
+          RETURNING id`,
+        [req.params.id]
       )
 
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Invoice not found' })
-      }
-
-      logger.info('Invoice deleted', {
-        invoiceId: id,
-        userId: req.user?.id,
-      })
-
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
       return res.json({ message: 'Invoice deleted successfully' })
     } catch (error: any) {
-      logger.error('Delete invoice error', { error: error.message })
+      logger.error('Delete invoice error', { error: error.message, invoiceId: req.params.id })
       return res.status(500).json({ error: 'Failed to delete invoice' })
     }
   })

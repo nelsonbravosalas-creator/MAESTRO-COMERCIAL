@@ -9,6 +9,11 @@ node_modules/
 # Production
 /dist
 /build
+frontend/dist/
+backend/dist/
+*.tsbuildinfo
+frontend/vite.config.d.ts
+frontend/vite.config.js
 
 # Misc
 .DS_Store

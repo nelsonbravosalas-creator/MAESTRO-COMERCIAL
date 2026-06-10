@@ -4,6 +4,8 @@ import bodyParser from 'body-parser'
 import { Pool } from 'pg'
 import dotenv from 'dotenv'
 import { createAuthRouter }       from './api/auth'
+import { createConfigRouter }     from './api/config'
+import { createCatalogRouter }    from './api/catalog'
 import { createClientsRouter }    from './api/clients'
 import { createQuotationsRouter } from './api/quotations'
 import { createProjectsRouter }   from './api/projects'
@@ -34,6 +36,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
 })
 
 app.use('/api/auth',       createAuthRouter(pool))
+app.use('/api/config',     createConfigRouter(pool))
+app.use('/api/catalog',    createCatalogRouter(pool))
 app.use('/api/clients',    createClientsRouter(pool))
 app.use('/api/quotations', createQuotationsRouter(pool))
 app.use('/api/projects',   createProjectsRouter(pool))

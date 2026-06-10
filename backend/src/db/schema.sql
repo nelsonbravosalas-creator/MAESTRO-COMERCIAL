@@ -90,10 +90,10 @@ CREATE TABLE catalog_items (
   is_active   BOOLEAN          NOT NULL DEFAULT true,
   sort_order  SMALLINT         NOT NULL DEFAULT 0,
   created_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
-  CONSTRAINT uq_catalog_item UNIQUE (category_id, lower(description))
+  updated_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX uix_catalog_item ON catalog_items (category_id, lower(description));
 CREATE INDEX ix_catalog_category ON catalog_items (category_id) WHERE is_active = true;
 
 CREATE TRIGGER trg_catalog_items_updated_at

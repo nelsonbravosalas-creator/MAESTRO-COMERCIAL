@@ -40,7 +40,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
-    throw new Error(err.error ?? err.message ?? `HTTP ${res.status}`)
+    throw new Error(err.message ?? err.error ?? `HTTP ${res.status}`)
   }
 
   return res.json() as Promise<T>
@@ -221,7 +221,7 @@ function fromMasterQuotation(q: MasterQuotation) {
     ref:          q.ref,
     date:         q.date,
     status:       q.status,
-    oper_state:   q.operState,
+    oper_state:   q.operState?.trim() ? q.operState : null,
     uf_value:     q.uf,
     iva_pct:      q.iva,
     categories,

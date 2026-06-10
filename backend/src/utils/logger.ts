@@ -1,4 +1,5 @@
 import winston from 'winston'
+import fs from 'fs'
 
 const transports: winston.transport[] = [
   new winston.transports.Console({
@@ -13,7 +14,6 @@ const transports: winston.transport[] = [
 
 // File transports solo en desarrollo local (no en serverless/Vercel)
 if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
-  const fs = require('fs')
   if (!fs.existsSync('logs')) fs.mkdirSync('logs')
   transports.push(
     new winston.transports.File({ filename: 'logs/error.log', level: 'error', format: winston.format.json() }),

@@ -34,6 +34,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
       const data = await response.json()
       localStorage.setItem('authToken', data.token)
+      if (data.refresh_token) localStorage.setItem('refreshToken', data.refresh_token)
       localStorage.setItem('user', JSON.stringify(data.user))
       onLoginSuccess(data.token)
     } catch (err: any) {

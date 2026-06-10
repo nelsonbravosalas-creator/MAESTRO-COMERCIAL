@@ -7,57 +7,65 @@ export const createDashboardRouter = (pool: Pool) => {
   const router = Router()
   router.use(authMiddleware)
 
-  // GET dashboard KPIs
   router.get('/kpis', async (req: AuthRequest, res) => {
     try {
-      const currentMonth = new Date()
-      currentMonth.setDate(1)
+      const [
+        clients,
+        openQuotes,
+        projects,
+        invoiced,
+        costs,
+        pipeline,
+      ] = await Promise.all([
+        pool.query('SELECT COUNT(*)::int AS count FROM clients WHERE deleted_at IS NULL'),
+        pool.query(
+          `SELECT COUNT(*)::int AS count
+             FROM quotations
+            WHERE status IN ('Emitida', 'Enviada')
+              AND deleted_at IS NULL`
+        ),
+        pool.query(
+          `SELECT COUNT(*)::int AS count
+             FROM projects
+            WHERE status = 'in_progress'
+              AND deleted_at IS NULL`
+        ),
+        pool.query(
+          `SELECT COALESCE(SUM(total_amount), 0) AS total
+             FROM invoices
+            WHERE status IN ('issued', 'paid')
+              AND deleted_at IS NULL`
+        ),
+        pool.query(
+          `SELECT COALESCE(SUM(quantity * unit_price), 0) AS total
+             FROM execution_costs`
+        ),
+        pool.query(
+          `SELECT COALESCE(SUM(v.venta_neta), 0) AS total
+             FROM v_quotation_totals v
+             JOIN quotations q ON q.id = v.quotation_id
+            WHERE q.status IN ('Emitida', 'Enviada')
+              AND q.deleted_at IS NULL`
+        ),
+      ])
 
-      // Total invoiced this month
-      const invoicedResult = await pool.query(
-        `SELECT COALESCE(SUM(total), 0) as total FROM invoices
-         WHERE status IN ('issued', 'paid')
-         AND created_at >= $1
-         AND deleted_at IS NULL`,
-        [currentMonth]
-      )
-
-      // Total costs this month
-      const costsResult = await pool.query(
-        `SELECT COALESCE(SUM(cost), 0) as total FROM execution_costs
-         WHERE created_at >= $1`,
-        [currentMonth]
-      )
-
-      // Projects in progress
-      const projectsResult = await pool.query(
-        `SELECT COUNT(*) as count FROM projects
-         WHERE status = 'in_progress'
-         AND deleted_at IS NULL`
-      )
-
-      // Pending quotations
-      const quotationsResult = await pool.query(
-        `SELECT COUNT(*) as count FROM quotations
-         WHERE status IN ('draft', 'sent')
-         AND deleted_at IS NULL`
-      )
-
-      const invoiced = parseFloat(invoicedResult.rows[0].total) || 0
-      const costs = parseFloat(costsResult.rows[0].total) || 0
-      const margin = invoiced - costs
-      const marginPercentage = invoiced > 0 ? (margin / invoiced) * 100 : 0
+      const totalFacturado = Number(invoiced.rows[0].total) || 0
+      const totalGasto = Number(costs.rows[0].total) || 0
+      const margen = totalFacturado > 0
+        ? ((totalFacturado - totalGasto) / totalFacturado) * 100
+        : 0
 
       logger.info('Dashboard KPIs retrieved', { userId: req.user?.id })
 
       return res.json({
         kpis: {
-          total_invoiced: parseFloat(invoiced.toFixed(2)),
-          total_costs: parseFloat(costs.toFixed(2)),
-          margin: parseFloat(margin.toFixed(2)),
-          margin_percentage: parseFloat(marginPercentage.toFixed(2)),
-          projects_in_progress: projectsResult.rows[0].count,
-          pending_quotations: quotationsResult.rows[0].count,
+          clientes_activos: clients.rows[0].count,
+          cotizaciones_abiertas: openQuotes.rows[0].count,
+          proyectos_en_curso: projects.rows[0].count,
+          total_facturado: Math.round(totalFacturado),
+          total_gasto_obra: Math.round(totalGasto),
+          margen_bruto_pct: Math.round(margen * 100) / 100,
+          pipeline_cotizaciones: Math.round(Number(pipeline.rows[0].total) || 0),
         },
         timestamp: new Date(),
       })
@@ -67,65 +75,33 @@ export const createDashboardRouter = (pool: Pool) => {
     }
   })
 
-  // GET monthly trend (last 12 months)
-  router.get('/trends', async (req: AuthRequest, res) => {
+  router.get('/projects-summary', async (_req: AuthRequest, res) => {
     try {
       const result = await pool.query(
-        `SELECT
-          DATE_TRUNC('month', i.created_at) as month,
-          COALESCE(SUM(i.total), 0) as invoiced,
-          COALESCE(SUM(ec.cost), 0) as costs
-        FROM invoices i
-        LEFT JOIN execution_costs ec ON DATE_TRUNC('month', i.created_at) = DATE_TRUNC('month', ec.created_at)
-        WHERE i.created_at >= NOW() - INTERVAL '12 months'
-        AND i.status IN ('issued', 'paid')
-        AND i.deleted_at IS NULL
-        GROUP BY month
-        ORDER BY month ASC`
+        `SELECT p.status,
+                COUNT(*)::int AS count,
+                COALESCE(AVG(p.progress_pct), 0) AS avg_progress,
+                COALESCE(SUM(p.budget), 0) AS total_budget,
+                COALESCE(SUM(sp.gasto_real), 0) AS total_spent
+           FROM projects p
+           LEFT JOIN v_project_spending sp ON sp.project_id = p.id
+          WHERE p.deleted_at IS NULL
+          GROUP BY p.status`
       )
-
-      const trends = result.rows.map(row => ({
-        month: new Date(row.month).toISOString().substring(0, 7),
-        invoiced: parseFloat(row.invoiced) || 0,
-        costs: parseFloat(row.costs) || 0,
-        margin: (parseFloat(row.invoiced) || 0) - (parseFloat(row.costs) || 0),
-      }))
-
-      logger.info('Dashboard trends retrieved', { userId: req.user?.id })
-
-      return res.json({ trends, timestamp: new Date() })
-    } catch (error: any) {
-      logger.error('Dashboard trends error', { error: error.message })
-      return res.status(500).json({ error: 'Failed to fetch trends' })
-    }
-  })
-
-  // GET project summary
-  router.get('/projects-summary', async (req: AuthRequest, res) => {
-    try {
-      const result = await pool.query(
-        `SELECT
-          status,
-          COUNT(*) as count,
-          COALESCE(AVG(progress), 0) as avg_progress,
-          COALESCE(SUM(budget), 0) as total_budget,
-          COALESCE(SUM(spent), 0) as total_spent
-        FROM projects
-        WHERE deleted_at IS NULL
-        GROUP BY status`
-      )
-
-      logger.info('Projects summary retrieved', { userId: req.user?.id })
 
       return res.json({
-        summary: result.rows.map(row => ({
-          status: row.status,
-          count: row.count,
-          avg_progress: parseFloat(row.avg_progress.toFixed(2)),
-          total_budget: parseFloat(row.total_budget.toFixed(2)),
-          total_spent: parseFloat(row.total_spent.toFixed(2)),
-          remaining: parseFloat((row.total_budget - row.total_spent).toFixed(2)),
-        })),
+        summary: result.rows.map(row => {
+          const totalBudget = Number(row.total_budget) || 0
+          const totalSpent = Number(row.total_spent) || 0
+          return {
+            status: row.status,
+            count: row.count,
+            avg_progress: Number(Number(row.avg_progress).toFixed(2)),
+            total_budget: totalBudget,
+            total_spent: totalSpent,
+            remaining: totalBudget - totalSpent,
+          }
+        }),
         timestamp: new Date(),
       })
     } catch (error: any) {
@@ -134,28 +110,24 @@ export const createDashboardRouter = (pool: Pool) => {
     }
   })
 
-  // GET client metrics
-  router.get('/client-metrics', async (req: AuthRequest, res) => {
+  router.get('/client-metrics', async (_req: AuthRequest, res) => {
     try {
       const result = await pool.query(
-        `SELECT
-          c.id,
-          c.name,
-          COUNT(DISTINCT q.id) as quotations,
-          COUNT(DISTINCT p.id) as projects,
-          COUNT(DISTINCT i.id) as invoices,
-          COALESCE(SUM(i.total), 0) as total_invoiced
-        FROM clients c
-        LEFT JOIN quotations q ON c.id = q.client_id AND q.deleted_at IS NULL
-        LEFT JOIN projects p ON c.id = p.client_id AND p.deleted_at IS NULL
-        LEFT JOIN invoices i ON c.id = i.client_id AND i.deleted_at IS NULL
-        WHERE c.deleted_at IS NULL
-        GROUP BY c.id, c.name
-        ORDER BY total_invoiced DESC
-        LIMIT 10`
+        `SELECT c.id,
+                c.name,
+                COUNT(DISTINCT q.id)::int AS quotations,
+                COUNT(DISTINCT p.id)::int AS projects,
+                COUNT(DISTINCT i.id)::int AS invoices,
+                COALESCE(SUM(i.total_amount), 0) AS total_invoiced
+           FROM clients c
+           LEFT JOIN quotations q ON q.client_id = c.id AND q.deleted_at IS NULL
+           LEFT JOIN projects p ON p.client_id = c.id AND p.deleted_at IS NULL
+           LEFT JOIN invoices i ON i.client_id = c.id AND i.deleted_at IS NULL
+          WHERE c.deleted_at IS NULL
+          GROUP BY c.id, c.name
+          ORDER BY total_invoiced DESC
+          LIMIT 10`
       )
-
-      logger.info('Client metrics retrieved', { userId: req.user?.id })
 
       return res.json({
         metrics: result.rows.map(row => ({
@@ -164,7 +136,7 @@ export const createDashboardRouter = (pool: Pool) => {
           quotations: row.quotations,
           projects: row.projects,
           invoices: row.invoices,
-          total_invoiced: parseFloat(row.total_invoiced) || 0,
+          total_invoiced: Number(row.total_invoiced) || 0,
         })),
         timestamp: new Date(),
       })

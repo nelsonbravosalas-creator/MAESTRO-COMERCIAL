@@ -211,19 +211,42 @@ export const useMaestro = create<MaestroState>()(
       // ── API: hidrata el store desde el backend ────────────────
       loadData: async () => {
         try {
-          const [catalogs, clients, quotations, config] = await Promise.all([
+          const [catalogsFromAPI, clients, serverQuotations, config] = await Promise.all([
             api.getCatalog(),
             api.getClients(),
             api.getQuotations(),
             api.getConfig(),
           ])
-          set({
-            catalogs,
-            clients,
-            quotations,
-            uf:       Number(config.uf_value)  || get().uf,
-            iva:      Number(config.iva_pct)   || get().iva,
-            apiReady: true,
+          set(s => {
+            // El endpoint GET /api/quotations es liviano (sin line_items ni terms).
+            // Mergeamos preservando los datos locales ya cargados en el store.
+            const mergedQuotations = serverQuotations.map(serverQ => {
+              const localQ = s.quotations.find(lq => lq.id === serverQ.id)
+              if (localQ) {
+                const hasLocalItems = Object.values(localQ.items).some(arr => arr.length > 0)
+                const hasLocalTerms = localQ.scope.length > 0 || localQ.exclusions.length > 0 || localQ.commercial.length > 0
+                if (hasLocalItems || hasLocalTerms) {
+                  return {
+                    ...serverQ,
+                    items:      localQ.items,
+                    scope:      localQ.scope,
+                    exclusions: localQ.exclusions,
+                    commercial: localQ.commercial,
+                  }
+                }
+              }
+              return serverQ
+            })
+            // Preservar borradores locales (q-*) aún no persistidos en el servidor
+            const localDrafts = s.quotations.filter(lq => lq.id.startsWith('q-'))
+            return {
+              catalogs:   catalogsFromAPI,
+              clients,
+              quotations: [...mergedQuotations, ...localDrafts],
+              uf:         Number(config.uf_value) || s.uf,
+              iva:        Number(config.iva_pct)  || s.iva,
+              apiReady:   true,
+            }
           })
         } catch (err) {
           console.warn('[maestro] Backend no disponible, usando datos locales:', err)
@@ -287,7 +310,19 @@ export const useMaestro = create<MaestroState>()(
         set(s => ({ quotations: [...s.quotations, draft], activeId: draft.id, activeTab: 'base', unsaved: true }))
       },
 
-      loadQuote: (id) => set({ activeId: id, activeTab: 'base', unsaved: false }),
+      loadQuote: (id) => {
+        set({ activeId: id, activeTab: 'base', unsaved: false })
+        // Si la cotización tiene items vacíos (vino del listado liviano), hidratar desde API
+        const current = get().quotations.find(q => q.id === id)
+        const hasItems = current && Object.values(current.items).some(arr => arr.length > 0)
+        if (!hasItems && !id.startsWith('q-')) {
+          api.getQuotation(id).then(full => {
+            set(s => ({
+              quotations: s.quotations.map(q => q.id === id ? full : q),
+            }))
+          }).catch(() => {})
+        }
+      },
 
       duplicateQuote: async (id) => {
         const { quotations } = get()
@@ -498,23 +533,26 @@ export const useMaestro = create<MaestroState>()(
           list[idx] = { ...list[idx], [field]: field === 'price' ? (parseFloat(value) || 0) : value }
           return { catalogs: { ...s.catalogs, [catId]: list } }
         })
-        // Sync en background
+        // Sync en background — omitir si el ítem aún no tiene ID real (tmp-*)
         const item = get().catalogs[catId][idx]
-        if (item?.id) {
+        if (item?.id && !item.id.startsWith('tmp-')) {
           api.updateCatalogItem(item.id, catId, item).catch(() => {})
         }
       },
 
       addCatalogItem: (catId, item) => {
-        set(s => ({ catalogs: { ...s.catalogs, [catId]: [...s.catalogs[catId], item] } }))
-        // Crear en backend y persistir el ID
-        const idx = get().catalogs[catId].length - 1
-        api.createCatalogItem(catId, item, idx).then(saved => {
-          set(s => {
-            const list = [...s.catalogs[catId]]
-            if (list[idx]) list[idx] = saved
-            return { catalogs: { ...s.catalogs, [catId]: list } }
-          })
+        // Asignar ID temporal para rastrear el ítem hasta que la API devuelva el ID real
+        const tempId = `tmp-${Date.now()}`
+        const newItem: CatalogItemUI = { ...item, id: tempId }
+        set(s => ({ catalogs: { ...s.catalogs, [catId]: [...s.catalogs[catId], newItem] } }))
+        api.createCatalogItem(catId, item, get().catalogs[catId].length - 1).then(saved => {
+          // Reemplazar por ID (no por índice) para evitar race conditions
+          set(s => ({
+            catalogs: {
+              ...s.catalogs,
+              [catId]: s.catalogs[catId].map(i => i.id === tempId ? saved : i),
+            },
+          }))
         }).catch(() => {})
       },
 

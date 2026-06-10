@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "dexie": "^4.4.2",
+    "docx": "^9.7.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.16.0",

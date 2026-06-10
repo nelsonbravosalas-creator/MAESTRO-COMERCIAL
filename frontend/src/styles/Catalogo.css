@@ -79,6 +79,66 @@
 }
 .cat-btn-export-all:hover { border-color: #64748b; color: #e2e8f0; background: #1e293b; }
 
+/* ── Botón Guardar ───────────────────────────────────────────────────────── */
+
+.cat-btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  background: #1e3a8a;
+  border: 1px solid #1e3a8a;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s, box-shadow 0.15s;
+  font-family: 'Outfit', sans-serif;
+}
+.cat-btn-save:hover:not(:disabled) { background: #1d4ed8; box-shadow: 0 2px 8px rgba(29,78,216,0.35); }
+.cat-btn-save:disabled { opacity: 0.45; cursor: not-allowed; }
+.cat-btn-save-dirty { background: #1d4ed8; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.25); }
+
+@keyframes cat-spin { to { transform: rotate(360deg); } }
+.cat-save-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: cat-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Toast de sincronización ─────────────────────────────────────────────── */
+
+@keyframes cat-toast-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.cat-toast {
+  position: fixed;
+  top: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.87rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  animation: cat-toast-in 0.25s ease;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.cat-toast-success { background: #166534; color: #bbf7d0; border: 1px solid #22c55e; }
+.cat-toast-error   { background: #7f1d1d; color: #fecaca; border: 1px solid #ef4444; }
+
 /* ── Pestañas ────────────────────────────────────────────────────────────── */
 
 .catalogo-tabs {

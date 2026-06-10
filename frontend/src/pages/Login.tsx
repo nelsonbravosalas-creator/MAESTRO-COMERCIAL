@@ -80,7 +80,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
               disabled={loading}
             />
           </div>

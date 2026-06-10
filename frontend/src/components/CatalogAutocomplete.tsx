@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react'
+import ReactDOM from 'react-dom'
 import { useMaestro } from '../stores/maestro-store'
 import { CategoryId, CatalogItemUI } from '../types'
 import './CatalogAutocomplete.css'
@@ -11,11 +12,24 @@ interface Props {
   placeholder?: string
 }
 
+interface DropPos {
+  top: number
+  left: number
+  width: number
+}
+
+const fmtCLP = new Intl.NumberFormat('es-CL', {
+  style: 'currency',
+  currency: 'CLP',
+  maximumFractionDigits: 0,
+})
+
 export function CatalogAutocomplete({ catId, value, onChange, onSelect, placeholder }: Props) {
   const { catalogs } = useMaestro()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen]     = useState(false)
   const [cursor, setCursor] = useState(0)
-  const wrapRef = useRef<HTMLDivElement>(null)
+  const [dropPos, setDropPos] = useState<DropPos | null>(null)
+  const wrapRef  = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const suggestions = React.useMemo(() => {
@@ -26,10 +40,41 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
       .slice(0, 10)
   }, [catalogs, catId, value])
 
-  // Cierra el dropdown al hacer clic fuera
+  const totalInCatalog = catalogs[catId].length
+  const showDropdown   = open && suggestions.length > 0
+
+  /* ── Calcular posición fija del dropdown ── */
+  useLayoutEffect(() => {
+    if (!showDropdown || !inputRef.current) {
+      setDropPos(null)
+      return
+    }
+    const update = () => {
+      if (!inputRef.current) return
+      const r = inputRef.current.getBoundingClientRect()
+      setDropPos({ top: r.bottom + 4, left: r.left, width: r.width })
+    }
+    update()
+    window.addEventListener('resize', update, { passive: true })
+    return () => window.removeEventListener('resize', update)
+  }, [showDropdown])
+
+  /* ── Cerrar al hacer scroll (evita desalineamiento) ── */
+  useEffect(() => {
+    if (!showDropdown) return
+    const close = () => setOpen(false)
+    window.addEventListener('scroll', close, { passive: true, capture: true })
+    return () => window.removeEventListener('scroll', close, true)
+  }, [showDropdown])
+
+  /* ── Cerrar al clic fuera ── */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (wrapRef.current && !wrapRef.current.contains(target)) {
+        // También ignorar clics dentro del portal
+        const portal = document.getElementById('cat-ac-portal-root')
+        if (portal && portal.contains(target)) return
         setOpen(false)
       }
     }
@@ -67,8 +112,85 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
     }
   }
 
-  const showDropdown = open && suggestions.length > 0
-  const totalInCatalog = catalogs[catId].length
+  /* ── Portal root (singleton en el body) ── */
+  const getPortalRoot = () => {
+    let el = document.getElementById('cat-ac-portal-root')
+    if (!el) {
+      el = document.createElement('div')
+      el.id = 'cat-ac-portal-root'
+      document.body.appendChild(el)
+    }
+    return el
+  }
+
+  /* ── Detectar móvil ── */
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640
+
+  /* ── Dropdown renderizado vía portal ── */
+  const dropdownEl = showDropdown
+    ? ReactDOM.createPortal(
+        <>
+          {/* Backdrop para móvil */}
+          <div
+            className="cat-ac-backdrop"
+            onMouseDown={e => { e.preventDefault(); setOpen(false) }}
+          />
+
+          <div
+            className={`cat-ac-dropdown${isMobile ? ' cat-ac-dropdown--mobile' : ''}`}
+            role="listbox"
+            aria-label="Opciones del catálogo"
+            /* eslint-disable-next-line react/forbid-component-props */
+            style={
+              (!isMobile && dropPos)
+                ? ({
+                    '--drop-top':   `${dropPos.top}px`,
+                    '--drop-left':  `${dropPos.left}px`,
+                    '--drop-width': `${dropPos.width}px`,
+                  } as React.CSSProperties)
+                : undefined
+            }
+          >
+            {/* Header contador */}
+            <div className="cat-ac-header">
+              <span className="cat-ac-header-label">
+                {value.trim() ? 'Resultados' : 'Catálogo'}
+              </span>
+              <span className="cat-ac-header-count">
+                {suggestions.length}{value.trim() ? ` / ${totalInCatalog}` : ''}
+              </span>
+            </div>
+
+            <div className="cat-ac-list">
+              {suggestions.map((item, i) => (
+                <div
+                  key={i}
+                  role="option"
+                  aria-selected={i === cursor ? 'true' : 'false'}
+                  className={`cat-ac-item${i === cursor ? ' cat-ac-item-focused' : ''}`}
+                  onMouseDown={e => { e.preventDefault(); handleSelect(item) }}
+                  onMouseEnter={() => setCursor(i)}
+                >
+                  <span className="cat-ac-idx">{i + 1}</span>
+                  <span className="cat-ac-desc">{item.desc}</span>
+                  <span className="cat-ac-meta">
+                    <span className="cat-ac-unit">{item.unidad}</span>
+                    <span className="cat-ac-price">{fmtCLP.format(item.price)}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="cat-ac-hint">
+              <span><kbd>↑↓</kbd> navegar</span>
+              <span><kbd>↵</kbd> seleccionar</span>
+              <span><kbd>Esc</kbd> cerrar</span>
+            </div>
+          </div>
+        </>,
+        getPortalRoot()
+      )
+    : null
 
   return (
     <div className="cat-ac-wrap" ref={wrapRef}>
@@ -82,59 +204,9 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
         onKeyDown={handleKeyDown}
         aria-label="Descripción"
         aria-autocomplete="list"
-        aria-expanded={showDropdown}
+        aria-expanded={showDropdown ? 'true' : 'false'}
       />
-
-      {showDropdown && (
-        <>
-          {/* Backdrop para móvil */}
-          <div
-            className="cat-ac-backdrop"
-            onMouseDown={e => { e.preventDefault(); setOpen(false) }}
-          />
-
-          <div className="cat-ac-dropdown" role="listbox" aria-label="Opciones del catálogo">
-            {/* Header con contador */}
-            <div className="cat-ac-header">
-              <span className="cat-ac-header-label">
-                {value.trim() ? 'Resultados' : 'Catálogo'}
-              </span>
-              <span className="cat-ac-header-count">
-                {suggestions.length}
-                {value.trim() ? ` / ${totalInCatalog}` : ''}
-              </span>
-            </div>
-
-            <div className="cat-ac-list">
-              {suggestions.map((item, i) => (
-                <div
-                  key={i}
-                  role="option"
-                  aria-selected={i === cursor ? 'true' : 'false'}
-                  className={`cat-ac-item ${i === cursor ? 'cat-ac-item-focused' : ''}`}
-                  onMouseDown={e => { e.preventDefault(); handleSelect(item) }}
-                  onMouseEnter={() => setCursor(i)}
-                >
-                  <span className="cat-ac-idx">{i + 1}</span>
-                  <span className="cat-ac-desc">{item.desc}</span>
-                  <span className="cat-ac-meta">
-                    <span className="cat-ac-unit">{item.unidad}</span>
-                    <span className="cat-ac-price">
-                      {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(item.price)}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="cat-ac-hint">
-              <span><kbd>↑↓</kbd> navegar</span>
-              <span><kbd>↵</kbd> seleccionar</span>
-              <span><kbd>Esc</kbd> cerrar</span>
-            </div>
-          </div>
-        </>
-      )}
+      {dropdownEl}
     </div>
   )
 }

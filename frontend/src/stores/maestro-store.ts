@@ -184,9 +184,11 @@ interface MaestroState {
   patchListItem:  (key: 'scope' | 'exclusions' | 'commercial', idx: number, value: string) => void
 
   // Catalogs
+  catalogDirty:      boolean
   upsertCatalogItem: (catId: CategoryId, idx: number, field: string, value: any) => void
   addCatalogItem:    (catId: CategoryId, item: CatalogItemUI)                     => void
   deleteCatalogItem: (catId: CategoryId, idx: number)                             => void
+  saveCatalogs:      () => Promise<void>
 
   // UI
   setTab:     (t: 'base' | 'costeo' | 'coti') => void
@@ -198,15 +200,16 @@ interface MaestroState {
 export const useMaestro = create<MaestroState>()(
   persist(
     (set, get) => ({
-      uf:         39500,
-      iva:        19,
-      catalogs:   DEFAULT_CATALOGS,
-      apiReady:   false,
-      clients:    [],
-      quotations: [],
-      activeId:   null,
-      activeTab:  'base',
-      unsaved:    false,
+      uf:           39500,
+      iva:          19,
+      catalogs:     DEFAULT_CATALOGS,
+      apiReady:     false,
+      clients:      [],
+      quotations:   [],
+      activeId:     null,
+      activeTab:    'base',
+      unsaved:      false,
+      catalogDirty: false,
 
       // ── API: hidrata el store desde el backend ────────────────
       loadData: async () => {
@@ -531,29 +534,14 @@ export const useMaestro = create<MaestroState>()(
         set(s => {
           const list = [...s.catalogs[catId]]
           list[idx] = { ...list[idx], [field]: field === 'price' ? (parseFloat(value) || 0) : value }
-          return { catalogs: { ...s.catalogs, [catId]: list } }
+          return { catalogs: { ...s.catalogs, [catId]: list }, catalogDirty: true }
         })
-        // Sync en background — omitir si el ítem aún no tiene ID real (tmp-*)
-        const item = get().catalogs[catId][idx]
-        if (item?.id && !item.id.startsWith('tmp-')) {
-          api.updateCatalogItem(item.id, catId, item).catch(() => {})
-        }
       },
 
       addCatalogItem: (catId, item) => {
-        // Asignar ID temporal para rastrear el ítem hasta que la API devuelva el ID real
         const tempId = `tmp-${Date.now()}`
         const newItem: CatalogItemUI = { ...item, id: tempId }
-        set(s => ({ catalogs: { ...s.catalogs, [catId]: [...s.catalogs[catId], newItem] } }))
-        api.createCatalogItem(catId, item, get().catalogs[catId].length - 1).then(saved => {
-          // Reemplazar por ID (no por índice) para evitar race conditions
-          set(s => ({
-            catalogs: {
-              ...s.catalogs,
-              [catId]: s.catalogs[catId].map(i => i.id === tempId ? saved : i),
-            },
-          }))
-        }).catch(() => {})
+        set(s => ({ catalogs: { ...s.catalogs, [catId]: [...s.catalogs[catId], newItem] }, catalogDirty: true }))
       },
 
       deleteCatalogItem: (catId, idx) => {
@@ -561,9 +549,34 @@ export const useMaestro = create<MaestroState>()(
         set(s => {
           const list = [...s.catalogs[catId]]
           list.splice(idx, 1)
-          return { catalogs: { ...s.catalogs, [catId]: list } }
+          return { catalogs: { ...s.catalogs, [catId]: list }, catalogDirty: true }
         })
-        if (item?.id) api.deleteCatalogItem(item.id).catch(() => {})
+        if (item?.id && !item.id.startsWith('tmp-')) api.deleteCatalogItem(item.id).catch(() => {})
+      },
+
+      saveCatalogs: async () => {
+        const { catalogs } = get()
+        const CATS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
+        for (const catId of CATS) {
+          const items = catalogs[catId]
+          for (let idx = 0; idx < items.length; idx++) {
+            const item = items[idx]
+            if (!item.id || item.id.startsWith('tmp-')) {
+              // Ítem nuevo — crear en backend y reemplazar ID temporal
+              const tempId = item.id
+              const saved = await api.createCatalogItem(catId, item, idx)
+              set(s => ({
+                catalogs: {
+                  ...s.catalogs,
+                  [catId]: s.catalogs[catId].map(i => i.id === tempId ? saved : i),
+                },
+              }))
+            } else {
+              await api.updateCatalogItem(item.id, catId, item)
+            }
+          }
+        }
+        set({ catalogDirty: false })
       },
 
       // UI

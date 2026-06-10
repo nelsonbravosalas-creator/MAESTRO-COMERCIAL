@@ -44,11 +44,19 @@ export const createAuthRouter = (pool: Pool) => {
     try {
       const { email, password } = req.body as LoginRequest
       const normalizedEmail = email?.trim().toLowerCase()
+      const allowNoPIN = process.env.ALLOW_NO_PIN === 'true'
 
-      if (!normalizedEmail || !password) {
+      if (!normalizedEmail) {
         return res.status(400).json({
           error: 'Bad request',
-          message: 'Email y PIN son requeridos',
+          message: 'Email es requerido',
+        })
+      }
+
+      if (!password && !allowNoPIN) {
+        return res.status(400).json({
+          error: 'Bad request',
+          message: 'PIN es requerido',
         })
       }
 
@@ -77,7 +85,13 @@ export const createAuthRouter = (pool: Pool) => {
         })
       }
 
-      const passwordMatch = await bcrypt.compare(String(password), user.password_hash)
+      let passwordMatch = false
+      if (password) {
+        passwordMatch = await bcrypt.compare(String(password), user.password_hash)
+      } else if (allowNoPIN) {
+        passwordMatch = true
+      }
+
       if (!passwordMatch) {
         return res.status(401).json({
           error: 'Unauthorized',
@@ -119,6 +133,22 @@ export const createAuthRouter = (pool: Pool) => {
         user: safeUser(updated.rows[0] ?? user),
       })
     } catch (error: any) {
+      const isDbError =
+        error.code === 'ECONNREFUSED' ||
+        error.code === 'ENOTFOUND' ||
+        error.code === 'ETIMEDOUT' ||
+        error.message?.includes('database') ||
+        error.message?.includes('connect')
+
+      if (isDbError) {
+        logger.error('Database connection error on login', { code: error.code, message: error.message })
+        return res.status(503).json({
+          error: 'Service unavailable',
+          message: 'No se puede conectar a la base de datos. Verifique DATABASE_URL.',
+          code: 'DB_CONNECTION_ERROR',
+        })
+      }
+
       logger.error('Login endpoint error', { error: error.message, stack: error.stack })
       return res.status(500).json({
         error: 'Internal server error',

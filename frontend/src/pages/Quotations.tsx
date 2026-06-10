@@ -570,6 +570,7 @@ function EditableList({ items, listKey }: { items: string[]; listKey: 'scope' | 
 function TabCotizacion() {
   const q = useActiveQuotation()
   const { clients } = useMaestro()
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set())
   if (!q) return null
 
   const client = clients.find(c => c.id === q.client_id)
@@ -577,6 +578,14 @@ function TabCotizacion() {
   const iva = totals.venta * (q.iva / 100)
   const conIva = totals.venta + iva
   const enUF = q.uf > 0 ? totals.venta / q.uf : 0
+
+  const toggleCat = (catId: string) => {
+    setExpandedCats(prev => {
+      const next = new Set(prev)
+      next.has(catId) ? next.delete(catId) : next.add(catId)
+      return next
+    })
+  }
 
   const handlePrint = () => window.print()
 
@@ -641,7 +650,8 @@ function TabCotizacion() {
           <table className="doc-valuation">
             <thead>
               <tr>
-                <th>N°</th>
+                <th style={{ width: '42px' }}></th>
+                <th style={{ width: '40px' }}>N°</th>
                 <th>Descripción</th>
                 <th className="text-right">Valor Neto CLP</th>
               </tr>
@@ -650,31 +660,63 @@ function TabCotizacion() {
               {q.categories.map((cat, i) => {
                 const r = calcCat(cat.id, q.categories, q.items)
                 if (r.venta === 0) return null
+                const items = (q.items[cat.id] || []).filter(it => it.cant > 0 && it.desc)
+                const isOpen = expandedCats.has(cat.id)
+                const rowNum = i + 1
                 return (
-                  <tr key={cat.id}>
-                    <td>{i + 1}</td>
-                    <td>{cat.label}</td>
-                    <td className="text-right mono">{fmtCLP.format(r.venta)}</td>
-                  </tr>
+                  <React.Fragment key={cat.id}>
+                    <tr className={`doc-valuation-row ${isOpen ? 'doc-row-expanded' : ''}`}>
+                      <td className="doc-expand-cell no-print">
+                        {items.length > 0 && (
+                          <label className="doc-expand-toggle" title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}>
+                            <input
+                              type="checkbox"
+                              checked={isOpen}
+                              onChange={() => toggleCat(cat.id)}
+                            />
+                            <span className="doc-expand-icon">{isOpen ? '▾' : '▸'}</span>
+                          </label>
+                        )}
+                      </td>
+                      <td>{rowNum}</td>
+                      <td>{cat.label}</td>
+                      <td className="text-right mono">{fmtCLP.format(r.venta)}</td>
+                    </tr>
+                    {isOpen && items.map((item, j) => (
+                      <tr key={item.id} className="doc-detail-row no-print-detail">
+                        <td className="doc-detail-indent" colSpan={2}></td>
+                        <td className="doc-detail-desc">
+                          <span className="doc-detail-bullet">·</span>
+                          <span className="doc-detail-name">{item.desc}</span>
+                          <span className="doc-detail-meta">
+                            {item.cant} {item.unidad}{item.days && item.days > 1 ? ` × ${item.days} días` : ''}
+                          </span>
+                        </td>
+                        <td className="text-right mono doc-detail-value">
+                          {fmtCLP.format(item.cant * (item.days ?? 1) * item.unit)}
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
                 )
               })}
             </tbody>
             <tfoot>
               <tr className="doc-subtotal">
-                <td colSpan={2}>Subtotal Neto</td>
+                <td colSpan={3}>Subtotal Neto</td>
                 <td className="text-right mono">{fmtCLP.format(totals.venta)}</td>
               </tr>
               <tr>
-                <td colSpan={2}>IVA ({q.iva}%)</td>
+                <td colSpan={3}>IVA ({q.iva}%)</td>
                 <td className="text-right mono">{fmtCLP.format(iva)}</td>
               </tr>
               <tr className="doc-total">
-                <td colSpan={2}>TOTAL</td>
+                <td colSpan={3}>TOTAL</td>
                 <td className="text-right mono">{fmtCLP.format(conIva)}</td>
               </tr>
               {q.uf > 0 && (
                 <tr className="doc-uf">
-                  <td colSpan={2}>
+                  <td colSpan={3}>
                     Equivalente en UF (ref. {fmtCLP.format(q.uf)}/UF)
                   </td>
                   <td className="text-right mono">{enUF.toFixed(2)} UF</td>

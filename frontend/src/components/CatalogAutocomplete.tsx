@@ -16,6 +16,8 @@ interface DropPos {
   top: number
   left: number
   width: number
+  maxHeight: number
+  openAbove: boolean
 }
 
 const fmtCLP = new Intl.NumberFormat('es-CL', {
@@ -26,11 +28,12 @@ const fmtCLP = new Intl.NumberFormat('es-CL', {
 
 export function CatalogAutocomplete({ catId, value, onChange, onSelect, placeholder }: Props) {
   const { catalogs } = useMaestro()
-  const [open, setOpen]     = useState(false)
-  const [cursor, setCursor] = useState(0)
+  const [open, setOpen]       = useState(false)
+  const [cursor, setCursor]   = useState(0)
   const [dropPos, setDropPos] = useState<DropPos | null>(null)
   const wrapRef  = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const listRef  = useRef<HTMLDivElement>(null)
 
   const suggestions = React.useMemo(() => {
     if (!value.trim()) return catalogs[catId].slice(0, 10)
@@ -43,36 +46,55 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
   const totalInCatalog = catalogs[catId].length
   const showDropdown   = open && suggestions.length > 0
 
-  /* ── Calcular posición fija del dropdown ── */
-  useLayoutEffect(() => {
-    if (!showDropdown || !inputRef.current) {
-      setDropPos(null)
-      return
-    }
-    const update = () => {
-      if (!inputRef.current) return
-      const r = inputRef.current.getBoundingClientRect()
-      setDropPos({ top: r.bottom + 4, left: r.left, width: r.width })
-    }
-    update()
-    window.addEventListener('resize', update, { passive: true })
-    return () => window.removeEventListener('resize', update)
-  }, [showDropdown])
+  /* ── Calcular posición adaptativa (flip hacia arriba si no hay espacio) ── */
+  const updateDropPos = useCallback(() => {
+    if (!inputRef.current) return
+    const r = inputRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - r.bottom - 8
+    const spaceAbove = r.top - 8
 
-  /* ── Cerrar al hacer scroll (evita desalineamiento) ── */
+    if (spaceBelow >= spaceAbove || spaceBelow >= 200) {
+      setDropPos({
+        top: r.bottom + 4,
+        left: r.left,
+        width: r.width,
+        maxHeight: Math.max(Math.min(spaceBelow - 4, 420), 150),
+        openAbove: false,
+      })
+    } else {
+      setDropPos({
+        top: r.top - 4,
+        left: r.left,
+        width: r.width,
+        maxHeight: Math.max(Math.min(spaceAbove - 4, 420), 150),
+        openAbove: true,
+      })
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!showDropdown) { setDropPos(null); return }
+    updateDropPos()
+    window.addEventListener('resize', updateDropPos, { passive: true })
+    window.addEventListener('scroll', updateDropPos, { passive: true, capture: true })
+    return () => {
+      window.removeEventListener('resize', updateDropPos)
+      window.removeEventListener('scroll', updateDropPos, true)
+    }
+  }, [showDropdown, updateDropPos])
+
+  /* ── Scroll al ítem enfocado al navegar con teclado ── */
   useEffect(() => {
-    if (!showDropdown) return
-    const close = () => setOpen(false)
-    window.addEventListener('scroll', close, { passive: true, capture: true })
-    return () => window.removeEventListener('scroll', close, true)
-  }, [showDropdown])
+    if (!listRef.current) return
+    const focused = listRef.current.querySelector<HTMLElement>('.cat-ac-item-focused')
+    if (focused) focused.scrollIntoView({ block: 'nearest' })
+  }, [cursor])
 
   /* ── Cerrar al clic fuera ── */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as Node
       if (wrapRef.current && !wrapRef.current.contains(target)) {
-        // También ignorar clics dentro del portal
         const portal = document.getElementById('cat-ac-portal-root')
         if (portal && portal.contains(target)) return
         setOpen(false)
@@ -123,35 +145,32 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
     return el
   }
 
-  /* ── Detectar móvil ── */
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640
 
-  /* ── Dropdown renderizado vía portal ── */
+  const dropStyle = (!isMobile && dropPos)
+    ? ({
+        '--drop-top':        dropPos.openAbove ? 'auto'                                  : `${dropPos.top}px`,
+        '--drop-bottom':     dropPos.openAbove ? `${window.innerHeight - dropPos.top}px` : 'auto',
+        '--drop-left':       `${dropPos.left}px`,
+        '--drop-width':      `${dropPos.width}px`,
+        '--drop-max-height': `${dropPos.maxHeight}px`,
+      } as React.CSSProperties)
+    : undefined
+
   const dropdownEl = showDropdown
     ? ReactDOM.createPortal(
         <>
-          {/* Backdrop para móvil */}
           <div
             className="cat-ac-backdrop"
             onMouseDown={e => { e.preventDefault(); setOpen(false) }}
           />
 
           <div
-            className={`cat-ac-dropdown${isMobile ? ' cat-ac-dropdown--mobile' : ''}`}
+            className={`cat-ac-dropdown${isMobile ? ' cat-ac-dropdown--mobile' : ''}${dropPos?.openAbove ? ' cat-ac-dropdown--above' : ''}`}
             role="listbox"
             aria-label="Opciones del catálogo"
-            /* eslint-disable-next-line react/forbid-component-props */
-            style={
-              (!isMobile && dropPos)
-                ? ({
-                    '--drop-top':   `${dropPos.top}px`,
-                    '--drop-left':  `${dropPos.left}px`,
-                    '--drop-width': `${dropPos.width}px`,
-                  } as React.CSSProperties)
-                : undefined
-            }
+            style={dropStyle}
           >
-            {/* Header contador */}
             <div className="cat-ac-header">
               <span className="cat-ac-header-label">
                 {value.trim() ? 'Resultados' : 'Catálogo'}
@@ -161,7 +180,7 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
               </span>
             </div>
 
-            <div className="cat-ac-list">
+            <div className="cat-ac-list" ref={listRef}>
               {suggestions.map((item, i) => (
                 <div
                   key={i}

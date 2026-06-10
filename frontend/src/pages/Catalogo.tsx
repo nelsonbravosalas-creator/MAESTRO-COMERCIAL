@@ -237,9 +237,11 @@ function CatTable({ catId, globalSearch }: CatTableProps) {
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export const Catalogo: React.FC = () => {
-  const { catalogs } = useMaestro()
+  const { catalogs, catalogDirty, saveCatalogs } = useMaestro()
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<CategoryId | 'all'>('all')
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<'success' | 'error' | null>(null)
 
   const totalItems = CATS.reduce((s, c) => s + catalogs[c].length, 0)
 
@@ -251,10 +253,33 @@ export const Catalogo: React.FC = () => {
     a.click()
   }
 
+  const handleSave = async () => {
+    setSaving(true)
+    setToast(null)
+    try {
+      await saveCatalogs()
+      setToast('success')
+    } catch {
+      setToast('error')
+    } finally {
+      setSaving(false)
+      setTimeout(() => setToast(null), 3500)
+    }
+  }
+
   const visibleCats = activeTab === 'all' ? CATS : [activeTab]
 
   return (
     <div className="catalogo-root">
+      {/* Toast */}
+      {toast && (
+        <div className={`cat-toast cat-toast-${toast}`}>
+          {toast === 'success'
+            ? '✓ Sincronización exitosa — Maestro de Precios actualizado'
+            : '✕ Error al sincronizar. Verifique la conexión e intente nuevamente.'}
+        </div>
+      )}
+
       {/* Toolbar global */}
       <div className="catalogo-toolbar">
         <div className="catalogo-toolbar-left">
@@ -271,6 +296,19 @@ export const Catalogo: React.FC = () => {
           />
           <button type="button" className="cat-btn-export-all" onClick={handleExportAll} title="Exportar catálogo completo">
             ↓ Exportar todo
+          </button>
+          <button
+            type="button"
+            className={`cat-btn-save ${catalogDirty ? 'cat-btn-save-dirty' : ''}`}
+            onClick={handleSave}
+            disabled={saving || !catalogDirty}
+            title="Guardar y sincronizar cambios"
+          >
+            {saving ? (
+              <><span className="cat-save-spinner" /> Guardando…</>
+            ) : (
+              <>💾 Guardar{catalogDirty ? ' *' : ''}</>
+            )}
           </button>
         </div>
       </div>

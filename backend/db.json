@@ -1,136 +1,390 @@
 {
   "app_config": [
-    { "key": "uf_value",            "value": "39500" },
-    { "key": "iva_pct",             "value": "19"    },
-    { "key": "correlative_prefix",  "value": "SYM"   },
-    { "key": "company_name",        "value": "NBYB Ingeniería HVAC" },
-    { "key": "company_rut",         "value": "77.123.456-7" }
-  ],
-
-  "users": [
     {
-      "id":            "user-admin-001",
-      "email":         "nbravo.nbyb@gmail.com",
-      "password_hash": "$2b$10$sMpV3Pa3KW7mOgm3JHh6U.sdS16onwr5D7kIxdiEozLslWcveKGeG",
-      "name":          "Nelson Bravo",
-      "role":          "admin",
-      "is_active":     true,
-      "last_login_at": null,
-      "created_at":    "2026-01-01T00:00:00Z",
-      "updated_at":    "2026-01-01T00:00:00Z",
-      "deleted_at":    null
+      "key": "uf_value",
+      "value": "39500"
     },
     {
-      "id":            "user-manager-001",
-      "email":         "hmeza.nbyb@gmail.com",
-      "password_hash": "$2b$10$P701tfm7c/.QJ30gJHVkm.MF7Vo1knDbuFSrqJShjgUI.E0mx7FfC",
-      "name":          "H. Meza",
-      "role":          "manager",
-      "is_active":     true,
-      "last_login_at": null,
-      "created_at":    "2026-01-01T00:00:00Z",
-      "updated_at":    "2026-01-01T00:00:00Z",
-      "deleted_at":    null
+      "key": "iva_pct",
+      "value": "19"
+    },
+    {
+      "key": "correlative_prefix",
+      "value": "SYM"
+    },
+    {
+      "key": "company_name",
+      "value": "NBYB Ingeniería HVAC"
+    },
+    {
+      "key": "company_rut",
+      "value": "77.123.456-7"
     }
   ],
-
-  "catalog_items": [
-    { "id": "cat-mo-01",  "category_id": "mo",  "description": "Supervisor",                        "unit_name": "Hora", "unit_price": 120000, "is_active": true, "sort_order": 10 },
-    { "id": "cat-mo-02",  "category_id": "mo",  "description": "Técnico Especializado HVAC",        "unit_name": "Hora", "unit_price": 150000, "is_active": true, "sort_order": 20 },
-    { "id": "cat-mo-03",  "category_id": "mo",  "description": "Técnico Electricista",              "unit_name": "Hora", "unit_price": 130000, "is_active": true, "sort_order": 30 },
-    { "id": "cat-mo-04",  "category_id": "mo",  "description": "Ayudante Técnico HVAC",             "unit_name": "Hora", "unit_price": 80000,  "is_active": true, "sort_order": 40 },
-    { "id": "cat-mo-05",  "category_id": "mo",  "description": "Prevencionista",                    "unit_name": "Hora", "unit_price": 90000,  "is_active": true, "sort_order": 50 },
-
-    { "id": "cat-log-01", "category_id": "log", "description": "Flete Herramientas STGO-Faena",     "unit_name": "Gl",   "unit_price": 250000, "is_active": true, "sort_order": 10 },
-    { "id": "cat-log-02", "category_id": "log", "description": "Viáticos Faena Local",              "unit_name": "Un",   "unit_price": 45000,  "is_active": true, "sort_order": 20 },
-    { "id": "cat-log-03", "category_id": "log", "description": "Alimentación",                      "unit_name": "Un",   "unit_price": 15000,  "is_active": true, "sort_order": 30 },
-    { "id": "cat-log-04", "category_id": "log", "description": "Arriendo Vehículo",                 "unit_name": "Día",  "unit_price": 45000,  "is_active": true, "sort_order": 40 },
-    { "id": "cat-log-05", "category_id": "log", "description": "Pasaje Aéreo",                      "unit_name": "Un",   "unit_price": 120000, "is_active": true, "sort_order": 50 },
-
-    { "id": "cat-mat-01", "category_id": "mat", "description": "Cañería Cobre Tira K 1\"",          "unit_name": "Tir",  "unit_price": 49100,  "is_active": true, "sort_order": 10 },
-    { "id": "cat-mat-02", "category_id": "mat", "description": "Cañería Cobre Tira K 3/4\"",        "unit_name": "Tir",  "unit_price": 33800,  "is_active": true, "sort_order": 20 },
-    { "id": "cat-mat-03", "category_id": "mat", "description": "Cañería Cobre Tira K 1/2\"",        "unit_name": "Tir",  "unit_price": 28500,  "is_active": true, "sort_order": 30 },
-    { "id": "cat-mat-04", "category_id": "mat", "description": "Cañería Cobre Tira L 3/8\"",        "unit_name": "Tir",  "unit_price": 7500,   "is_active": true, "sort_order": 40 },
-    { "id": "cat-mat-05", "category_id": "mat", "description": "Copla Cobre 1\"",                   "unit_name": "Uni",  "unit_price": 700,    "is_active": true, "sort_order": 50 },
-    { "id": "cat-mat-06", "category_id": "mat", "description": "Copla Cobre 3/4\"",                 "unit_name": "Uni",  "unit_price": 330,    "is_active": true, "sort_order": 60 },
-
-    { "id": "cat-rep-01", "category_id": "rep", "description": "Compressor ZR 16 M3 E TWD 561",     "unit_name": "Uni",  "unit_price": 1977397,"is_active": true, "sort_order": 10 },
-    { "id": "cat-rep-02", "category_id": "rep", "description": "Bomba de Condensado Orange",         "unit_name": "Uni",  "unit_price": 159500, "is_active": true, "sort_order": 20 },
-    { "id": "cat-rep-03", "category_id": "rep", "description": "Filtro Deshidratador Vertiv",        "unit_name": "Uni",  "unit_price": 85400,  "is_active": true, "sort_order": 30 },
-    { "id": "cat-rep-04", "category_id": "rep", "description": "Contactor Trifásico 180A 220VAC",   "unit_name": "Un",   "unit_price": 440000, "is_active": true, "sort_order": 40 },
-
-    { "id": "cat-ins-01", "category_id": "ins", "description": "Soldadura de Plata al 15% (Varilla)","unit_name": "Kg",   "unit_price": 7500,   "is_active": true, "sort_order": 10 },
-    { "id": "cat-ins-02", "category_id": "ins", "description": "Nitrógeno N2",                       "unit_name": "Rec",  "unit_price": 35000,  "is_active": true, "sort_order": 20 },
-    { "id": "cat-ins-03", "category_id": "ins", "description": "Refrigerante R-410a",                "unit_name": "Kg",   "unit_price": 120000, "is_active": true, "sort_order": 30 },
-    { "id": "cat-ins-04", "category_id": "ins", "description": "Refrigerante R-134a",                "unit_name": "Kg",   "unit_price": 115000, "is_active": true, "sort_order": 40 },
-    { "id": "cat-ins-05", "category_id": "ins", "description": "Pintura de Seguridad",               "unit_name": "Gl",   "unit_price": 25000,  "is_active": true, "sort_order": 50 },
-    { "id": "cat-ins-06", "category_id": "ins", "description": "Canalización EMT Galvanizada",       "unit_name": "Tir",  "unit_price": 12500,  "is_active": true, "sort_order": 60 },
-    { "id": "cat-ins-07", "category_id": "ins", "description": "Aislación Térmica Armaflex",         "unit_name": "Tir",  "unit_price": 8500,   "is_active": true, "sort_order": 70 }
+  "users": [
+    {
+      "id": "user-admin-001",
+      "email": "nbravo.nbyb@gmail.com",
+      "password_hash": "$2b$10$sMpV3Pa3KW7mOgm3JHh6U.sdS16onwr5D7kIxdiEozLslWcveKGeG",
+      "name": "Nelson Bravo",
+      "role": "admin",
+      "is_active": true,
+      "last_login_at": "2026-06-10T03:06:45.727Z",
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-06-10T03:06:45.727Z",
+      "deleted_at": null
+    },
+    {
+      "id": "user-manager-001",
+      "email": "hmeza.nbyb@gmail.com",
+      "password_hash": "$2b$10$P701tfm7c/.QJ30gJHVkm.MF7Vo1knDbuFSrqJShjgUI.E0mx7FfC",
+      "name": "H. Meza",
+      "role": "manager",
+      "is_active": true,
+      "last_login_at": null,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "deleted_at": null
+    }
   ],
-
+  "catalog_items": [
+    {
+      "id": "cat-mo-01",
+      "category_id": "mo",
+      "description": "Supervisor",
+      "unit_name": "Hora",
+      "unit_price": 120000,
+      "is_active": true,
+      "sort_order": 10
+    },
+    {
+      "id": "cat-mo-02",
+      "category_id": "mo",
+      "description": "Técnico Especializado HVAC",
+      "unit_name": "Hora",
+      "unit_price": 150000,
+      "is_active": true,
+      "sort_order": 20
+    },
+    {
+      "id": "cat-mo-03",
+      "category_id": "mo",
+      "description": "Técnico Electricista",
+      "unit_name": "Hora",
+      "unit_price": 130000,
+      "is_active": true,
+      "sort_order": 30
+    },
+    {
+      "id": "cat-mo-04",
+      "category_id": "mo",
+      "description": "Ayudante Técnico HVAC",
+      "unit_name": "Hora",
+      "unit_price": 80000,
+      "is_active": true,
+      "sort_order": 40
+    },
+    {
+      "id": "cat-mo-05",
+      "category_id": "mo",
+      "description": "Prevencionista",
+      "unit_name": "Hora",
+      "unit_price": 90000,
+      "is_active": true,
+      "sort_order": 50
+    },
+    {
+      "id": "cat-log-01",
+      "category_id": "log",
+      "description": "Flete Herramientas STGO-Faena",
+      "unit_name": "Gl",
+      "unit_price": 250000,
+      "is_active": true,
+      "sort_order": 10
+    },
+    {
+      "id": "cat-log-02",
+      "category_id": "log",
+      "description": "Viáticos Faena Local",
+      "unit_name": "Un",
+      "unit_price": 45000,
+      "is_active": true,
+      "sort_order": 20
+    },
+    {
+      "id": "cat-log-03",
+      "category_id": "log",
+      "description": "Alimentación",
+      "unit_name": "Un",
+      "unit_price": 15000,
+      "is_active": true,
+      "sort_order": 30
+    },
+    {
+      "id": "cat-log-04",
+      "category_id": "log",
+      "description": "Arriendo Vehículo",
+      "unit_name": "Día",
+      "unit_price": 45000,
+      "is_active": true,
+      "sort_order": 40
+    },
+    {
+      "id": "cat-log-05",
+      "category_id": "log",
+      "description": "Pasaje Aéreo",
+      "unit_name": "Un",
+      "unit_price": 120000,
+      "is_active": true,
+      "sort_order": 50
+    },
+    {
+      "id": "cat-mat-01",
+      "category_id": "mat",
+      "description": "Cañería Cobre Tira K 1\"",
+      "unit_name": "Tir",
+      "unit_price": 49100,
+      "is_active": true,
+      "sort_order": 10
+    },
+    {
+      "id": "cat-mat-02",
+      "category_id": "mat",
+      "description": "Cañería Cobre Tira K 3/4\"",
+      "unit_name": "Tir",
+      "unit_price": 33800,
+      "is_active": true,
+      "sort_order": 20
+    },
+    {
+      "id": "cat-mat-03",
+      "category_id": "mat",
+      "description": "Cañería Cobre Tira K 1/2\"",
+      "unit_name": "Tir",
+      "unit_price": 28500,
+      "is_active": true,
+      "sort_order": 30
+    },
+    {
+      "id": "cat-mat-04",
+      "category_id": "mat",
+      "description": "Cañería Cobre Tira L 3/8\"",
+      "unit_name": "Tir",
+      "unit_price": 7500,
+      "is_active": true,
+      "sort_order": 40
+    },
+    {
+      "id": "cat-mat-05",
+      "category_id": "mat",
+      "description": "Copla Cobre 1\"",
+      "unit_name": "Uni",
+      "unit_price": 700,
+      "is_active": true,
+      "sort_order": 50
+    },
+    {
+      "id": "cat-mat-06",
+      "category_id": "mat",
+      "description": "Copla Cobre 3/4\"",
+      "unit_name": "Uni",
+      "unit_price": 330,
+      "is_active": true,
+      "sort_order": 60
+    },
+    {
+      "id": "cat-rep-01",
+      "category_id": "rep",
+      "description": "Compressor ZR 16 M3 E TWD 561",
+      "unit_name": "Uni",
+      "unit_price": 1977397,
+      "is_active": true,
+      "sort_order": 10
+    },
+    {
+      "id": "cat-rep-02",
+      "category_id": "rep",
+      "description": "Bomba de Condensado Orange",
+      "unit_name": "Uni",
+      "unit_price": 159500,
+      "is_active": true,
+      "sort_order": 20
+    },
+    {
+      "id": "cat-rep-03",
+      "category_id": "rep",
+      "description": "Filtro Deshidratador Vertiv",
+      "unit_name": "Uni",
+      "unit_price": 85400,
+      "is_active": true,
+      "sort_order": 30
+    },
+    {
+      "id": "cat-rep-04",
+      "category_id": "rep",
+      "description": "Contactor Trifásico 180A 220VAC",
+      "unit_name": "Un",
+      "unit_price": 440000,
+      "is_active": true,
+      "sort_order": 40
+    },
+    {
+      "id": "cat-ins-01",
+      "category_id": "ins",
+      "description": "Soldadura de Plata al 15% (Varilla)",
+      "unit_name": "Kg",
+      "unit_price": 7500,
+      "is_active": true,
+      "sort_order": 10
+    },
+    {
+      "id": "cat-ins-02",
+      "category_id": "ins",
+      "description": "Nitrógeno N2",
+      "unit_name": "Rec",
+      "unit_price": 35000,
+      "is_active": true,
+      "sort_order": 20
+    },
+    {
+      "id": "cat-ins-03",
+      "category_id": "ins",
+      "description": "Refrigerante R-410a",
+      "unit_name": "Kg",
+      "unit_price": 120000,
+      "is_active": true,
+      "sort_order": 30
+    },
+    {
+      "id": "cat-ins-04",
+      "category_id": "ins",
+      "description": "Refrigerante R-134a",
+      "unit_name": "Kg",
+      "unit_price": 115000,
+      "is_active": true,
+      "sort_order": 40
+    },
+    {
+      "id": "cat-ins-05",
+      "category_id": "ins",
+      "description": "Pintura de Seguridad",
+      "unit_name": "Gl",
+      "unit_price": 25000,
+      "is_active": true,
+      "sort_order": 50
+    },
+    {
+      "id": "cat-ins-06",
+      "category_id": "ins",
+      "description": "Canalización EMT Galvanizada",
+      "unit_name": "Tir",
+      "unit_price": 12500,
+      "is_active": true,
+      "sort_order": 60
+    },
+    {
+      "id": "cat-ins-07",
+      "category_id": "ins",
+      "description": "Aislación Térmica Armaflex",
+      "unit_name": "Tir",
+      "unit_price": 8500,
+      "is_active": true,
+      "sort_order": 70
+    }
+  ],
   "clients": [
     {
-      "id":         "client-001",
-      "name":       "Minera Los Andes SpA",
-      "rut":        "76.543.210-8",
-      "activity":   "Extracción de Minerales",
-      "address":    "Av. Apoquindo 3600, Of. 1201, Las Condes",
-      "city":       "Santiago",
+      "id": "client-001",
+      "name": "Minera Los Andes SpA",
+      "rut": "76.543.210-8",
+      "activity": "Extracción de Minerales",
+      "address": "Av. Apoquindo 3600, Of. 1201, Las Condes",
+      "city": "Santiago",
       "created_at": "2026-01-15T00:00:00Z",
       "updated_at": "2026-01-15T00:00:00Z",
       "deleted_at": null
     },
     {
-      "id":         "client-002",
-      "name":       "Constructora Roca Viva Ltda.",
-      "rut":        "77.321.654-2",
-      "activity":   "Construcción Industrial",
-      "address":    "Av. Libertador Bernardo O'Higgins 1234",
-      "city":       "Rancagua",
+      "id": "client-002",
+      "name": "Constructora Roca Viva Ltda.",
+      "rut": "77.321.654-2",
+      "activity": "Construcción Industrial",
+      "address": "Av. Libertador Bernardo O'Higgins 1234",
+      "city": "Rancagua",
       "created_at": "2026-01-20T00:00:00Z",
       "updated_at": "2026-01-20T00:00:00Z",
       "deleted_at": null
     },
     {
-      "id":         "client-003",
-      "name":       "Industrias Frío Sur S.A.",
-      "rut":        "96.874.320-1",
-      "activity":   "Procesamiento de Alimentos",
-      "address":    "Ruta 5 Sur Km 890, Parque Industrial",
-      "city":       "Puerto Montt",
+      "id": "client-003",
+      "name": "Industrias Frío Sur S.A.",
+      "rut": "96.874.320-1",
+      "activity": "Procesamiento de Alimentos",
+      "address": "Ruta 5 Sur Km 890, Parque Industrial",
+      "city": "Puerto Montt",
       "created_at": "2026-02-01T00:00:00Z",
       "updated_at": "2026-02-01T00:00:00Z",
       "deleted_at": null
     },
     {
-      "id":         "client-004",
-      "name":       "Retail Austral S.A.",
-      "rut":        "99.543.210-K",
-      "activity":   "Retail y Supermercados",
-      "address":    "Av. Independencia 3456",
-      "city":       "Concepción",
+      "id": "client-004",
+      "name": "Retail Austral S.A.",
+      "rut": "99.543.210-K",
+      "activity": "Retail y Supermercados",
+      "address": "Av. Independencia 3456",
+      "city": "Concepción",
       "created_at": "2026-02-10T00:00:00Z",
       "updated_at": "2026-02-10T00:00:00Z",
       "deleted_at": null
     }
   ],
-
   "client_contacts": [
-    { "id": "contact-001", "client_id": "client-001", "name": "Carlos Fuentes Rojas",   "cargo": "Jefe de Mantenimiento", "email": "cfuentes@losandes.cl",    "phone": "+56 9 8123 4567", "is_primary": true },
-    { "id": "contact-002", "client_id": "client-002", "name": "Patricia Soto Ávila",    "cargo": "Gerente de Proyectos",  "email": "psoto@rocaviva.cl",       "phone": "+56 9 7234 5678", "is_primary": true },
-    { "id": "contact-003", "client_id": "client-003", "name": "Rodrigo Pino Contreras", "cargo": "Encargado de Planta",   "email": "rpino@friosur.cl",        "phone": "+56 9 6345 6789", "is_primary": true },
-    { "id": "contact-004", "client_id": "client-004", "name": "Valentina Muñoz Vera",   "cargo": "Coordinadora de Obras", "email": "vmunoz@retailaustral.cl", "phone": "+56 9 5456 7890", "is_primary": true }
+    {
+      "id": "contact-001",
+      "client_id": "client-001",
+      "name": "Carlos Fuentes Rojas",
+      "cargo": "Jefe de Mantenimiento",
+      "email": "cfuentes@losandes.cl",
+      "phone": "+56 9 8123 4567",
+      "is_primary": true
+    },
+    {
+      "id": "contact-002",
+      "client_id": "client-002",
+      "name": "Patricia Soto Ávila",
+      "cargo": "Gerente de Proyectos",
+      "email": "psoto@rocaviva.cl",
+      "phone": "+56 9 7234 5678",
+      "is_primary": true
+    },
+    {
+      "id": "contact-003",
+      "client_id": "client-003",
+      "name": "Rodrigo Pino Contreras",
+      "cargo": "Encargado de Planta",
+      "email": "rpino@friosur.cl",
+      "phone": "+56 9 6345 6789",
+      "is_primary": true
+    },
+    {
+      "id": "contact-004",
+      "client_id": "client-004",
+      "name": "Valentina Muñoz Vera",
+      "cargo": "Coordinadora de Obras",
+      "email": "vmunoz@retailaustral.cl",
+      "phone": "+56 9 5456 7890",
+      "is_primary": true
+    }
   ],
-
-  "quotations":           [],
+  "quotations": [],
   "quotation_categories": [],
   "quotation_line_items": [],
-  "quotation_terms":      [],
-  "projects":             [],
-  "project_assignments":  [],
-  "execution_costs":      [],
-  "invoices":             [],
-  "invoice_items":        [],
-  "audit_logs":           [],
-  "sync_events":          []
+  "quotation_terms": [],
+  "projects": [],
+  "project_assignments": [],
+  "execution_costs": [],
+  "invoices": [],
+  "invoice_items": [],
+  "audit_logs": [],
+  "sync_events": []
 }

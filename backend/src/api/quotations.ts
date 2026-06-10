@@ -13,6 +13,9 @@ const normalizeStatus = (status: string | undefined) =>
 const normalizeOperState = (state: string | undefined | null) =>
   state && VALID_OPER_STATES.includes(state) ? state : null
 
+const paramString = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value ?? ''
+
 const quotationSelect = `
   SELECT q.*, c.name AS client_name, cc.name AS contact_name
     FROM quotations q
@@ -145,12 +148,13 @@ export const createQuotationsRouter = (pool: Pool) => {
   })
 
   router.get('/:id', async (req: AuthRequest, res) => {
+    const quotationId = paramString(req.params.id)
     try {
-      const quotation = await fullQuotation(pool, req.params.id)
+      const quotation = await fullQuotation(pool, quotationId)
       if (!quotation) return res.status(404).json({ error: 'Quotation not found' })
       return res.json(quotation)
     } catch (error: any) {
-      logger.error('Get quotation error', { error: error.message, quotationId: req.params.id })
+      logger.error('Get quotation error', { error: error.message, quotationId })
       return res.status(500).json({ error: 'Failed to fetch quotation' })
     }
   })
@@ -203,6 +207,7 @@ export const createQuotationsRouter = (pool: Pool) => {
 
   router.put('/:id', async (req: AuthRequest, res) => {
     const db = await pool.connect()
+    const quotationId = paramString(req.params.id)
     try {
       const body = req.body
       if (!body.client_id) return res.status(400).json({ error: 'client_id is required' })
@@ -239,7 +244,7 @@ export const createQuotationsRouter = (pool: Pool) => {
           Number(body.uf_value) || 0,
           Number(body.iva_pct) || 19,
           body.notes || null,
-          req.params.id,
+          quotationId,
         ]
       )
 
@@ -248,13 +253,13 @@ export const createQuotationsRouter = (pool: Pool) => {
         return res.status(404).json({ error: 'Quotation not found' })
       }
 
-      await replaceChildren(db, req.params.id, body)
+      await replaceChildren(db, quotationId, body)
       await db.query('COMMIT')
 
-      return res.json(await fullQuotation(pool, req.params.id))
+      return res.json(await fullQuotation(pool, quotationId))
     } catch (error: any) {
       await db.query('ROLLBACK')
-      logger.error('Update quotation error', { error: error.message, quotationId: req.params.id })
+      logger.error('Update quotation error', { error: error.message, quotationId })
       if (error.code === '23505') return res.status(409).json({ error: 'Quotation correlative already exists' })
       return res.status(500).json({ error: 'Failed to update quotation' })
     } finally {
@@ -263,6 +268,7 @@ export const createQuotationsRouter = (pool: Pool) => {
   })
 
   const updateStatus = async (req: AuthRequest, res: any) => {
+    const quotationId = paramString(req.params.id)
     try {
       const { status, oper_state } = req.body
       const result = await pool.query(
@@ -273,13 +279,13 @@ export const createQuotationsRouter = (pool: Pool) => {
           WHERE id = $3
             AND deleted_at IS NULL
           RETURNING id, status, oper_state`,
-        [normalizeStatus(status), normalizeOperState(oper_state), req.params.id]
+        [normalizeStatus(status), normalizeOperState(oper_state), quotationId]
       )
 
       if (result.rows.length === 0) return res.status(404).json({ error: 'Quotation not found' })
       return res.json(result.rows[0])
     } catch (error: any) {
-      logger.error('Update quotation status error', { error: error.message, quotationId: req.params.id })
+      logger.error('Update quotation status error', { error: error.message, quotationId })
       return res.status(500).json({ error: 'Failed to update quotation status' })
     }
   }
@@ -289,8 +295,9 @@ export const createQuotationsRouter = (pool: Pool) => {
 
   router.post('/:id/duplicate', async (req: AuthRequest, res) => {
     const db = await pool.connect()
+    const quotationId = paramString(req.params.id)
     try {
-      const source = await fullQuotation(pool, req.params.id)
+      const source = await fullQuotation(pool, quotationId)
       if (!source) return res.status(404).json({ error: 'Quotation not found' })
       if (!req.body.correlative) return res.status(400).json({ error: 'correlative is required' })
 
@@ -324,7 +331,7 @@ export const createQuotationsRouter = (pool: Pool) => {
       return res.status(201).json(await fullQuotation(pool, inserted.rows[0].id))
     } catch (error: any) {
       await db.query('ROLLBACK')
-      logger.error('Duplicate quotation error', { error: error.message, quotationId: req.params.id })
+      logger.error('Duplicate quotation error', { error: error.message, quotationId })
       if (error.code === '23505') return res.status(409).json({ error: 'Quotation correlative already exists' })
       return res.status(500).json({ error: 'Failed to duplicate quotation' })
     } finally {

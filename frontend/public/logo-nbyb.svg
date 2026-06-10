@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 88" width="210" height="88">
+  <!-- NβyB logotype -->
+  <text x="6" y="38" font-family="'Arial Black', Impact, 'sans-serif'" font-size="33" font-weight="900" fill="#111111" letter-spacing="-1">N&#946;yB</text>
+
+  <!-- Stylized technician figure (person + clock tool) -->
+  <!-- Head -->
+  <circle cx="178" cy="13" r="6" fill="none" stroke="#111" stroke-width="1.4"/>
+  <!-- Body -->
+  <line x1="178" y1="19" x2="178" y2="31" stroke="#111" stroke-width="1.4"/>
+  <!-- Arms -->
+  <line x1="171" y1="23" x2="185" y2="23" stroke="#111" stroke-width="1.4"/>
+  <!-- Legs -->
+  <line x1="178" y1="31" x2="173" y2="39" stroke="#111" stroke-width="1.4"/>
+  <line x1="178" y1="31" x2="183" y2="39" stroke="#111" stroke-width="1.4"/>
+  <!-- Clock held in left hand -->
+  <circle cx="167" cy="23" r="4.5" fill="none" stroke="#111" stroke-width="1"/>
+  <line x1="167" y1="19.8" x2="167" y2="23" stroke="#111" stroke-width="0.9"/>
+  <line x1="167" y1="23" x2="169.5" y2="23" stroke="#111" stroke-width="0.9"/>
+
+  <!-- Horizontal rule -->
+  <line x1="6" y1="43" x2="200" y2="43" stroke="#111111" stroke-width="0.9"/>
+
+  <!-- Company name bold -->
+  <text x="6" y="54" font-family="Arial, sans-serif" font-size="8.2" font-weight="700" fill="#111111" letter-spacing="0.2">Ingeniería y Servicios Bravo SPA</text>
+  <text x="6" y="65" font-family="Arial, sans-serif" font-size="7.5" fill="#333333">RUT: 77.175.319-1</text>
+  <text x="6" y="76" font-family="Arial, sans-serif" font-size="7.5" fill="#333333">Tel. +56 (9) 90943080</text>
+</svg>

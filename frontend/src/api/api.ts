@@ -8,7 +8,7 @@ import type {
 } from '../types'
 
 // ── Base URL ──────────────────────────────────────────────────
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+const BASE = import.meta.env.VITE_API_URL ?? ''
 
 // ── Token helpers ─────────────────────────────────────────────
 const getToken  = () => localStorage.getItem('authToken') ?? ''

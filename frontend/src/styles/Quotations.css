@@ -474,9 +474,7 @@
 
 .cost-accordion {
   border-radius: 8px;
-  /* overflow:hidden removido — clipea los dropdowns absolutos */
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  isolation: isolate;
 }
 
 .cost-acc-header {

@@ -474,8 +474,9 @@
 
 .cost-accordion {
   border-radius: 8px;
-  overflow: hidden;
+  /* overflow:hidden removido — clipea los dropdowns absolutos */
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  isolation: isolate;
 }
 
 .cost-acc-header {
@@ -483,6 +484,12 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Cuando está colapsado (sin body), el header tiene esquinas completas */
+.cost-accordion:not(:has(.cost-acc-body)) .cost-acc-header {
+  border-radius: 8px;
 }
 
 .cost-acc-collapse {
@@ -554,6 +561,8 @@
 /* Accordion body */
 .cost-acc-body {
   background: #fff;
+  border-radius: 0 0 8px 8px;
+  /* sin overflow:hidden para no clipear los dropdowns absolutos */
 }
 
 .cost-items-table {

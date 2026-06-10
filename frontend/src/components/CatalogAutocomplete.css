@@ -19,19 +19,45 @@
   border-radius: 8px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
   z-index: 500;
-  overflow: hidden;
   min-width: 340px;
+  /* Muestra ~6 filas (cada item ~38px) + hint ~28px */
+  max-height: calc(6 * 38px + 28px);
+  display: flex;
+  flex-direction: column;
+}
+
+.cat-ac-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+}
+@supports (scrollbar-width: thin) {
+  .cat-ac-list {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+}
+.cat-ac-list::-webkit-scrollbar {
+  width: 5px;
+}
+.cat-ac-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cat-ac-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .cat-ac-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 9px 12px;
   cursor: pointer;
   border-bottom: 1px solid #f8fafc;
   transition: background 0.08s;
   gap: 12px;
+  min-height: 38px;
 }
 .cat-ac-item:last-of-type { border-bottom: none; }
 .cat-ac-item:hover,
@@ -79,4 +105,59 @@
   background: #f8fafc;
   border-top: 1px solid #f1f5f9;
   letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+/* ── Móvil / PWA ── */
+@media (max-width: 640px) {
+  .cat-ac-dropdown {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    min-width: unset;
+    max-height: 60vh;
+    border-radius: 16px 16px 0 0;
+    border: none;
+    border-top: 2px solid #e2e8f0;
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18);
+    z-index: 1000;
+  }
+
+  /* Tirón visual tipo bottom-sheet */
+  .cat-ac-dropdown::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 2px;
+    margin: 8px auto 4px;
+    flex-shrink: 0;
+  }
+
+  .cat-ac-list {
+    max-height: calc(60vh - 80px);
+  }
+
+  .cat-ac-item {
+    padding: 12px 16px;
+    min-height: 48px;
+  }
+
+  .cat-ac-desc {
+    font-size: 0.92rem;
+  }
+
+  .cat-ac-price {
+    font-size: 0.88rem;
+  }
+
+  .cat-ac-hint {
+    padding: 8px 16px;
+    font-size: 0.72rem;
+    text-align: center;
+  }
 }

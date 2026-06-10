@@ -16,6 +16,6 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "@maestro-api-url"
+    "VITE_API_URL": "https://maestro-comercial-api.railway.app"
   }
 }

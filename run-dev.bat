@@ -1,52 +1,59 @@
 @echo off
-REM BravoCRM - Modo Development Rápido (JSON)
+REM MAESTRO COMERCIAL - Modo Development Local (JSON Database)
 REM Sin necesidad de Docker o PostgreSQL
 
 cls
 echo.
-echo ╔════════════════════════════════════════╗
-echo ║  BravoCRM - MODO DEVELOPMENT RÁPIDO    ║
-echo ║  (JSON Database - Sin Docker)          ║
-echo ╚════════════════════════════════════════╝
+echo ╔════════════════════════════════════════════╗
+echo ║   MAESTRO COMERCIAL - DEV LOCAL            ║
+echo ║   Base de Datos: JSON (sin Docker)         ║
+echo ╚════════════════════════════════════════════╝
 echo.
 
 set PROJECT_ROOT=%~dp0
 set BACKEND_PATH=%PROJECT_ROOT%backend
 set FRONTEND_PATH=%PROJECT_ROOT%frontend
 
-echo [✓] Iniciando servidores...
-echo.
-echo 🔌 Backend en:  http://localhost:3000
-echo 🎨 Frontend en: http://localhost:5173
-echo.
-echo 👤 Usuarios de Prueba:
-echo    - nbravo.nbyb@gmail.com / 3571 (admin)
-echo    - hmeza.nbyb@gmail.com / 4321 (manager)
-echo.
-
-REM Iniciar Backend
-echo [BACKEND] Iniciando en puerto 3000...
-start "Backend - BravoCRM (Puerto 3000)" cmd /k "cd /d %BACKEND_PATH% && node server-dev.js"
-
-REM Esperar a que Backend esté listo
-timeout /t 5 /nobreak
-
-REM Iniciar Frontend
-echo [FRONTEND] Iniciando en puerto 5173...
-start "Frontend - BravoCRM (Puerto 5173)" cmd /k "cd /d %FRONTEND_PATH% && npm run dev"
+REM Verificar que node_modules existan
+if not exist "%BACKEND_PATH%\node_modules" (
+    echo [!] Instalando dependencias del backend...
+    cd /d "%BACKEND_PATH%"
+    npm install
+)
+if not exist "%FRONTEND_PATH%\node_modules" (
+    echo [!] Instalando dependencias del frontend...
+    cd /d "%FRONTEND_PATH%"
+    npm install
+)
 
 echo.
-echo ╔════════════════════════════════════════╗
-echo ║ ✓ Servicios iniciados                 ║
-echo ║   Backend:  http://localhost:3000     ║
-echo ║   Frontend: http://localhost:5173     ║
-echo ║ Abriendo navegador...                 ║
-echo ╚════════════════════════════════════════╝
+echo [OK] Iniciando servidores...
 echo.
+echo   Backend:   http://localhost:3000
+echo   Frontend:  http://localhost:5173
+echo.
+echo   Usuarios:
+echo     nbravo.nbyb@gmail.com  /  3571  (admin)
+echo     hmeza.nbyb@gmail.com   /  4321  (manager)
+echo.
+
+REM Iniciar Backend en nueva ventana
+start "BACKEND - Puerto 3000" cmd /k "cd /d "%BACKEND_PATH%" && npm run dev:json"
+
+REM Esperar que backend esté listo
+timeout /t 6 /nobreak > nul
+
+REM Iniciar Frontend en nueva ventana
+start "FRONTEND - Puerto 5173" cmd /k "cd /d "%FRONTEND_PATH%" && npm run dev"
 
 REM Abrir navegador
-timeout /t 8 /nobreak
+timeout /t 5 /nobreak > nul
 start http://localhost:5173
 
-echo Presiona Enter para cerrar esta ventana...
+echo.
+echo ╔════════════════════════════════════════════╗
+echo ║  Servicios corriendo en ventanas separadas ║
+echo ║  Cierra las ventanas para detener todo     ║
+echo ╚════════════════════════════════════════════╝
+echo.
 pause

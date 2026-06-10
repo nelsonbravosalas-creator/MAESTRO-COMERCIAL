@@ -58,7 +58,7 @@ export const addToSyncQueue = async (
 }
 
 export const getPendingSyncItems = async () => {
-  return await db.syncQueue.where('synced_at').isUndefined().toArray()
+  return await db.syncQueue.filter(item => !item.synced_at).toArray()
 }
 
 export const clearSyncQueue = async (ids: string[]) => {

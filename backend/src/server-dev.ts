@@ -3,6 +3,7 @@ import cors from 'cors'
 import bodyParser from 'body-parser'
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
@@ -11,7 +12,13 @@ dotenv.config()
 
 const app: Express = express()
 const port = process.env.PORT || 3000
-const dbPath = path.join(__dirname, '../db.json')
+
+// Compatible con CommonJS (tsx) y ESM
+const _dirname = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(fileURLToPath(import.meta.url))
+
+const dbPath = path.join(_dirname, '../db.json')
 
 // Tipo para DB JSON
 interface DB {
@@ -105,8 +112,21 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       })
     }
 
-    // Para desarrollo: permitir login con PIN directamente
-    if (password !== '3571' && password !== '4321' && password !== user.password) {
+    // Verificar que el usuario esté activo
+    if (!user.is_active) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Usuario inactivo. Contacte al administrador.',
+      })
+    }
+
+    // Desarrollo: PIN directo o comparar password_hash con bcrypt
+    const pinValido = password === '3571' || password === '4321'
+    let passValido = pinValido
+    if (!pinValido && user.password_hash) {
+      passValido = await bcrypt.compare(password, user.password_hash)
+    }
+    if (!passValido) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: 'Email o password inválidos',

@@ -1,10 +1,13 @@
 import { Router, Response } from 'express'
 import { Pool } from 'pg'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { logger } from '../utils/logger'
 import { AuthRequest, authMiddleware } from '../middleware/auth'
-import { LoginRequest, LoginResponse, ApiError } from '../../frontend/src/types'
+
+interface LoginRequest  { email: string; password: string }
+interface LoginResponse { token: string; user: any; expiresIn: number }
+interface ApiError      { error: string; message: string; timestamp?: Date }
 
 export const createAuthRouter = (pool: Pool) => {
   const router = Router()

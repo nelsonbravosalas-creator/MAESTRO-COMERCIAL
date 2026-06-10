@@ -9,7 +9,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { randomUUID } from 'crypto'
 
@@ -194,14 +194,21 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     if (!email || !password)
       return res.status(400).json({ error: 'Email y contraseña son requeridos' })
 
-    const user = db.users.find((u: any) => u.email === email && !u.deleted_at)
+    const user = db.users.find((u: any) =>
+      u.email.toLowerCase() === email.toLowerCase() && !u.deleted_at
+    )
     if (!user || !user.is_active)
-      return res.status(401).json({ error: 'Credenciales inválidas' })
+      return res.status(401).json({ error: 'Unauthorized', message: 'Email o contraseña inválidos' })
 
-    const valid = password === '3571' || password === '4321'
-      || await bcrypt.compare(password, user.password_hash)
+    let valid = false
+    try {
+      valid = await bcrypt.compare(password, user.password_hash)
+    } catch {
+      // fallback si el hash está corrupto
+      valid = false
+    }
     if (!valid)
-      return res.status(401).json({ error: 'Credenciales inválidas' })
+      return res.status(401).json({ error: 'Unauthorized', message: 'Email o contraseña inválidos' })
 
     const payload = { id: user.id, email: user.email, name: user.name, role: user.role }
     const token         = jwt.sign(payload, SECRET, { expiresIn: '8h' })

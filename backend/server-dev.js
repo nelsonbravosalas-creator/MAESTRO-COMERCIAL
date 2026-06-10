@@ -4,6 +4,7 @@ const bodyParser = require('body-parser')
 const fs = require('fs')
 const path = require('path')
 const jwt = require('jsonwebtoken')
+const bcrypt = require('bcrypt')
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -112,8 +113,15 @@ app.post('/api/auth/login', async (req, res) => {
       })
     }
 
-    // Validar contraseña
-    if (password !== user.password) {
+    // Validar contraseña (soporta bcrypt hash y texto plano para fallback)
+    let passwordValid = false
+    if (user.password_hash) {
+      passwordValid = await bcrypt.compare(password, user.password_hash)
+    } else if (user.password) {
+      passwordValid = password === user.password
+    }
+
+    if (!passwordValid) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: 'Email o password inválidos',

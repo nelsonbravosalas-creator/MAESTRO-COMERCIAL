@@ -1,49 +1,50 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import {
-  CategoryId, CatalogItem, Catalogs, CostCategory, CostItem,
+  CategoryId, CatalogItemUI, CatalogsUI, CostCategory, CostItem,
   MasterClient, MasterQuotation, QuoteStatus, OperState,
 } from '../types'
+import api from '../api/api'
 
-// ── Defaults ──────────────────────────────────────────────────────────────────
+// ── Defaults ──────────────────────────────────────────────────
 
-export const DEFAULT_CATALOGS: Catalogs = {
+export const DEFAULT_CATALOGS: CatalogsUI = {
   mo: [
-    { desc: 'Supervisor',                    unidad: 'Hora',   price: 120000 },
-    { desc: 'Técnico Especializado HVAC',    unidad: 'Hora',   price: 150000 },
-    { desc: 'Técnico Electricista',          unidad: 'Hora',   price: 130000 },
-    { desc: 'Ayudante Técnico HVAC',         unidad: 'Hora',   price: 80000  },
-    { desc: 'Prevencionista',                unidad: 'Hora',   price: 90000  },
+    { desc: 'Supervisor',                     unidad: 'Hora', price: 120000 },
+    { desc: 'Técnico Especializado HVAC',     unidad: 'Hora', price: 150000 },
+    { desc: 'Técnico Electricista',           unidad: 'Hora', price: 130000 },
+    { desc: 'Ayudante Técnico HVAC',          unidad: 'Hora', price: 80000  },
+    { desc: 'Prevencionista',                 unidad: 'Hora', price: 90000  },
   ],
   log: [
-    { desc: 'Flete Herramientas STGO-Faena', unidad: 'Gl',    price: 250000 },
-    { desc: 'Viáticos Faena Local',           unidad: 'Un',    price: 45000  },
-    { desc: 'Alimentación',                   unidad: 'Un',    price: 15000  },
-    { desc: 'Arriendo Vehículo',              unidad: 'Día',   price: 45000  },
-    { desc: 'Pasaje Aéreo',                   unidad: 'Un',    price: 120000 },
+    { desc: 'Flete Herramientas STGO-Faena',  unidad: 'Gl',  price: 250000 },
+    { desc: 'Viáticos Faena Local',           unidad: 'Un',  price: 45000  },
+    { desc: 'Alimentación',                   unidad: 'Un',  price: 15000  },
+    { desc: 'Arriendo Vehículo',              unidad: 'Día', price: 45000  },
+    { desc: 'Pasaje Aéreo',                   unidad: 'Un',  price: 120000 },
   ],
   mat: [
-    { desc: 'CAÑERÍA TIRA K 1',              unidad: 'Tir',   price: 49100  },
-    { desc: 'CAÑERÍA TIRA K 3/4',            unidad: 'Tir',   price: 33800  },
-    { desc: 'CAÑERÍA TIRA K 1/2',            unidad: 'Tir',   price: 28500  },
-    { desc: 'CAÑERÍA TIRA L 3/8',            unidad: 'Tir',   price: 7500   },
-    { desc: 'COPLA COBRE 1',                 unidad: 'Uni',   price: 700    },
-    { desc: 'COPLA COBRE 3/4',               unidad: 'Uni',   price: 330    },
+    { desc: 'Cañería Cobre Tira K 1"',        unidad: 'Tir', price: 49100  },
+    { desc: 'Cañería Cobre Tira K 3/4"',      unidad: 'Tir', price: 33800  },
+    { desc: 'Cañería Cobre Tira K 1/2"',      unidad: 'Tir', price: 28500  },
+    { desc: 'Cañería Cobre Tira L 3/8"',      unidad: 'Tir', price: 7500   },
+    { desc: 'Copla Cobre 1"',                 unidad: 'Uni', price: 700    },
+    { desc: 'Copla Cobre 3/4"',               unidad: 'Uni', price: 330    },
   ],
   rep: [
-    { desc: 'Compressor ZR 16 M3 E TWD 561',     unidad: 'Uni', price: 1977397 },
-    { desc: 'Bomba de condensado Orange',         unidad: 'Uni', price: 159500  },
-    { desc: 'Filtro Deshidratador Vertiv',        unidad: 'Uni', price: 85400   },
-    { desc: 'Contactor trifasico 180A 220VAC',   unidad: 'Un',  price: 440000  },
+    { desc: 'Compressor ZR 16 M3 E TWD 561',  unidad: 'Uni', price: 1977397 },
+    { desc: 'Bomba de Condensado Orange',      unidad: 'Uni', price: 159500  },
+    { desc: 'Filtro Deshidratador Vertiv',     unidad: 'Uni', price: 85400   },
+    { desc: 'Contactor Trifásico 180A 220VAC', unidad: 'Un',  price: 440000  },
   ],
   ins: [
-    { desc: 'Soldadura de Plata al 15% (Varilla)', unidad: 'Kg',  price: 7500   },
-    { desc: 'Nitrógeno N2',                         unidad: 'Rec', price: 35000  },
-    { desc: 'Refrigerante R-410a',                  unidad: 'Kg',  price: 120000 },
-    { desc: 'Refrigerante R-134a',                  unidad: 'Kg',  price: 115000 },
-    { desc: 'Pintura de Seguridad',                 unidad: 'Gl',  price: 25000  },
-    { desc: 'Canalización EMT Galvanizada',         unidad: 'Tir', price: 12500  },
-    { desc: 'Aislación Térmica Tipo Armaflex',      unidad: 'Tir', price: 8500   },
+    { desc: 'Soldadura de Plata al 15%',       unidad: 'Kg',  price: 7500   },
+    { desc: 'Nitrógeno N2',                    unidad: 'Rec', price: 35000  },
+    { desc: 'Refrigerante R-410a',             unidad: 'Kg',  price: 120000 },
+    { desc: 'Refrigerante R-134a',             unidad: 'Kg',  price: 115000 },
+    { desc: 'Pintura de Seguridad',            unidad: 'Gl',  price: 25000  },
+    { desc: 'Canalización EMT Galvanizada',    unidad: 'Tir', price: 12500  },
+    { desc: 'Aislación Térmica Armaflex',      unidad: 'Tir', price: 8500   },
   ],
 }
 
@@ -90,13 +91,13 @@ const DEFAULT_COMMERCIAL = [
   'Facturación en pesos chilenos (CLP).',
 ]
 
-// ── Calculation helpers ────────────────────────────────────────────────────────
+// ── Calculation helpers ────────────────────────────────────────
 
 export function calcCat(catId: CategoryId, categories: CostCategory[], items: Record<CategoryId, CostItem[]>) {
-  const cat = categories.find(c => c.id === catId)!
-  const costo = (items[catId] || []).reduce((a, i) => a + i.cant * (i.days ?? 1) * i.unit, 0)
+  const cat    = categories.find(c => c.id === catId)!
+  const costo  = (items[catId] || []).reduce((a, i) => a + i.cant * (i.days ?? 1) * i.unit, 0)
   const margin = Math.max(0, Math.min(99.9, cat.margin))
-  const venta = margin === 100 ? costo : costo / (1 - margin / 100)
+  const venta  = margin === 100 ? costo : costo / (1 - margin / 100)
   return { costo, venta, beneficio: venta - costo, margin }
 }
 
@@ -112,172 +113,225 @@ export function calcTotals(q: MasterQuotation) {
 
 export const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
-// ── Correlative generator ──────────────────────────────────────────────────────
-
 export function generateCorrelative(quotations: MasterQuotation[]): string {
-  const now = new Date()
-  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const now  = new Date()
+  const mm   = String(now.getMonth() + 1).padStart(2, '0')
   const yyyy = String(now.getFullYear())
-
   const yearNums = quotations
     .map(q => { const m = q.correlative.match(/SYM-(\d+)-/); return m ? parseInt(m[1]) : 0 })
     .filter(n => !isNaN(n))
-
   const next = (yearNums.length > 0 ? Math.max(...yearNums) : 0) + 1
   return `SYM-${String(next).padStart(3, '0')}-${mm}-${yyyy}`
 }
 
-// ── State ─────────────────────────────────────────────────────────────────────
+// ── State interface ────────────────────────────────────────────
 
 interface MaestroState {
   // config
-  uf: number
-  iva: number
-  catalogs: Catalogs
+  uf:         number
+  iva:        number
+  catalogs:   CatalogsUI
+  apiReady:   boolean
 
   // data
-  clients: MasterClient[]
+  clients:    MasterClient[]
   quotations: MasterQuotation[]
 
   // active session
-  activeId: string | null
+  activeId:  string | null
   activeTab: 'base' | 'costeo' | 'coti'
-  unsaved: boolean
+  unsaved:   boolean
 
-  // ── Config actions
-  setUF: (uf: number) => void
+  // ── API sync
+  loadData: () => Promise<void>
+
+  // ── Config
+  setUF:  (uf: number)  => void
   setIVA: (iva: number) => void
 
-  // ── Client actions
-  upsertClient: (c: MasterClient) => void
-  deleteClient: (id: string) => void
+  // ── Clients
+  upsertClient: (c: MasterClient) => Promise<void>
+  deleteClient: (id: string)      => Promise<void>
 
-  // ── Quotation list actions
-  newDraft: () => void
-  loadQuote: (id: string) => void
-  duplicateQuote: (id: string) => void
-  deleteQuote: (id: string) => void
-  setStatus: (id: string, s: QuoteStatus) => void
-  setOperState: (id: string, s: OperState) => void
-  importQuotations: (qs: MasterQuotation[]) => void
+  // ── Quotation list
+  newDraft:          ()                              => void
+  loadQuote:         (id: string)                    => void
+  duplicateQuote:    (id: string)                    => Promise<void>
+  deleteQuote:       (id: string)                    => Promise<void>
+  setStatus:         (id: string, s: QuoteStatus)    => Promise<void>
+  setOperState:      (id: string, s: OperState)      => Promise<void>
+  importQuotations:  (qs: MasterQuotation[])         => void
 
-  // ── Active quotation mutations (patch active)
+  // ── Active quotation
   patchActive: (fields: Partial<MasterQuotation>) => void
-  saveActive: () => void
+  saveActive:  ()                                 => Promise<void>
 
   // Items
-  addItem: (catId: CategoryId) => void
-  removeItem: (catId: CategoryId, idx: number) => void
-  patchItem: (catId: CategoryId, idx: number, field: string, value: any) => void
-  adjustCant: (catId: CategoryId, idx: number, delta: number) => void
-  adjustDays: (catId: CategoryId, idx: number, delta: number) => void
+  addItem:     (catId: CategoryId)                                    => void
+  removeItem:  (catId: CategoryId, idx: number)                       => void
+  patchItem:   (catId: CategoryId, idx: number, field: string, value: any) => void
+  adjustCant:  (catId: CategoryId, idx: number, delta: number)        => void
+  adjustDays:  (catId: CategoryId, idx: number, delta: number)        => void
 
   // Category
-  setCatMargin: (catId: CategoryId, margin: number) => void
-  toggleCat: (catId: CategoryId, field: 'collapsed' | 'showDetails' | 'showValues') => void
-  setCatLabel: (catId: CategoryId, label: string) => void
+  setCatMargin: (catId: CategoryId, margin: number)                             => void
+  toggleCat:    (catId: CategoryId, field: 'collapsed' | 'showDetails' | 'showValues') => void
+  setCatLabel:  (catId: CategoryId, label: string)                              => void
 
   // Lists
-  addListItem: (key: 'scope' | 'exclusions' | 'commercial') => void
-  removeListItem: (key: 'scope' | 'exclusions' | 'commercial', idx: number) => void
-  patchListItem: (key: 'scope' | 'exclusions' | 'commercial', idx: number, value: string) => void
+  addListItem:    (key: 'scope' | 'exclusions' | 'commercial')                    => void
+  removeListItem: (key: 'scope' | 'exclusions' | 'commercial', idx: number)       => void
+  patchListItem:  (key: 'scope' | 'exclusions' | 'commercial', idx: number, value: string) => void
 
   // Catalogs
   upsertCatalogItem: (catId: CategoryId, idx: number, field: string, value: any) => void
-  addCatalogItem: (catId: CategoryId, item: CatalogItem) => void
-  deleteCatalogItem: (catId: CategoryId, idx: number) => void
+  addCatalogItem:    (catId: CategoryId, item: CatalogItemUI)                     => void
+  deleteCatalogItem: (catId: CategoryId, idx: number)                             => void
 
   // UI
-  setTab: (t: 'base' | 'costeo' | 'coti') => void
-  markSaved: () => void
+  setTab:     (t: 'base' | 'costeo' | 'coti') => void
+  markSaved:  ()                               => void
 }
 
-// ── Store ─────────────────────────────────────────────────────────────────────
+// ── Store ──────────────────────────────────────────────────────
 
 export const useMaestro = create<MaestroState>()(
   persist(
     (set, get) => ({
-      uf: 39500,
-      iva: 19,
-      catalogs: DEFAULT_CATALOGS,
-      clients: [],
+      uf:         39500,
+      iva:        19,
+      catalogs:   DEFAULT_CATALOGS,
+      apiReady:   false,
+      clients:    [],
       quotations: [],
-      activeId: null,
-      activeTab: 'base',
-      unsaved: false,
+      activeId:   null,
+      activeTab:  'base',
+      unsaved:    false,
 
-      setUF: (uf) => set({ uf }),
+      // ── API: hidrata el store desde el backend ────────────────
+      loadData: async () => {
+        try {
+          const [catalogs, clients, quotations, config] = await Promise.all([
+            api.getCatalog(),
+            api.getClients(),
+            api.getQuotations(),
+            api.getConfig(),
+          ])
+          set({
+            catalogs,
+            clients,
+            quotations,
+            uf:       Number(config.uf_value)  || get().uf,
+            iva:      Number(config.iva_pct)   || get().iva,
+            apiReady: true,
+          })
+        } catch (err) {
+          console.warn('[maestro] Backend no disponible, usando datos locales:', err)
+          set({ apiReady: false })
+        }
+      },
+
+      setUF:  (uf)  => set({ uf }),
       setIVA: (iva) => set({ iva }),
 
-      // ── Clients
-      upsertClient: (c) => set(s => ({
-        clients: s.clients.some(x => x.id === c.id)
-          ? s.clients.map(x => x.id === c.id ? c : x)
-          : [...s.clients, c],
-      })),
-      deleteClient: (id) => set(s => ({ clients: s.clients.filter(c => c.id !== id) })),
+      // ── Clients ───────────────────────────────────────────────
+      upsertClient: async (c) => {
+        try {
+          const saved = c.id && !c.id.startsWith('cl-')
+            ? await api.updateClient(c)
+            : await api.createClient(c)
+          set(s => ({
+            clients: s.clients.some(x => x.id === saved.id)
+              ? s.clients.map(x => x.id === saved.id ? saved : x)
+              : [...s.clients, saved],
+          }))
+        } catch {
+          // fallback: guardar solo local
+          set(s => ({
+            clients: s.clients.some(x => x.id === c.id)
+              ? s.clients.map(x => x.id === c.id ? c : x)
+              : [...s.clients, { ...c, id: c.id || `cl-${Date.now()}` }],
+          }))
+        }
+      },
 
-      // ── Quotation list
+      deleteClient: async (id) => {
+        set(s => ({ clients: s.clients.filter(c => c.id !== id) }))
+        try { await api.deleteClient(id) } catch { /* offline */ }
+      },
+
+      // ── Quotation list ────────────────────────────────────────
       newDraft: () => {
         const { quotations, uf, iva } = get()
-        const now = new Date().toISOString().slice(0, 10)
+        const today = new Date().toISOString().slice(0, 10)
         const draft: MasterQuotation = {
-          id: `q-${Date.now()}`,
+          id:          `q-${Date.now()}`,
           correlative: generateCorrelative(quotations),
-          client_id: '', client_name: '', contact: '',
-          enduser: '', ref: '', date: now,
-          status: 'Emitida', operState: 'Pendiente de ejecución',
+          client_id:   '', client_name: '', contact: '',
+          enduser:     '', ref:          '', date: today,
+          status:      'Emitida', operState: 'Pendiente de ejecución',
           uf, iva,
           categories: DEFAULT_CATEGORIES.map(c => ({ ...c })),
           items: {
-            mo:  DEFAULT_ITEMS.mo.map(i  => ({ ...i,  id: `mo-${Date.now()}`  })),
+            mo:  DEFAULT_ITEMS.mo.map(i  => ({ ...i, id: `mo-${Date.now()}`  })),
             log: DEFAULT_ITEMS.log.map(i => ({ ...i, id: `log-${Date.now()}` })),
             mat: DEFAULT_ITEMS.mat.map(i => ({ ...i, id: `mat-${Date.now()}` })),
             rep: DEFAULT_ITEMS.rep.map(i => ({ ...i, id: `rep-${Date.now()}` })),
             ins: DEFAULT_ITEMS.ins.map(i => ({ ...i, id: `ins-${Date.now()}` })),
           },
-          scope: [...DEFAULT_SCOPE],
-          exclusions: [...DEFAULT_EXCLUSIONS],
-          commercial: [...DEFAULT_COMMERCIAL],
-          total: 0, created_at: now, updated_at: now,
+          scope:       [...DEFAULT_SCOPE],
+          exclusions:  [...DEFAULT_EXCLUSIONS],
+          commercial:  [...DEFAULT_COMMERCIAL],
+          total:       0, created_at: today, updated_at: today,
         }
         set(s => ({ quotations: [...s.quotations, draft], activeId: draft.id, activeTab: 'base', unsaved: true }))
       },
 
       loadQuote: (id) => set({ activeId: id, activeTab: 'base', unsaved: false }),
 
-      duplicateQuote: (id) => {
+      duplicateQuote: async (id) => {
         const { quotations } = get()
         const src = quotations.find(q => q.id === id)
         if (!src) return
-        const now = new Date().toISOString().slice(0, 10)
-        const copy: MasterQuotation = {
-          ...JSON.parse(JSON.stringify(src)),
-          id: `q-${Date.now()}`,
-          correlative: generateCorrelative(quotations),
-          date: now, created_at: now, updated_at: now, status: 'Emitida',
+        const today = new Date().toISOString().slice(0, 10)
+        const newCorr = generateCorrelative(quotations)
+        try {
+          const copy = await api.duplicateQuotation(id, newCorr)
+          set(s => ({ quotations: [...s.quotations, copy], activeId: copy.id, unsaved: false }))
+        } catch {
+          const copy: MasterQuotation = {
+            ...JSON.parse(JSON.stringify(src)),
+            id:          `q-${Date.now()}`,
+            correlative: newCorr,
+            date:        today, created_at: today, updated_at: today, status: 'Emitida',
+          }
+          set(s => ({ quotations: [...s.quotations, copy], activeId: copy.id, unsaved: false }))
         }
-        set(s => ({ quotations: [...s.quotations, copy], activeId: copy.id, unsaved: false }))
       },
 
-      deleteQuote: (id) => set(s => ({
-        quotations: s.quotations.filter(q => q.id !== id),
-        activeId: s.activeId === id ? null : s.activeId,
-      })),
+      deleteQuote: async (id) => {
+        set(s => ({
+          quotations: s.quotations.filter(q => q.id !== id),
+          activeId:   s.activeId === id ? null : s.activeId,
+        }))
+        try { await api.deleteQuotation(id) } catch { /* offline */ }
+      },
 
-      setStatus: (id, status) => set(s => ({
-        quotations: s.quotations.map(q => q.id === id ? { ...q, status } : q),
-      })),
+      setStatus: async (id, status) => {
+        set(s => ({ quotations: s.quotations.map(q => q.id === id ? { ...q, status } : q) }))
+        try { await api.setQuotationStatus(id, status) } catch { /* offline */ }
+      },
 
-      setOperState: (id, operState) => set(s => ({
-        quotations: s.quotations.map(q => q.id === id ? { ...q, operState } : q),
-      })),
+      setOperState: async (id, operState) => {
+        set(s => ({ quotations: s.quotations.map(q => q.id === id ? { ...q, operState } : q) }))
+        try { await api.setQuotationStatus(id, get().quotations.find(q => q.id === id)?.status ?? 'Emitida', operState) } catch { /* offline */ }
+      },
 
       importQuotations: (qs) => set(s => ({
         quotations: [...s.quotations, ...qs.filter(q => !s.quotations.some(e => e.id === q.id))],
       })),
 
-      // ── Active mutations
+      // ── Active quotation mutations ────────────────────────────
       patchActive: (fields) => set(s => {
         if (!s.activeId) return {}
         return {
@@ -288,28 +342,40 @@ export const useMaestro = create<MaestroState>()(
         }
       }),
 
-      saveActive: () => set(s => {
-        if (!s.activeId) return {}
-        const q = s.quotations.find(x => x.id === s.activeId)
-        if (!q) return {}
-        const totals = calcTotals(q)
-        return {
-          quotations: s.quotations.map(x =>
-            x.id === s.activeId ? { ...x, total: totals.venta, updated_at: new Date().toISOString().slice(0, 10) } : x
-          ),
-          unsaved: false,
-        }
-      }),
+      saveActive: async () => {
+        const { activeId, quotations } = get()
+        if (!activeId) return
+        const q = quotations.find(x => x.id === activeId)
+        if (!q) return
+        const totals  = calcTotals(q)
+        const updated = { ...q, total: totals.venta, updated_at: new Date().toISOString().slice(0, 10) }
+        set(s => ({
+          quotations: s.quotations.map(x => x.id === activeId ? updated : x),
+          unsaved:    false,
+        }))
+        try {
+          const isLocal = activeId.startsWith('q-')
+          if (isLocal) {
+            const saved = await api.createQuotation(updated)
+            set(s => ({
+              quotations: s.quotations.map(x => x.id === activeId ? saved : x),
+              activeId:   saved.id,
+            }))
+          } else {
+            await api.updateQuotation(updated)
+          }
+        } catch { /* offline: ya se guardó local */ }
+      },
 
       // Items
       addItem: (catId) => set(s => {
         if (!s.activeId) return {}
+        const newItem: CostItem = { id: `${catId}-${Date.now()}`, desc: '', unidad: 'Und', cant: 0, unit: 0, days: 1 }
         return {
-          quotations: s.quotations.map(q => {
-            if (q.id !== s.activeId) return q
-            const newItem: CostItem = { id: `${catId}-${Date.now()}`, desc: '', unidad: 'Und', cant: 0, unit: 0, days: 1 }
-            return { ...q, items: { ...q.items, [catId]: [...(q.items[catId] || []), newItem] } }
-          }),
+          quotations: s.quotations.map(q =>
+            q.id !== s.activeId ? q
+              : { ...q, items: { ...q.items, [catId]: [...(q.items[catId] || []), newItem] } }
+          ),
           unsaved: true,
         }
       }),
@@ -358,10 +424,10 @@ export const useMaestro = create<MaestroState>()(
       setCatMargin: (catId, margin) => set(s => {
         if (!s.activeId) return {}
         return {
-          quotations: s.quotations.map(q => {
-            if (q.id !== s.activeId) return q
-            return { ...q, categories: q.categories.map(c => c.id === catId ? { ...c, margin } : c) }
-          }),
+          quotations: s.quotations.map(q =>
+            q.id !== s.activeId ? q
+              : { ...q, categories: q.categories.map(c => c.id === catId ? { ...c, margin } : c) }
+          ),
           unsaved: true,
         }
       }),
@@ -369,20 +435,20 @@ export const useMaestro = create<MaestroState>()(
       toggleCat: (catId, field) => set(s => {
         if (!s.activeId) return {}
         return {
-          quotations: s.quotations.map(q => {
-            if (q.id !== s.activeId) return q
-            return { ...q, categories: q.categories.map(c => c.id === catId ? { ...c, [field]: !c[field] } : c) }
-          }),
+          quotations: s.quotations.map(q =>
+            q.id !== s.activeId ? q
+              : { ...q, categories: q.categories.map(c => c.id === catId ? { ...c, [field]: !c[field] } : c) }
+          ),
         }
       }),
 
       setCatLabel: (catId, label) => set(s => {
         if (!s.activeId) return {}
         return {
-          quotations: s.quotations.map(q => {
-            if (q.id !== s.activeId) return q
-            return { ...q, categories: q.categories.map(c => c.id === catId ? { ...c, label } : c) }
-          }),
+          quotations: s.quotations.map(q =>
+            q.id !== s.activeId ? q
+              : { ...q, categories: q.categories.map(c => c.id === catId ? { ...c, label } : c) }
+          ),
           unsaved: true,
         }
       }),
@@ -391,10 +457,10 @@ export const useMaestro = create<MaestroState>()(
       addListItem: (key) => set(s => {
         if (!s.activeId) return {}
         return {
-          quotations: s.quotations.map(q => {
-            if (q.id !== s.activeId) return q
-            return { ...q, [key]: [...(q[key] as string[]), '...'] }
-          }),
+          quotations: s.quotations.map(q =>
+            q.id !== s.activeId ? q
+              : { ...q, [key]: [...(q[key] as string[]), '...'] }
+          ),
           unsaved: true,
         }
       }),
@@ -425,39 +491,62 @@ export const useMaestro = create<MaestroState>()(
         }
       }),
 
-      // Catalogs
-      upsertCatalogItem: (catId, idx, field, value) => set(s => {
-        const list = [...s.catalogs[catId]]
-        list[idx] = { ...list[idx], [field]: field === 'price' ? (parseFloat(value) || 0) : value }
-        return { catalogs: { ...s.catalogs, [catId]: list } }
-      }),
+      // Catalogs — sincroniza con API en background
+      upsertCatalogItem: (catId, idx, field, value) => {
+        set(s => {
+          const list = [...s.catalogs[catId]]
+          list[idx] = { ...list[idx], [field]: field === 'price' ? (parseFloat(value) || 0) : value }
+          return { catalogs: { ...s.catalogs, [catId]: list } }
+        })
+        // Sync en background
+        const item = get().catalogs[catId][idx]
+        if (item?.id) {
+          api.updateCatalogItem(item.id, catId, item).catch(() => {})
+        }
+      },
 
-      addCatalogItem: (catId, item) => set(s => ({
-        catalogs: { ...s.catalogs, [catId]: [...s.catalogs[catId], item] },
-      })),
+      addCatalogItem: (catId, item) => {
+        set(s => ({ catalogs: { ...s.catalogs, [catId]: [...s.catalogs[catId], item] } }))
+        // Crear en backend y persistir el ID
+        const idx = get().catalogs[catId].length - 1
+        api.createCatalogItem(catId, item, idx).then(saved => {
+          set(s => {
+            const list = [...s.catalogs[catId]]
+            if (list[idx]) list[idx] = saved
+            return { catalogs: { ...s.catalogs, [catId]: list } }
+          })
+        }).catch(() => {})
+      },
 
-      deleteCatalogItem: (catId, idx) => set(s => {
-        const list = [...s.catalogs[catId]]
-        list.splice(idx, 1)
-        return { catalogs: { ...s.catalogs, [catId]: list } }
-      }),
+      deleteCatalogItem: (catId, idx) => {
+        const item = get().catalogs[catId][idx]
+        set(s => {
+          const list = [...s.catalogs[catId]]
+          list.splice(idx, 1)
+          return { catalogs: { ...s.catalogs, [catId]: list } }
+        })
+        if (item?.id) api.deleteCatalogItem(item.id).catch(() => {})
+      },
 
       // UI
-      setTab: (t) => set({ activeTab: t }),
-      markSaved: () => set({ unsaved: false }),
+      setTab:    (t) => set({ activeTab: t }),
+      markSaved: ()  => set({ unsaved: false }),
     }),
     {
-      name: 'maestro-comercial-v1',
+      name: 'maestro-comercial-v2',
       partialize: (s) => ({
-        uf: s.uf, iva: s.iva, catalogs: s.catalogs,
-        clients: s.clients, quotations: s.quotations,
-        activeId: s.activeId,
+        uf:         s.uf,
+        iva:        s.iva,
+        catalogs:   s.catalogs,
+        clients:    s.clients,
+        quotations: s.quotations,
+        activeId:   s.activeId,
       }),
     }
   )
 )
 
-// ── Selectors ─────────────────────────────────────────────────────────────────
+// ── Selectors ──────────────────────────────────────────────────
 export const useActiveQuotation = () => {
   const { quotations, activeId } = useMaestro()
   return quotations.find(q => q.id === activeId) ?? null

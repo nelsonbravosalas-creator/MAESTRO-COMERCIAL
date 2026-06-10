@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useMaestro } from '../stores/maestro-store'
-import { CategoryId, CatalogItem } from '../types'
+import { CategoryId, CatalogItemUI } from '../types'
 import './CatalogAutocomplete.css'
 
 interface Props {
   catId: CategoryId
   value: string
   onChange: (val: string) => void
-  onSelect: (item: CatalogItem) => void
+  onSelect: (item: CatalogItemUI) => void
   placeholder?: string
 }
 
@@ -37,7 +37,7 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const handleSelect = useCallback((item: CatalogItem) => {
+  const handleSelect = useCallback((item: CatalogItemUI) => {
     onSelect(item)
     setOpen(false)
     inputRef.current?.blur()

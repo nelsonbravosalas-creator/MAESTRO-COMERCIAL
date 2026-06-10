@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react'
 import '../styles/Catalogo.css'
 import { useMaestro, fmtCLP } from '../stores/maestro-store'
-import { CategoryId, CatalogItem } from '../types'
+import { CategoryId, CatalogItemUI } from '../types'
 
 // ── Metadata de categorías ────────────────────────────────────────────────────
 
@@ -17,17 +17,17 @@ const CATS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function avgPrice(items: CatalogItem[]) {
+function avgPrice(items: CatalogItemUI[]) {
   if (!items.length) return 0
   return items.reduce((s, i) => s + i.price, 0) / items.length
 }
 
-function minPrice(items: CatalogItem[]) {
+function minPrice(items: CatalogItemUI[]) {
   if (!items.length) return 0
   return Math.min(...items.map(i => i.price))
 }
 
-function maxPrice(items: CatalogItem[]) {
+function maxPrice(items: CatalogItemUI[]) {
   if (!items.length) return 0
   return Math.max(...items.map(i => i.price))
 }
@@ -36,8 +36,8 @@ function maxPrice(items: CatalogItem[]) {
 
 interface ItemRowProps {
   idx: number
-  item: CatalogItem
-  onPatch: (field: keyof CatalogItem, value: string | number) => void
+  item: CatalogItemUI
+  onPatch: (field: keyof CatalogItemUI, value: string | number) => void
   onDelete: () => void
 }
 
@@ -127,7 +127,7 @@ function CatTable({ catId, globalSearch }: CatTableProps) {
     addCatalogItem(catId, { desc: '', unidad: 'Und', price: 0 })
   }
 
-  const handlePatch = (idx: number, field: keyof CatalogItem, value: string | number) => {
+  const handlePatch = (idx: number, field: keyof CatalogItemUI, value: string | number) => {
     upsertCatalogItem(catId, idx, field as string, value)
   }
 
@@ -137,7 +137,7 @@ function CatTable({ catId, globalSearch }: CatTableProps) {
     const reader = new FileReader()
     reader.onload = ev => {
       try {
-        const parsed: CatalogItem[] = JSON.parse(ev.target?.result as string)
+        const parsed: CatalogItemUI[] = JSON.parse(ev.target?.result as string)
         parsed.forEach(item => addCatalogItem(catId, item))
       } catch {
         alert('Archivo JSON inválido')

@@ -1,17 +1,17 @@
 import Dexie, { Table } from 'dexie'
-import { User, Client, Quotation, QuotationItem, Project, ExecutionCost, Invoice, InvoiceItem, AuditLog, SyncQueueItem } from '../types'
+import { User, Client, Quotation, QuotationLineItem, Project, ExecutionCost, Invoice, InvoiceItem, AuditLog, SyncEvent } from '../types'
 
 export class BravoCRMDatabase extends Dexie {
   users!: Table<User>
   clients!: Table<Client>
   quotations!: Table<Quotation>
-  quotationItems!: Table<QuotationItem>
+  quotationItems!: Table<QuotationLineItem>
   projects!: Table<Project>
   executionCosts!: Table<ExecutionCost>
   invoices!: Table<Invoice>
   invoiceItems!: Table<InvoiceItem>
   auditLogs!: Table<AuditLog>
-  syncQueue!: Table<SyncQueueItem>
+  syncQueue!: Table<SyncEvent>
 
   constructor() {
     super('bravocrm')
@@ -44,21 +44,21 @@ export const updateSyncStatus = async (
 export const addToSyncQueue = async (
   entityType: string,
   entityId: string,
-  action: 'create' | 'update' | 'delete',
+  action: string,
   payload: Record<string, any>
 ) => {
-  await db.syncQueue.add({
+  await (db.syncQueue as any).add({
     id: `${entityType}_${entityId}_${Date.now()}`,
     entity_type: entityType,
     entity_id: entityId,
     action,
     payload,
-    created_at: new Date(),
+    created_at: new Date().toISOString(),
   })
 }
 
 export const getPendingSyncItems = async () => {
-  return await db.syncQueue.filter(item => !item.synced_at).toArray()
+  return await (db.syncQueue as any).filter((item: any) => !item.applied_at).toArray()
 }
 
 export const clearSyncQueue = async (ids: string[]) => {

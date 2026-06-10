@@ -281,3 +281,81 @@ export interface PaginatedResponse<T> {
   page:       number
   page_size:  number
 }
+
+// ============================================================
+// TIPOS UI (store interno + componentes)
+// Denormalizados para facilitar rendering sin JOIN en cliente
+// ============================================================
+
+// Ítem de catálogo tal como lo usa el store y los componentes
+export interface CatalogItemUI {
+  id?:     string       // UUID del backend (undefined en ítems nuevos aún no sincronizados)
+  desc:    string
+  unidad:  string
+  price:   number
+}
+
+export type CatalogsUI = Record<CategoryId, CatalogItemUI[]>
+
+// Cliente aplanado (Client + ContactoPrimario) para UI
+export interface MasterClient {
+  id:         string
+  name:       string
+  rut:        string
+  activity:   string
+  address:    string
+  city:       string
+  // Contacto principal denormalizado
+  contact:    string
+  cargo:      string
+  email:      string
+  phone:      string
+  created_at: string
+  updated_at: string
+}
+
+// Categoría de costo dentro de una cotización
+export interface CostCategory {
+  id:          CategoryId
+  label:       string
+  margin:      number        // % sobre venta
+  color:       string
+  showDetails: boolean
+  showValues:  boolean
+  note:        string
+  collapsed:   boolean
+}
+
+// Línea de costo dentro de una categoría
+export interface CostItem {
+  id:     string
+  desc:   string
+  unidad: string
+  cant:   number
+  unit:   number
+  days?:  number   // solo Mano de Obra
+}
+
+// Cotización completa tal como la maneja el store
+export interface MasterQuotation {
+  id:          string
+  correlative: string
+  client_id:   string
+  client_name: string
+  contact:     string
+  enduser:     string
+  ref:         string
+  date:        string
+  status:      QuoteStatus
+  operState:   OperState
+  uf:          number
+  iva:         number
+  categories:  CostCategory[]
+  items:       Record<CategoryId, CostItem[]>
+  scope:       string[]
+  exclusions:  string[]
+  commercial:  string[]
+  total:       number
+  created_at:  string
+  updated_at:  string
+}

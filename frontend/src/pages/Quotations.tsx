@@ -3,7 +3,7 @@ import '../styles/Quotations.css'
 import {
   useMaestro, useActiveQuotation, calcCat, calcTotals, fmtCLP,
 } from '../stores/maestro-store'
-import { CategoryId, QuoteStatus, OperState, CatalogItem } from '../types'
+import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -16,7 +16,7 @@ const STATUS_META: Record<QuoteStatus, { label: string; cls: string }> = {
   Anulada:     { label: 'Anulada',    cls: 'st-anulada'     },
 }
 
-const OP_STATES: OperState[] = [' ', 'Pendiente de ejecución', 'En ejecución', 'Terminada']
+const OP_STATES: OperState[] = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
 
 const fmtDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
@@ -357,7 +357,7 @@ function CosteoRow({ catId }: { catId: CategoryId }) {
                         catId={catId}
                         value={item.desc}
                         onChange={val => patchItem(catId, i, 'desc', val)}
-                        onSelect={(sel: CatalogItem) => {
+                        onSelect={(sel: CatalogItemUI) => {
                           patchItem(catId, i, 'desc',   sel.desc)
                           patchItem(catId, i, 'unidad', sel.unidad)
                           patchItem(catId, i, 'unit',   sel.price)

@@ -5,6 +5,7 @@ import Quotations from './pages/Quotations'
 import Dashboard from './pages/Dashboard'
 import Clients from './pages/Clients'
 import Catalogo from './pages/Catalogo'
+import { useMaestro } from './stores/maestro-store'
 
 type Page = 'dashboard' | 'quotations' | 'clients' | 'catalogo' | 'projects' | 'invoices'
 
@@ -12,6 +13,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
   const [user, setUser] = useState<any>(null)
+  const loadData = useMaestro(s => s.loadData)
 
   useEffect(() => {
     const token = localStorage.getItem('authToken')
@@ -19,6 +21,7 @@ function App() {
     if (token && userData) {
       setIsAuthenticated(true)
       setUser(JSON.parse(userData))
+      loadData()
     }
   }, [])
 
@@ -26,6 +29,7 @@ function App() {
     setIsAuthenticated(true)
     const userData = localStorage.getItem('user')
     if (userData) setUser(JSON.parse(userData))
+    loadData()
   }
 
   const handleLogout = () => {

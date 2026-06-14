@@ -194,6 +194,72 @@ ul li {
   color: var(--text-secondary);
 }
 
+/* NAV SYNC BUTTON */
+.nav-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.75rem;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  border-left: 2px solid #2563eb;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.08);
+  color: #93c5fd;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-sync-btn:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.16);
+  border-left-color: #60a5fa;
+  color: #bfdbfe;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.18);
+}
+
+.nav-sync-btn--syncing {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.07);
+  color: #fcd34d;
+  cursor: not-allowed;
+}
+
+.nav-sync-btn--done {
+  border-left-color: #059669;
+  background: rgba(5, 150, 105, 0.09);
+  color: #6ee7b7;
+}
+
+.nav-sync-btn--error {
+  border-left-color: #dc2626;
+  background: rgba(220, 38, 38, 0.09);
+  color: #fca5a5;
+}
+
+.nav-sync-btn--offline {
+  opacity: 0.55;
+  border-left-color: #6b7280;
+}
+
+.nav-sync-label {
+  min-width: 34px;
+  text-align: left;
+}
+
+@keyframes nav-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.nav-sync-spin {
+  animation: nav-spin 0.75s linear infinite;
+  display: inline-flex;
+}
+
 /* RESPONSIVE */
 @media (max-width: 1024px) {
   .header-nav {

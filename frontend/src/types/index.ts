@@ -342,6 +342,7 @@ export interface MasterQuotation {
   correlative: string
   client_id:   string
   client_name: string
+  contact_id:  string | null
   contact:     string
   enduser:     string
   ref:         string

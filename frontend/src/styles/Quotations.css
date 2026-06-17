@@ -227,6 +227,43 @@
   flex-shrink: 0;
 }
 
+.btn-sync {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s;
+  font-family: 'Outfit', sans-serif;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-sync:hover:not(:disabled) {
+  background: #334155;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+.btn-sync:disabled { cursor: not-allowed; opacity: 0.7; }
+.btn-sync-loading  { border-color: #3b82f6; color: #93c5fd; }
+.btn-sync-ok  { background: #14532d; border-color: #16a34a; color: #86efac; }
+.btn-sync-err { background: #450a0a; border-color: #dc2626; color: #fca5a5; }
+.btn-spinner-sm {
+  width: 13px;
+  height: 13px;
+  border: 2px solid #3b82f680;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 .q-editor-tabs {
   display: flex;
   gap: 2px;

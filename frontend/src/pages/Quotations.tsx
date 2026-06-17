@@ -848,6 +848,8 @@ function TabCotizacion() {
 
 export const Quotations: React.FC = () => {
   const [view, setView] = useState<'list' | 'edit'>('list')
+  const [syncing, setSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'ok' | 'err'>('idle')
   const { activeTab, setTab, unsaved, saveActive } = useMaestro()
   const active = useActiveQuotation()
 
@@ -857,6 +859,20 @@ export const Quotations: React.FC = () => {
   }
 
   const goEdit = () => setView('edit')
+
+  const handleSync = async () => {
+    setSyncing(true)
+    setSyncStatus('idle')
+    try {
+      await saveActive()
+      setSyncStatus('ok')
+    } catch {
+      setSyncStatus('err')
+    } finally {
+      setSyncing(false)
+      setTimeout(() => setSyncStatus('idle'), 3000)
+    }
+  }
 
   return (
     <div className="quotations-root">
@@ -872,6 +888,24 @@ export const Quotations: React.FC = () => {
               <span className="q-editor-client">{active?.client_name || 'Sin cliente'}</span>
               {unsaved && <span className="q-unsaved-dot" title="Cambios sin guardar" />}
             </div>
+            <button
+              type="button"
+              className={`btn-sync${syncing ? ' btn-sync-loading' : ''}${syncStatus === 'ok' ? ' btn-sync-ok' : ''}${syncStatus === 'err' ? ' btn-sync-err' : ''}`}
+              onClick={handleSync}
+              disabled={syncing}
+              title="Forzar sincronización al backend"
+            >
+              {syncing ? (
+                <span className="btn-spinner btn-spinner-sm" />
+              ) : syncStatus === 'ok' ? (
+                <span>✓</span>
+              ) : syncStatus === 'err' ? (
+                <span>✕</span>
+              ) : (
+                <span>⇅</span>
+              )}
+              {syncing ? 'Sincronizando…' : syncStatus === 'ok' ? 'Sincronizado' : syncStatus === 'err' ? 'Error al sync' : 'Forzar sync'}
+            </button>
             <div className="q-editor-tabs">
               <button type="button"
                 className={`q-tab ${activeTab === 'base' ? 'q-tab-active' : ''}`}

@@ -1,0 +1,577 @@
+/* ── Projects Module ──────────────────────────────────────────────────────── */
+
+.projects-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f1f5f9;
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.projects-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px 16px;
+  background: #0f172a;
+  border-bottom: 2px solid #0e7490;
+  flex-shrink: 0;
+}
+
+.projects-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.projects-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.projects-count {
+  font-size: 0.78rem;
+  color: #64748b;
+  background: #1e293b;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Grid ────────────────────────────────────────────────────────────────── */
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  padding: 24px 28px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+@media (max-width: 1100px) {
+  .projects-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px) {
+  .projects-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Project Card ────────────────────────────────────────────────────────── */
+
+.project-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  border: 1px solid #e2e8f0;
+  transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+}
+.project-card:hover {
+  box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+  transform: translateY(-2px);
+  border-color: #0e7490;
+}
+
+.project-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.project-client {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.project-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.progress-pct {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Status Badge ────────────────────────────────────────────────────────── */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-planning    { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.status-in-progress { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.status-completed   { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.status-paused      { background: #fef9c3; color: #a16207; border: 1px solid #fde047; }
+.status-cancelled   { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+/* ── Progress bar ────────────────────────────────────────────────────────── */
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0e7490, #0ea5e9);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-range {
+  width: 100%;
+  accent-color: #0e7490;
+}
+
+.progress-label {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ── Budget rows on card ─────────────────────────────────────────────────── */
+
+.project-card-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.budget-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+
+.budget-row-label { color: #64748b; }
+.budget-row-value { font-family: 'Space Mono', monospace; font-size: 0.78rem; color: #0f172a; }
+.budget-spent     { color: #d97706; }
+.budget-positive  { color: #15803d; }
+.budget-negative  { color: #b91c1c; font-weight: 700; }
+
+.project-card-dates {
+  display: flex;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* ── Empty / Loading / Error ──────────────────────────────────────────────── */
+
+.projects-empty,
+.projects-loading,
+.projects-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 60px 20px;
+  color: #64748b;
+  gap: 14px;
+  font-size: 0.95rem;
+}
+.projects-error { color: #b91c1c; }
+
+/* ── Modal Overlay ───────────────────────────────────────────────────────── */
+
+.project-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.project-modal {
+  background: #fff;
+  border-radius: 14px;
+  width: min(900px, 95vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 60px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.project-modal-sm {
+  width: min(520px, 95vw);
+}
+
+.project-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px;
+  background: #0f172a;
+  border-radius: 14px 14px 0 0;
+  border-bottom: 2px solid #0e7490;
+  flex-shrink: 0;
+}
+.project-modal-header h2 {
+  margin: 0 0 2px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+.header-client {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-loading {
+  padding: 40px;
+  text-align: center;
+  color: #64748b;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+
+.modal-tabs {
+  display: flex;
+  gap: 0;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  padding: 12px 22px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  font-family: 'Outfit', sans-serif;
+}
+.tab-btn:hover { color: #cbd5e1; }
+.tab-btn.active { color: #0ea5e9; border-bottom-color: #0ea5e9; }
+
+/* ── Tab Content ─────────────────────────────────────────────────────────── */
+
+.tab-content {
+  padding: 24px 28px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Resumen form ────────────────────────────────────────────────────────── */
+
+.resumen-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.resumen-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.resumen-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.resumen-field label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+}
+
+/* ── Budget Cards ────────────────────────────────────────────────────────── */
+
+.budget-cards {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.budget-card {
+  flex: 1;
+  min-width: 140px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.budget-card-danger {
+  border-color: #fca5a5;
+  background: #fff5f5;
+}
+
+.budget-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.budget-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: 'Space Mono', monospace;
+  color: #0f172a;
+}
+
+/* ── Shared input ────────────────────────────────────────────────────────── */
+
+.pj-input {
+  padding: 9px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #f8fafc;
+  font-family: 'Outfit', sans-serif;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.pj-input:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(14,165,233,0.1);
+}
+
+/* ── New project form ────────────────────────────────────────────────────── */
+
+.new-project-form {
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.new-project-form label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  margin-top: 4px;
+}
+.new-project-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.form-error {
+  color: #dc2626;
+  font-size: 0.82rem;
+  margin: 0;
+  padding: 6px 10px;
+  background: #fee2e2;
+  border-radius: 6px;
+}
+
+/* ── Add Cost Form ───────────────────────────────────────────────────────── */
+
+.add-cost-form {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+.add-cost-form h3 {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.cost-form-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cost-input-desc { flex: 2; min-width: 180px; }
+.cost-input-num  { flex: 1; min-width: 100px; }
+.cost-total-preview {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.82rem;
+  color: #0f172a;
+  white-space: nowrap;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ── Costs Table ─────────────────────────────────────────────────────────── */
+
+.costs-table-wrap {
+  overflow-x: auto;
+}
+
+.costs-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+}
+
+.costs-table thead tr { background: #1e293b; }
+.costs-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  border-bottom: 1px solid #334155;
+  white-space: nowrap;
+}
+.costs-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.875rem;
+  color: #1e293b;
+  vertical-align: middle;
+}
+.costs-table tbody tr:last-child td { border-bottom: none; }
+.costs-table tbody tr:hover { background: #f8fafc; }
+.costs-table tfoot td {
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-top: 2px solid #e2e8f0;
+}
+.costs-total-label { font-weight: 600; color: #475569; font-size: 0.82rem; }
+.costs-total-value { font-family: 'Space Mono', monospace; font-weight: 700; color: #0f172a; }
+.costs-empty { color: #94a3b8; font-style: italic; text-align: center; }
+.text-right { text-align: right; }
+
+/* ── Team ────────────────────────────────────────────────────────────────── */
+
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.team-member {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.team-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #0e7490;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.team-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.team-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.team-email {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.team-since {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-family: 'Space Mono', monospace;
+  white-space: nowrap;
+}
+
+.team-empty {
+  color: #64748b;
+  font-style: italic;
+  text-align: center;
+  padding: 30px;
+}
+
+/* ── Shared Buttons ──────────────────────────────────────────────────────── */
+
+.projects-page .btn-primary-sm,
+.project-modal .btn-primary-sm {
+  background: #0e7490;
+}
+.projects-page .btn-primary-sm:hover,
+.project-modal .btn-primary-sm:hover {
+  background: #0891b2;
+}

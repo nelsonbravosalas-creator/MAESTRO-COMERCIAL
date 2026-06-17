@@ -5,7 +5,9 @@ import Quotations from './pages/Quotations'
 import Dashboard from './pages/Dashboard'
 import Clients from './pages/Clients'
 import Catalogo from './pages/Catalogo'
+import Projects from './pages/Projects'
 import { useMaestro } from './stores/maestro-store'
+import { useProjectsStore } from './stores/projects-store'
 
 type Page = 'dashboard' | 'quotations' | 'clients' | 'catalogo' | 'projects' | 'invoices'
 
@@ -13,7 +15,9 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
   const [user, setUser] = useState<any>(null)
-  const loadData = useMaestro(s => s.loadData)
+  const loadData      = useMaestro(s => s.loadData)
+  const loadProjects  = useProjectsStore(s => s.loadProjects)
+  const criticalCount = useProjectsStore(s => s.criticalCount)
 
   useEffect(() => {
     const token = localStorage.getItem('authToken')
@@ -22,6 +26,7 @@ function App() {
       setIsAuthenticated(true)
       setUser(JSON.parse(userData))
       loadData()
+      loadProjects()
     }
   }, [])
 
@@ -30,6 +35,7 @@ function App() {
     const userData = localStorage.getItem('user')
     if (userData) setUser(JSON.parse(userData))
     loadData()
+    loadProjects()
   }
 
   const handleLogout = () => {
@@ -69,6 +75,7 @@ function App() {
           </button>
           <button type="button" className={cls('projects')}   onClick={() => nav('projects')}>
             Proyectos
+            {criticalCount > 0 && <span className="nav-badge">{criticalCount}</span>}
           </button>
           <button type="button" className={cls('invoices')}   onClick={() => nav('invoices')}>
             Facturas
@@ -91,7 +98,7 @@ function App() {
         {currentPage === 'quotations' && <Quotations />}
         {currentPage === 'clients'    && <Clients />}
         {currentPage === 'catalogo'   && <Catalogo />}
-        {currentPage === 'projects'   && <div className="page-placeholder">Módulo de Proyectos — Próximamente</div>}
+        {currentPage === 'projects'   && <Projects />}
         {currentPage === 'invoices'   && <div className="page-placeholder">Módulo de Facturas — Próximamente</div>}
       </main>
     </div>

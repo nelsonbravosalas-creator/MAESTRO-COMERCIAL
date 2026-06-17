@@ -363,6 +363,15 @@ export const api = {
 
   // ── Dashboard ───────────────────────────────────────────────
   getKPIs: () => get<any>('/api/dashboard/kpis'),
+
+  // ── Proyectos ───────────────────────────────────────────────
+  getProjects: () => get<any[]>('/api/projects'),
+  getProject: (id: string) => get<any>(`/api/projects/${id}`),
+  createProject: (data: any) => post<any>('/api/projects', data),
+  updateProject: (id: string, data: any) => put<any>(`/api/projects/${id}`, data),
+  deleteProject: (id: string) => del(`/api/projects/${id}`),
+  addProjectCost: (projectId: string, cost: any) => post<any>(`/api/projects/${projectId}/costs`, cost),
+  deleteProjectCost: (projectId: string, costId: string) => del(`/api/projects/${projectId}/costs/${costId}`),
 }
 
 export default api

@@ -374,7 +374,7 @@ export const useMaestro = create<MaestroState>()(
         if (!s.activeId) return {}
         return {
           quotations: s.quotations.map(q =>
-            q.id === s.activeId ? { ...q, ...fields, updated_at: new Date().toISOString() } : q
+            q.id === s.activeId ? { ...q, ...fields, updated_at: new Date().toISOString().slice(0, 10) } : q
           ),
           unsaved: true,
         }
@@ -394,7 +394,23 @@ export const useMaestro = create<MaestroState>()(
         try {
           const isLocal = activeId.startsWith('q-')
           if (isLocal) {
-            const saved = await api.createQuotation(updated)
+            let payload = updated
+            let saved: typeof updated
+            try {
+              saved = await api.createQuotation(payload)
+            } catch (err: any) {
+              // Correlativo duplicado: regenerar y reintentar una vez
+              if (err.message?.includes('409') || err.message?.toLowerCase().includes('correlative')) {
+                const freshCorr = generateCorrelative(get().quotations.filter(x => !x.id.startsWith('q-')))
+                payload = { ...payload, correlative: freshCorr }
+                set(s => ({
+                  quotations: s.quotations.map(x => x.id === activeId ? { ...x, correlative: freshCorr } : x),
+                }))
+                saved = await api.createQuotation(payload)
+              } else {
+                throw err
+              }
+            }
             set(s => ({
               quotations: s.quotations.map(x => x.id === activeId ? saved : x),
               activeId:   saved.id,

@@ -167,7 +167,7 @@ function toMasterQuotation(q: any): MasterQuotation {
     contact:     q.contact_name ?? '',
     enduser:     q.enduser ?? '',
     ref:         q.ref ?? '',
-    date:        q.date,
+    date:        (q.date ?? '').slice(0, 10),
     status:      q.status,
     operState:   q.oper_state ?? '',
     uf:          q.uf_value,

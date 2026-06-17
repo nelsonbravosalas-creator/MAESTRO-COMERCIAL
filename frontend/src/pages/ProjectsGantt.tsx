@@ -317,7 +317,7 @@ export default function ProjectsGantt({ projects, onSelect }: Props) {
             <div
               className="gantt-label-row gantt-label-row--newtask"
               style={{ top: (() => {
-                const idx = rows.findLastIndex(r => r.projectId === addingTask)
+                let idx = 0; for (let i = rows.length - 1; i >= 0; i--) { if (rows[i].projectId === addingTask) { idx = i; break } }
                 return (idx + 1) * ROW_H
               })() }}
             >

@@ -3,6 +3,8 @@ import '../styles/Projects.css'
 import { useProjects, useActiveProject, ProjectFull } from '../stores/projects-store'
 import { useMaestro } from '../stores/maestro-store'
 import { CategoryId } from '../types'
+import ProjectsKanban from './ProjectsKanban'
+import ProjectsGantt from './ProjectsGantt'
 
 // ── Category labels ───────────────────────────────────────────
 const CATEGORY_LABELS: Record<CategoryId, string> = {
@@ -616,18 +618,99 @@ function ProjectDetail({ project, onDelete }: ProjectDetailProps) {
 }
 
 // ============================================================
+// VIEW SELECTOR
+// ============================================================
+
+function ViewSelector({ current, onChange }: { current: string; onChange: (v: any) => void }) {
+  const views = [
+    { key: 'list',   icon: '☰', label: 'Lista'  },
+    { key: 'kanban', icon: '⊞', label: 'Kanban' },
+    { key: 'gantt',  icon: '▦', label: 'Gantt'  },
+  ]
+  return (
+    <div className="pj-view-selector">
+      {views.map(v => (
+        <button
+          key={v.key}
+          className={`pj-view-btn${current === v.key ? ' pj-view-btn--active' : ''}`}
+          onClick={() => onChange(v.key)}
+          title={v.label}
+        >
+          <span className="pj-view-btn-icon">{v.icon}</span>
+          <span className="pj-view-btn-label">{v.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ============================================================
 // MAIN PAGE
 // ============================================================
+type ViewMode = 'list' | 'kanban' | 'gantt'
+
 export default function Projects() {
-  const { projects, activeId, loading, criticalCount, loadProjects, setActive, createProject, deleteProject } = useProjects()
+  const { projects, activeId, loading, criticalCount, loadProjects, setActive, createProject, deleteProject, updateProject } = useProjects()
   const activeProject = useActiveProject()
   const clients = useMaestro(s => s.clients)
   const [showCreate, setShowCreate] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
 
   useEffect(() => { loadProjects() }, [])
 
   const handleDelete = async (id: string) => {
     await deleteProject(id)
+  }
+
+  const handleKanbanStatusChange = async (id: string, status: ProjectFull['status']) => {
+    await updateProject(id, { status })
+  }
+
+  if (viewMode === 'kanban') {
+    return (
+      <div className="projects-layout projects-layout--full">
+        <div className="pj-view-toolbar">
+          <h2 className="pj-view-title">Proyectos</h2>
+          <ViewSelector current={viewMode} onChange={setViewMode} />
+          <button className="project-add-btn" onClick={() => setShowCreate(true)}>+ Nuevo</button>
+        </div>
+        <ProjectsKanban
+          projects={projects}
+          onSelect={id => { setActive(id); setViewMode('list') }}
+          onStatusChange={handleKanbanStatusChange}
+        />
+        {showCreate && (
+          <CreateModal
+            clients={clients.map(c => ({ id: c.id, name: c.name }))}
+            onClose={() => setShowCreate(false)}
+            onCreate={createProject}
+          />
+        )}
+      </div>
+    )
+  }
+
+  if (viewMode === 'gantt') {
+    return (
+      <div className="projects-layout projects-layout--full">
+        <div className="pj-view-toolbar">
+          <h2 className="pj-view-title">Proyectos</h2>
+          <ViewSelector current={viewMode} onChange={setViewMode} />
+          <button className="project-add-btn" onClick={() => setShowCreate(true)}>+ Nuevo</button>
+        </div>
+        <ProjectsGantt
+          projects={projects}
+          onSelect={id => { setActive(id); setViewMode('list') }}
+        />
+        {showCreate && (
+          <CreateModal
+            clients={clients.map(c => ({ id: c.id, name: c.name }))}
+            onClose={() => setShowCreate(false)}
+            onCreate={createProject}
+          />
+        )}
+      </div>
+    )
   }
 
   return (
@@ -641,6 +724,7 @@ export default function Projects() {
               <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>{criticalCount} crítico{criticalCount > 1 ? 's' : ''}</span>
             )}
           </div>
+          <ViewSelector current={viewMode} onChange={setViewMode} />
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
             + Nuevo
           </button>

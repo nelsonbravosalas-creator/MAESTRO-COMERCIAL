@@ -372,6 +372,10 @@ export const api = {
   deleteProjectCost: (projectId: string, costId: string) => del<any>(`/api/projects/${projectId}/costs/${costId}`),
   assignUser: (projectId: string, userId: string) => post<any>(`/api/projects/${projectId}/assignments`, { user_id: userId }),
   removeAssignment: (projectId: string, userId: string) => del<any>(`/api/projects/${projectId}/assignments/${userId}`),
+  getTasks: (projectId: string) => get<any[]>(`/api/projects/${projectId}/tasks`),
+  createTask: (projectId: string, data: any) => post<any>(`/api/projects/${projectId}/tasks`, data),
+  updateTask: (projectId: string, taskId: string, data: any) => put<any>(`/api/projects/${projectId}/tasks/${taskId}`, data),
+  deleteTask: (projectId: string, taskId: string) => del<any>(`/api/projects/${projectId}/tasks/${taskId}`),
 
   // ── Dashboard ───────────────────────────────────────────────
   getKPIs: () => get<any>('/api/dashboard/kpis'),

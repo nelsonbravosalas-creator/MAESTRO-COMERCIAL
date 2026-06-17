@@ -325,5 +325,96 @@ export const createProjectsRouter = (pool: Pool) => {
     }
   })
 
+  // ── Tasks ──────────────────────────────────────────────────
+
+  router.get('/:id/tasks', async (req: AuthRequest, res) => {
+    try {
+      const result = await pool.query(
+        `SELECT t.*, u.name AS assignee_name, u.email AS assignee_email
+           FROM project_tasks t
+           LEFT JOIN users u ON u.id = t.assignee_id
+          WHERE t.project_id = $1
+          ORDER BY t.sort_order, t.created_at`,
+        [req.params.id]
+      )
+      return res.json(result.rows)
+    } catch (error: any) {
+      logger.error('Get tasks error', { error: error.message })
+      return res.status(500).json({ error: 'Failed to fetch tasks' })
+    }
+  })
+
+  router.post('/:id/tasks', async (req: AuthRequest, res) => {
+    try {
+      const { name, description, assignee_id, category_id, start_date, end_date, sort_order } = req.body
+      if (!name) return res.status(400).json({ error: 'name is required' })
+      const result = await pool.query(
+        `INSERT INTO project_tasks
+          (project_id, name, description, assignee_id, category_id, start_date, end_date, sort_order, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         RETURNING *`,
+        [
+          req.params.id, name, description || null,
+          assignee_id || null, category_id || null,
+          start_date || null, end_date || null,
+          sort_order ?? 0, req.user?.id ?? null,
+        ]
+      )
+      return res.status(201).json(result.rows[0])
+    } catch (error: any) {
+      logger.error('Create task error', { error: error.message })
+      return res.status(500).json({ error: 'Failed to create task' })
+    }
+  })
+
+  router.put('/:projectId/tasks/:taskId', async (req: AuthRequest, res) => {
+    try {
+      const { name, description, assignee_id, category_id, start_date, end_date, progress_pct, status, sort_order } = req.body
+      const result = await pool.query(
+        `UPDATE project_tasks
+            SET name         = COALESCE($1, name),
+                description  = $2,
+                assignee_id  = $3,
+                category_id  = $4,
+                start_date   = $5,
+                end_date     = $6,
+                progress_pct = COALESCE($7, progress_pct),
+                status       = COALESCE($8, status),
+                sort_order   = COALESCE($9, sort_order),
+                updated_at   = NOW()
+          WHERE id = $10 AND project_id = $11
+          RETURNING *`,
+        [
+          name || null, description ?? null,
+          assignee_id ?? null, category_id ?? null,
+          start_date ?? null, end_date ?? null,
+          progress_pct != null ? Number(progress_pct) : null,
+          status || null,
+          sort_order != null ? Number(sort_order) : null,
+          req.params.taskId, req.params.projectId,
+        ]
+      )
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Task not found' })
+      return res.json(result.rows[0])
+    } catch (error: any) {
+      logger.error('Update task error', { error: error.message })
+      return res.status(500).json({ error: 'Failed to update task' })
+    }
+  })
+
+  router.delete('/:projectId/tasks/:taskId', async (req: AuthRequest, res) => {
+    try {
+      const result = await pool.query(
+        `DELETE FROM project_tasks WHERE id = $1 AND project_id = $2 RETURNING id`,
+        [req.params.taskId, req.params.projectId]
+      )
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Task not found' })
+      return res.json({ message: 'Task deleted' })
+    } catch (error: any) {
+      logger.error('Delete task error', { error: error.message })
+      return res.status(500).json({ error: 'Failed to delete task' })
+    }
+  })
+
   return router
 }

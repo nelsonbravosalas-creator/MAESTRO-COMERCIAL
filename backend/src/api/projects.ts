@@ -250,5 +250,80 @@ export const createProjectsRouter = (pool: Pool) => {
     }
   })
 
+  // PUT /:id/costs/:costId — actualizar costo
+  router.put('/:id/costs/:costId', async (req, res) => {
+    const { id, costId } = req.params
+    const { description, quantity, unit_price, category_id } = req.body
+    try {
+      const result = await pool.query(
+        `UPDATE execution_costs SET description=$1, quantity=$2, unit_price=$3, category_id=$4, updated_at=NOW()
+         WHERE id=$5 AND project_id=$6 RETURNING *`,
+        [description, quantity, unit_price, category_id, costId, id]
+      )
+      if (!result.rows[0]) return res.status(404).json({ error: 'Cost not found' })
+      res.json(result.rows[0])
+    } catch (err) {
+      logger.error('PUT /projects/:id/costs/:costId', err)
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+  // GET /:id/assignments
+  router.get('/:id/assignments', async (req, res) => {
+    const { id } = req.params
+    try {
+      const result = await pool.query(
+        `SELECT pa.*, u.name, u.email FROM project_assignments pa LEFT JOIN users u ON u.id = pa.user_id WHERE pa.project_id = $1`,
+        [id]
+      )
+      res.json(result.rows)
+    } catch (err) {
+      logger.error('GET /projects/:id/assignments', err)
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+  // POST /:id/assignments
+  router.post('/:id/assignments', async (req, res) => {
+    const { id } = req.params
+    const { user_id } = req.body
+    try {
+      const result = await pool.query(
+        `INSERT INTO project_assignments (project_id, user_id, assigned_by) VALUES ($1,$2,$3)
+         ON CONFLICT DO NOTHING RETURNING *`,
+        [id, user_id, (req as any).user?.id ?? null]
+      )
+      // If conflict (already exists), fetch existing
+      if (!result.rows[0]) {
+        const existing = await pool.query(
+          `SELECT pa.*, u.name, u.email FROM project_assignments pa LEFT JOIN users u ON u.id = pa.user_id WHERE pa.project_id=$1 AND pa.user_id=$2`,
+          [id, user_id]
+        )
+        return res.json(existing.rows[0])
+      }
+      // Fetch with user info
+      const full = await pool.query(
+        `SELECT pa.*, u.name, u.email FROM project_assignments pa LEFT JOIN users u ON u.id = pa.user_id WHERE pa.project_id=$1 AND pa.user_id=$2`,
+        [id, user_id]
+      )
+      res.json(full.rows[0])
+    } catch (err) {
+      logger.error('POST /projects/:id/assignments', err)
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
+  // DELETE /:id/assignments/:userId
+  router.delete('/:id/assignments/:userId', async (req, res) => {
+    const { id, userId } = req.params
+    try {
+      await pool.query(`DELETE FROM project_assignments WHERE project_id=$1 AND user_id=$2`, [id, userId])
+      res.json({ ok: true })
+    } catch (err) {
+      logger.error('DELETE /projects/:id/assignments/:userId', err)
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+
   return router
 }

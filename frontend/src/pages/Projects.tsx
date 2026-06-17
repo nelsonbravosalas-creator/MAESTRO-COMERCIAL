@@ -44,7 +44,7 @@ const isCritical = (p: ProjectFull) => {
 interface CreateModalProps {
   clients: { id: string; name: string }[]
   onClose: () => void
-  onCreate: (data: any) => Promise<void>
+  onCreate: (data: any) => Promise<any>
 }
 
 function CreateModal({ clients, onClose, onCreate }: CreateModalProps) {

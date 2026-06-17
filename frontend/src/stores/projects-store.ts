@@ -69,7 +69,7 @@ const computeCritical = (projects: ProjectFull[]) => {
   ).length
 }
 
-export const useProjects = create<ProjectsState>()((set, get) => ({
+export const useProjects = create<ProjectsState>()((set, _get) => ({
   projects: [],
   activeId: null,
   loading: false,

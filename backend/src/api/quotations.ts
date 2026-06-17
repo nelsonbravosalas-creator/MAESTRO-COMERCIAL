@@ -282,6 +282,36 @@ export const createQuotationsRouter = (pool: Pool) => {
       )
 
       if (result.rows.length === 0) return res.status(404).json({ error: 'Quotation not found' })
+
+      // Auto-create project when status becomes 'Adjudicada'
+      if (normalizeStatus(status) === 'Adjudicada') {
+        try {
+          const qRow = await pool.query(
+            `SELECT q.client_id, q.correlative, c.name AS client_name FROM quotations q LEFT JOIN clients c ON c.id = q.client_id WHERE q.id = $1`,
+            [quotationId]
+          )
+          if (qRow.rows[0]) {
+            const { client_id, correlative, client_name } = qRow.rows[0]
+            // Check if a project for this quotation already exists
+            const existing = await pool.query(
+              `SELECT id FROM projects WHERE quotation_id = $1 AND deleted_at IS NULL LIMIT 1`,
+              [quotationId]
+            )
+            if (existing.rows.length === 0) {
+              const totals = await totalsFor(pool, quotationId)
+              await pool.query(
+                `INSERT INTO projects (quotation_id, client_id, name, status, budget, progress_pct, created_by)
+                 VALUES ($1, $2, $3, 'planning', $4, 0, $5)`,
+                [quotationId, client_id, `Proyecto ${correlative} — ${client_name ?? ''}`, Number(totals.venta_neta) || 0, null]
+              )
+            }
+          }
+        } catch (autoErr) {
+          logger.error('Auto-create project on Adjudicada error', autoErr)
+          // Non-fatal: don't break the status update response
+        }
+      }
+
       return res.json(result.rows[0])
     } catch (error: any) {
       logger.error('Update quotation status error', { error: error.message, quotationId })

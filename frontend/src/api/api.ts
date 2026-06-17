@@ -361,6 +361,18 @@ export const api = {
 
   deleteQuotation: (id: string) => del(`/api/quotations/${id}`),
 
+  // ── Proyectos ───────────────────────────────────────────────
+  getProjects: () => get<any[]>('/api/projects'),
+  getProject: (id: string) => get<any>(`/api/projects/${id}`),
+  createProject: (data: any) => post<any>('/api/projects', data),
+  updateProject: (id: string, data: any) => put<any>(`/api/projects/${id}`, data),
+  deleteProject: (id: string) => del<any>(`/api/projects/${id}`),
+  addProjectCost: (projectId: string, cost: any) => post<any>(`/api/projects/${projectId}/costs`, cost),
+  updateProjectCost: (projectId: string, costId: string, cost: any) => put<any>(`/api/projects/${projectId}/costs/${costId}`, cost),
+  deleteProjectCost: (projectId: string, costId: string) => del<any>(`/api/projects/${projectId}/costs/${costId}`),
+  assignUser: (projectId: string, userId: string) => post<any>(`/api/projects/${projectId}/assignments`, { user_id: userId }),
+  removeAssignment: (projectId: string, userId: string) => del<any>(`/api/projects/${projectId}/assignments/${userId}`),
+
   // ── Dashboard ───────────────────────────────────────────────
   getKPIs: () => get<any>('/api/dashboard/kpis'),
 }

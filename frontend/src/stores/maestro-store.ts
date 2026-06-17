@@ -293,7 +293,7 @@ export const useMaestro = create<MaestroState>()(
         const draft: MasterQuotation = {
           id:          `q-${Date.now()}`,
           correlative: generateCorrelative(quotations),
-          client_id:   '', client_name: '', contact: '',
+          client_id:   '', client_name: '', contact_id: null, contact: '',
           enduser:     '', ref:          '', date: today,
           status:      'Emitida', operState: 'Pendiente de ejecución',
           uf, iva,
@@ -400,7 +400,10 @@ export const useMaestro = create<MaestroState>()(
               activeId:   saved.id,
             }))
           } else {
-            await api.updateQuotation(updated)
+            const saved = await api.updateQuotation(updated)
+            set(s => ({
+              quotations: s.quotations.map(x => x.id === activeId ? saved : x),
+            }))
           }
         } catch { /* offline: ya se guardó local */ }
       },

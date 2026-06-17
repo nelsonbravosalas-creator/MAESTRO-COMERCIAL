@@ -163,12 +163,13 @@ function toMasterQuotation(q: any): MasterQuotation {
     correlative: q.correlative,
     client_id:   q.client_id,
     client_name: q.client_name ?? '',
+    contact_id:  q.contact_id ?? null,
     contact:     q.contact_name ?? '',
     enduser:     q.enduser ?? '',
     ref:         q.ref ?? '',
     date:        q.date,
     status:      q.status,
-    operState:   q.oper_state ?? ' ',
+    operState:   q.oper_state ?? '',
     uf:          q.uf_value,
     iva:         q.iva_pct,
     categories,
@@ -217,6 +218,7 @@ function fromMasterQuotation(q: MasterQuotation) {
   return {
     correlative:  q.correlative,
     client_id:    q.client_id,
+    contact_id:   q.contact_id ?? null,
     enduser:      q.enduser,
     ref:          q.ref,
     date:         q.date,
@@ -324,9 +326,14 @@ export const api = {
 
   // ── Cotizaciones ────────────────────────────────────────────
   getQuotations: async (): Promise<MasterQuotation[]> => {
-    // Lista liviana (sin line_items) — suficiente para la tabla
     const raw: any[] = await get('/api/quotations')
-    return raw.map(q => toMasterQuotation({ ...q, line_items: [], terms: [] }))
+    // Backend devuelve filas planas (JOIN con v_quotation_totals), normalizamos totals
+    return raw.map(q => toMasterQuotation({
+      ...q,
+      line_items: [],
+      terms:      [],
+      totals:     { venta_neta: q.venta_neta ?? 0 },
+    }))
   },
 
   getQuotation: async (id: string): Promise<MasterQuotation> => {

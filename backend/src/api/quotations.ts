@@ -135,12 +135,11 @@ export const createQuotationsRouter = (pool: Pool) => {
     try {
       const result = await pool.query(
         `${quotationSelect}
+          LEFT JOIN v_quotation_totals vt ON vt.quotation_id = q.id
           WHERE q.deleted_at IS NULL
           ORDER BY q.created_at DESC`
       )
-
-      const full = await Promise.all(result.rows.map(row => fullQuotation(pool, row.id)))
-      return res.json(full.filter(Boolean))
+      return res.json(result.rows)
     } catch (error: any) {
       logger.error('Get quotations error', { error: error.message })
       return res.status(500).json({ error: 'Failed to fetch quotations' })

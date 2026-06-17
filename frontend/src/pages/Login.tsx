@@ -65,6 +65,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               id="email"
               type="email"
               placeholder="tu@email.com"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -78,6 +79,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               id="password"
               type="password"
               placeholder="••••••••"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}

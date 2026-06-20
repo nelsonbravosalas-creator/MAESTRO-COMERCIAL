@@ -410,34 +410,223 @@
   50%       { box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.12), 0 0 12px rgba(245, 158, 11, 0.2); }
 }
 
-/* RESPONSIVE */
+/* ── 6-COLUMN KPI GRID ──────────────────────────────────────── */
+
+.kpi-grid--6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+/* ── DASHBOARD ROWS (two-column layouts) ────────────────────── */
+
+.dash-row {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.dash-row--6-4 { grid-template-columns: 6fr 4fr; }
+.dash-row--5-5 { grid-template-columns: 1fr 1fr; }
+
+/* ── CHART CARDS ─────────────────────────────────────────────── */
+
+.chart-card { padding: 1.25rem 1.5rem 1rem; }
+
+.chart-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin: 0 0 1rem;
+  font-weight: 600;
+}
+
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 180px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 0 1.5rem;
+  border: 1px dashed rgba(255,255,255,0.08);
+  border-radius: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* inline legend row (area chart) */
+.chart-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding-left: 0.25rem;
+}
+
+.chart-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chart-legend-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* ── DONUT CHART ─────────────────────────────────────────────── */
+
+.donut-wrap {
+  position: relative;
+}
+
+.donut-center-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  line-height: 1.1;
+}
+
+.donut-total {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.donut-sub {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-top: 0.1rem;
+}
+
+/* ── PIE LEGEND ──────────────────────────────────────────────── */
+
+.pie-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  padding: 0.25rem 0 0.25rem;
+}
+
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.pie-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pie-name { color: var(--text-secondary); }
+
+.pie-count {
+  font-weight: 600;
+  color: var(--text);
+  min-width: 16px;
+  text-align: right;
+}
+
+/* ── RECENT QUOTES TABLE ─────────────────────────────────────── */
+
+.recent-table-wrap {
+  overflow-x: auto;
+  margin-top: 0.25rem;
+}
+
+.recent-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+
+.recent-table th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  white-space: nowrap;
+}
+
+.recent-table td {
+  padding: 0.55rem 0.75rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  white-space: nowrap;
+}
+
+.recent-table tbody tr:last-child td { border-bottom: none; }
+
+.recent-table tbody tr:hover td { background: rgba(255,255,255,0.025); }
+
+.cell-mono  { font-family: 'Courier New', monospace; color: var(--text); font-size: 0.78rem; }
+.cell-name  { color: var(--text); font-weight: 500; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.cell-ref   { max-width: 180px; overflow: hidden; text-overflow: ellipsis; font-size: 0.8rem; }
+.cell-date  { color: var(--text-secondary); font-size: 0.78rem; }
+.cell-oper  { font-size: 0.78rem; color: var(--text-secondary); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.cell-amount { text-align: right; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.status-pill {
+  display: inline-block;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem !important;
+  font-size: 0.85rem;
+}
+
+.table-footer-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+/* ── RESPONSIVE ──────────────────────────────────────────────── */
+
+@media (max-width: 1200px) {
+  .kpi-grid--6    { grid-template-columns: repeat(3, 1fr); }
+  .dash-row--6-4  { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .dash-row--5-5  { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 768px) {
-  .dashboard-container {
-    padding: 1rem;
-  }
-
-  .dashboard-header h1 {
-    font-size: 1.8rem;
-  }
-
-  .dashboard-header p {
-    font-size: 1rem;
-  }
-
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .features-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .phases {
-    grid-template-columns: 1fr;
-  }
-
-  .phase-number {
-    position: static;
-    margin-right: 0.5rem;
-  }
+  .dashboard-container { padding: 1rem; }
+  .dashboard-header h1 { font-size: 1.8rem; }
+  .dashboard-header p  { font-size: 1rem; }
+  .dashboard-grid      { grid-template-columns: 1fr; }
+  .features-grid       { grid-template-columns: 1fr; }
+  .phases              { grid-template-columns: 1fr; }
+  .kpi-grid--6         { grid-template-columns: repeat(2, 1fr); }
+  .dash-row            { margin-bottom: 1rem; }
+  .phase-number        { position: static; margin-right: 0.5rem; }
+  .cell-ref, .cell-oper { display: none; }
 }

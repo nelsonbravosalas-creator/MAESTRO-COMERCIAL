@@ -5,6 +5,11 @@
 }
 
 .dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
   margin-bottom: 2rem;
 }
 
@@ -326,6 +331,83 @@
 .badge.offline {
   background: rgba(239, 68, 68, 0.15);
   color: #fca5a5;
+}
+
+/* SYNC BUTTON */
+.sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  border-left: 3px solid #2563eb;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.07);
+  color: #93c5fd;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+.sync-btn:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.15);
+  border-left-color: #60a5fa;
+  color: #bfdbfe;
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.2);
+}
+
+.sync-btn--syncing {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.07);
+  color: #fcd34d;
+  cursor: not-allowed;
+  animation: syncPulse 1.3s ease-in-out infinite;
+}
+
+.sync-btn--done {
+  border-left-color: #059669;
+  background: rgba(5, 150, 105, 0.09);
+  color: #6ee7b7;
+}
+
+.sync-btn--error {
+  border-left-color: #dc2626;
+  background: rgba(220, 38, 38, 0.09);
+  color: #fca5a5;
+}
+
+.sync-btn__icon {
+  display: flex;
+  align-items: center;
+}
+
+.sync-btn__counts {
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-left: 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.spin {
+  animation: rotateSpin 0.75s linear infinite;
+  display: inline-block;
+}
+
+@keyframes rotateSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes syncPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+  50%       { box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.12), 0 0 12px rgba(245, 158, 11, 0.2); }
 }
 
 /* RESPONSIVE */

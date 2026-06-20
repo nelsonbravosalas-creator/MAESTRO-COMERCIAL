@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import '../styles/Dashboard.css'
 import { useMaestro, fmtCLP } from '../stores/maestro-store'
 import api from '../api/api'
@@ -14,16 +14,24 @@ interface KPIs {
 }
 
 export const Dashboard: React.FC = () => {
-  const { quotations, clients, apiReady } = useMaestro()
+  const { quotations, clients, apiReady, forceSyncAll } = useMaestro()
   const [kpis, setKpis]       = useState<KPIs | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const fetchKPIs = useCallback(() =>
     api.getKPIs()
       .then((data: any) => setKpis(data.kpis ?? data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
+      .catch(() => {}), [])
+
+  useEffect(() => {
+    fetchKPIs().finally(() => setLoading(false))
+  }, [fetchKPIs])
+
+  const handleForceSync = useCallback(async () => {
+    const result = await forceSyncAll()
+    fetchKPIs()
+    return result
+  }, [forceSyncAll, fetchKPIs])
 
   // Totales calculados localmente desde el store
   const byStatus = quotations.reduce<Record<string, number>>((acc, q) => {
@@ -38,15 +46,18 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h1>Dashboard</h1>
-        <p className="dashboard-subtitle">
-          {apiReady
-            ? 'Conectado al servidor — datos en tiempo real'
-            : 'Modo offline — datos locales'}
-          <span className={`badge ${apiReady ? 'dev' : 'offline'}`} style={{ marginLeft: 8 }}>
-            {apiReady ? 'Online' : 'Offline'}
-          </span>
-        </p>
+        <div>
+          <h1>Dashboard</h1>
+          <p className="dashboard-subtitle">
+            {apiReady
+              ? 'Conectado al servidor — datos en tiempo real'
+              : 'Modo offline — datos locales'}
+            <span className={`badge ${apiReady ? 'dev' : 'offline'}`} style={{ marginLeft: 8 }}>
+              {apiReady ? 'Online' : 'Offline'}
+            </span>
+          </p>
+        </div>
+        <SyncButton onSync={handleForceSync} />
       </div>
 
       {/* ── KPI Cards principales ── */}
@@ -140,6 +151,98 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
     </div>
+  )
+}
+
+// ── Sub-componente Sync Button ────────────────────────────────
+
+type SyncPhase = 'idle' | 'syncing' | 'done' | 'error'
+interface SyncResult { pushed: number; pulled: number; errors: number }
+
+function SyncButton({ onSync }: { onSync: () => Promise<SyncResult> }) {
+  const [phase, setPhase]   = useState<SyncPhase>('idle')
+  const [result, setResult] = useState<SyncResult | null>(null)
+
+  const handleClick = async () => {
+    if (phase === 'syncing') return
+    setPhase('syncing')
+    setResult(null)
+    try {
+      const r = await onSync()
+      setResult(r)
+      setPhase(r.errors > 0 ? 'error' : 'done')
+    } catch {
+      setPhase('error')
+    }
+    setTimeout(() => setPhase('idle'), 4500)
+  }
+
+  const label = (() => {
+    if (phase === 'syncing') return 'Sincronizando…'
+    if (phase === 'done' && result) {
+      const total = result.pushed + result.pulled
+      return total === 0 ? 'Todo al día' : `${total} ${total === 1 ? 'elemento' : 'elementos'} actualizados`
+    }
+    if (phase === 'error') return result?.errors ? `${result.errors} error${result.errors > 1 ? 'es' : ''}` : 'Error de conexión'
+    return 'Forzar Sincronización'
+  })()
+
+  return (
+    <button
+      className={`sync-btn sync-btn--${phase}`}
+      onClick={handleClick}
+      disabled={phase === 'syncing'}
+      title="Sube cotizaciones locales al servidor y descarga las que falten"
+    >
+      <span className="sync-btn__icon">
+        {phase === 'idle'    && <IconSync />}
+        {phase === 'syncing' && <IconSpinner />}
+        {phase === 'done'    && <IconCheck />}
+        {phase === 'error'   && <IconWarn />}
+      </span>
+      <span className="sync-btn__label">{label}</span>
+      {phase === 'done' && result && (result.pushed > 0 || result.pulled > 0) && (
+        <span className="sync-btn__counts">
+          {result.pushed > 0 && <span>↑{result.pushed}</span>}
+          {result.pulled > 0 && <span>↓{result.pulled}</span>}
+        </span>
+      )}
+    </button>
+  )
+}
+
+function IconSync() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"/>
+      <path d="M3.51 15a9 9 0 0 0 14.85 3.36L23 14"/>
+    </svg>
+  )
+}
+
+function IconSpinner() {
+  return (
+    <svg className="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <path d="M12 2a10 10 0 1 0 10 10"/>
+    </svg>
+  )
+}
+
+function IconCheck() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  )
+}
+
+function IconWarn() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
   )
 }
 

@@ -1193,6 +1193,191 @@
 .mono { font-family: 'Space Mono', monospace; }
 .summary-total-row td { background: #1e293b !important; color: #f1f5f9 !important; font-weight: 700 !important; }
 
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* --- Lista toolbar --- */
+  .q-list-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .q-toolbar-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .q-toolbar-right {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .q-search {
+    width: 100%;
+    flex: 1;
+  }
+
+  /* --- Tabla lista --- */
+  .q-table-wrap {
+    padding: 0 10px 18px;
+    overflow-x: auto;
+  }
+
+  /* --- Editor header + tabs --- */
+  .q-editor-header {
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .q-editor-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .q-editor-client {
+    font-size: 0.8rem;
+  }
+
+  .q-editor-tabs {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 4px;
+    padding-bottom: 2px;
+  }
+
+  .q-editor-tabs::-webkit-scrollbar { display: none; }
+
+  .q-tab {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    font-size: 0.8rem;
+  }
+
+  /* --- Contenido editor --- */
+  .q-tab-content {
+    padding: 14px;
+  }
+
+  /* --- Tab Base: grid 3→1 columna --- */
+  .base-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .base-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .base-row label {
+    width: auto;
+  }
+
+  /* --- Tab Costeo: config y tablas --- */
+  .costeo-config {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .costeo-summary-strip {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .cost-acc-header {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .cost-acc-totals {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+
+  /* Tabla de ítems: scroll horizontal dentro del acordeón */
+  .cost-acc-body {
+    overflow-x: auto;
+  }
+
+  .cost-items-table {
+    min-width: 560px;
+  }
+
+  .costeo-summary-table {
+    overflow-x: auto;
+  }
+
+  /* --- Tab Cotización --- */
+  .tab-coti {
+    max-width: 100%;
+  }
+
+  .doc-header {
+    flex-direction: column;
+    padding: 18px 20px;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .doc-header-meta {
+    text-align: left;
+  }
+
+  .doc-client-block {
+    padding: 14px 20px;
+  }
+
+  .doc-section {
+    padding: 16px 20px;
+  }
+
+  .doc-footer {
+    padding: 14px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .q-list-toolbar {
+    padding: 10px 12px;
+  }
+
+  .q-table-wrap {
+    padding: 0 8px 14px;
+  }
+
+  .q-editor-header {
+    padding: 8px 10px;
+  }
+
+  .q-tab-content {
+    padding: 10px;
+  }
+
+  .doc-header {
+    padding: 14px;
+  }
+
+  .doc-client-block,
+  .doc-section,
+  .doc-footer {
+    padding: 12px 14px;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════
    Print — Formato Hoja Carta, sin corte de texto
    ══════════════════════════════════════════════════════════════ */

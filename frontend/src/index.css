@@ -93,3 +93,15 @@ th {
 tr:hover {
   background: var(--bg-secondary);
 }
+
+/* ── Mobile global ──────────────────────────────────────────────────────── */
+
+/* Previene el auto-zoom de iOS Safari cuando se enfoca un input < 16px */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+

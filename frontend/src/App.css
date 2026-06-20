@@ -266,6 +266,7 @@ ul li {
     flex: none;
     width: 100%;
     order: 3;
+    justify-content: flex-start;
   }
 
   .app-header {
@@ -275,44 +276,113 @@ ul li {
 
 @media (max-width: 768px) {
   .app-header {
-    padding: 1rem;
-    gap: 1rem;
+    padding: 10px 14px 0;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .header-left {
+    flex: 1;
+    min-width: 0;
   }
 
   .header-left h1 {
-    font-size: 1.3rem;
-  }
-
-  .header-nav {
-    flex-direction: column;
-    gap: 0;
-    width: 100%;
-  }
-
-  .nav-btn {
-    width: 100%;
-    padding: 0.75rem;
-    border-radius: 0;
-    border: none;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .nav-btn.active {
-    border: none;
-    border-bottom: 2px solid var(--primary);
+    font-size: 1.05rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .header-right {
-    width: 100%;
-    justify-content: space-between;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     order: 2;
+    flex-shrink: 0;
   }
 
+  /* Ocultar nombre/rol en móvil — el espacio es premium */
   .user-info {
-    align-items: flex-start;
+    display: none;
   }
 
   .btn-logout {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+
+  .nav-sync-btn {
+    padding: 5px 8px;
+    font-size: 0.75rem;
+  }
+
+  /* Ocultar etiqueta de texto del sync — solo icono */
+  .nav-sync-label {
+    display: none;
+  }
+
+  /* Nav como tab bar horizontal deslizable */
+  .header-nav {
+    order: 3;
+    flex-direction: row;
+    width: calc(100% + 28px);
+    margin-left: -14px;
+    margin-right: -14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 0;
+    padding: 0;
+    justify-content: flex-start;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .header-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
     width: auto;
+    padding: 10px 16px;
+    font-size: 0.78rem;
+    border: none;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    color: var(--text-secondary);
+  }
+
+  .nav-btn:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .nav-btn.active {
+    color: var(--primary);
+    border: none;
+    border-bottom: 3px solid var(--primary);
+    background: rgba(37, 99, 235, 0.06);
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 8px 12px 0;
+  }
+
+  .header-left h1 {
+    font-size: 0.95rem;
+  }
+
+  .header-nav {
+    width: calc(100% + 24px);
+    margin-left: -12px;
+    margin-right: -12px;
+  }
+
+  .nav-btn {
+    padding: 9px 13px;
+    font-size: 0.74rem;
   }
 }

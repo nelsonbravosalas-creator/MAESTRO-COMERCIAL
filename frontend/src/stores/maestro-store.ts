@@ -143,7 +143,8 @@ interface MaestroState {
   unsaved:   boolean
 
   // ── API sync
-  loadData: () => Promise<void>
+  loadData:     () => Promise<void>
+  forceSyncAll: () => Promise<{ pushed: number; pulled: number; errors: number }>
 
   // ── Config
   setUF:  (uf: number)  => void
@@ -255,6 +256,19 @@ export const useMaestro = create<MaestroState>()(
           console.warn('[maestro] Backend no disponible, usando datos locales:', err)
           set({ apiReady: false })
         }
+      },
+
+      forceSyncAll: async () => {
+        let pushed = 0, errors = 0
+        try {
+          if (get().catalogDirty) { await get().saveCatalogs(); pushed++ }
+        } catch { errors++ }
+        try {
+          if (get().unsaved) { await get().saveActive(); pushed++ }
+        } catch { errors++ }
+        let pulled = 0
+        try { await get().loadData(); pulled = 1 } catch { errors++ }
+        return { pushed, pulled, errors }
       },
 
       setUF:  (uf)  => set({ uf }),

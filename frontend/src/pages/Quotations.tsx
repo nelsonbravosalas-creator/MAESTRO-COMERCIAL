@@ -7,6 +7,7 @@ import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { downloadDocx } from '../utils/docxExport'
 import { downloadHtml } from '../utils/htmlExport'
+import { CITIES, getDistance } from '../data/cityDistances'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -353,20 +354,55 @@ function CosteoRow({ catId }: { catId: CategoryId }) {
             <tbody>
               {items.map((item, i) => {
                 const rowTotal = item.cant * (item.days ?? 1) * item.unit
+                const isDistCalc = item.desc === 'Cálculo de Distancias'
                 return (
                   <tr key={item.id}>
                     <td className="col-idx">{i + 1}</td>
                     <td className="col-desc">
-                      <CatalogAutocomplete
-                        catId={catId}
-                        value={item.desc}
-                        onChange={val => patchItem(catId, i, 'desc', val)}
-                        onSelect={(sel: CatalogItemUI) => {
-                          patchItem(catId, i, 'desc',   sel.desc)
-                          patchItem(catId, i, 'unidad', sel.unidad)
-                          patchItem(catId, i, 'unit',   sel.price)
-                        }}
-                      />
+                      {isDistCalc ? (
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                          <select
+                            className="cost-item-input"
+                            value={item.puntoA ?? ''}
+                            onChange={e => {
+                              patchItem(catId, i, 'puntoA', e.target.value)
+                              const dist = getDistance(e.target.value, item.puntoB ?? '')
+                              if (dist !== null) patchItem(catId, i, 'cant', String(dist))
+                            }}
+                            aria-label="Punto A"
+                            style={{ flex: 1 }}
+                          >
+                            <option value="">Punto A…</option>
+                            {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                          <span style={{ color: '#94a3b8', fontSize: '12px' }}>→</span>
+                          <select
+                            className="cost-item-input"
+                            value={item.puntoB ?? ''}
+                            onChange={e => {
+                              patchItem(catId, i, 'puntoB', e.target.value)
+                              const dist = getDistance(item.puntoA ?? '', e.target.value)
+                              if (dist !== null) patchItem(catId, i, 'cant', String(dist))
+                            }}
+                            aria-label="Punto B"
+                            style={{ flex: 1 }}
+                          >
+                            <option value="">Punto B…</option>
+                            {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                      ) : (
+                        <CatalogAutocomplete
+                          catId={catId}
+                          value={item.desc}
+                          onChange={val => patchItem(catId, i, 'desc', val)}
+                          onSelect={(sel: CatalogItemUI) => {
+                            patchItem(catId, i, 'desc',   sel.desc)
+                            patchItem(catId, i, 'unidad', sel.unidad)
+                            patchItem(catId, i, 'unit',   sel.price)
+                          }}
+                        />
+                      )}
                     </td>
                     <td className="col-unit">
                       <input

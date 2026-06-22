@@ -466,6 +466,8 @@ function CosteoRow({ catId }: { catId: CategoryId }) {
 function TabCosteo() {
   const { patchActive, saveActive } = useMaestro()
   const q = useActiveQuotation()
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'ok' | 'offline'>('idle')
+
   if (!q) return null
 
   const cats: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
@@ -473,6 +475,24 @@ function TabCosteo() {
   const ivaRate = q.iva / 100
   const conIva = totals.venta * (1 + ivaRate)
   const enUF = q.uf > 0 ? totals.venta / q.uf : 0
+
+  const handleSave = async () => {
+    setSaveState('saving')
+    try {
+      await saveActive()
+      setSaveState('ok')
+    } catch {
+      setSaveState('offline')
+    } finally {
+      setTimeout(() => setSaveState('idle'), 3000)
+    }
+  }
+
+  const saveLabel =
+    saveState === 'saving' ? 'Guardando…' :
+    saveState === 'ok'     ? '✓ Guardado' :
+    saveState === 'offline'? '⚠ Solo local' :
+    'Guardar'
 
   return (
     <div className="tab-costeo">
@@ -526,7 +546,14 @@ function TabCosteo() {
             <strong>{enUF.toFixed(2)} UF</strong>
           </div>
         </div>
-        <button type="button" className="btn-save-quote" onClick={saveActive}>Guardar</button>
+        <button
+          type="button"
+          className={`btn-save-quote${saveState === 'ok' ? ' btn-save-ok' : saveState === 'offline' ? ' btn-save-warn' : ''}`}
+          onClick={handleSave}
+          disabled={saveState === 'saving'}
+        >
+          {saveLabel}
+        </button>
       </div>
 
       {/* Summary table */}

@@ -1103,6 +1103,11 @@
   font-family: 'Outfit', sans-serif;
 }
 .btn-save-quote:hover { background: #1e40af; }
+.btn-save-quote:disabled { opacity: 0.7; cursor: not-allowed; }
+.btn-save-quote.btn-save-ok   { background: #166534; }
+.btn-save-quote.btn-save-ok:hover { background: #15803d; }
+.btn-save-quote.btn-save-warn { background: #92400e; }
+.btn-save-quote.btn-save-warn:hover { background: #b45309; }
 
 .btn-back {
   padding: 7px 14px;

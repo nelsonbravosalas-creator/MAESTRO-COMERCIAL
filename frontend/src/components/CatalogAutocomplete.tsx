@@ -26,6 +26,12 @@ const fmtCLP = new Intl.NumberFormat('es-CL', {
   maximumFractionDigits: 0,
 })
 
+const DIST_ITEM: CatalogItemUI = {
+  desc:   'Cálculo de Distancias',
+  unidad: 'km',
+  price:  990,
+}
+
 export function CatalogAutocomplete({ catId, value, onChange, onSelect, placeholder }: Props) {
   const { catalogs } = useMaestro()
   const [open, setOpen]       = useState(false)
@@ -36,14 +42,23 @@ export function CatalogAutocomplete({ catId, value, onChange, onSelect, placehol
   const listRef  = useRef<HTMLDivElement>(null)
 
   const suggestions = React.useMemo(() => {
-    if (!value.trim()) return catalogs[catId].slice(0, 10)
+    const base = catId === 'log'
+      ? catalogs[catId].filter(i => i.desc !== 'Cálculo de Distancias')
+      : catalogs[catId]
+
+    if (!value.trim()) {
+      const list = catId === 'log' ? [DIST_ITEM, ...base] : base
+      return list.slice(0, 10)
+    }
     const q = value.toLowerCase()
-    return catalogs[catId]
-      .filter(i => i.desc.toLowerCase().includes(q) || i.unidad.toLowerCase().includes(q))
-      .slice(0, 10)
+    const filtered = base.filter(i => i.desc.toLowerCase().includes(q) || i.unidad.toLowerCase().includes(q))
+    if (catId === 'log' && 'cálculo de distancias'.includes(q)) {
+      return [DIST_ITEM, ...filtered].slice(0, 10)
+    }
+    return filtered.slice(0, 10)
   }, [catalogs, catId, value])
 
-  const totalInCatalog = catalogs[catId].length
+  const totalInCatalog = catId === 'log' ? catalogs[catId].length + 1 : catalogs[catId].length
   const showDropdown   = open && suggestions.length > 0
 
   /* ── Calcular posición adaptativa (flip hacia arriba si no hay espacio) ── */

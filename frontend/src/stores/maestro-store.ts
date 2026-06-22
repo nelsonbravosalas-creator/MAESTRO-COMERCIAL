@@ -17,6 +17,7 @@ export const DEFAULT_CATALOGS: CatalogsUI = {
     { desc: 'Prevencionista',                 unidad: 'Hora', price: 90000  },
   ],
   log: [
+    { desc: 'Cálculo de Distancias',          unidad: 'km',  price: 990    },
     { desc: 'Flete Herramientas STGO-Faena',  unidad: 'Gl',  price: 250000 },
     { desc: 'Viáticos Faena Local',           unidad: 'Un',  price: 45000  },
     { desc: 'Alimentación',                   unidad: 'Un',  price: 15000  },

@@ -333,7 +333,9 @@ export interface CostItem {
   unidad: string
   cant:   number
   unit:   number
-  days?:  number   // solo Mano de Obra
+  days?:  number    // solo Mano de Obra
+  puntoA?: string   // Cálculo de Distancias
+  puntoB?: string   // Cálculo de Distancias
 }
 
 // Cotización completa tal como la maneja el store

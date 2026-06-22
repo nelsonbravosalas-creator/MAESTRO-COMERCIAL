@@ -309,7 +309,7 @@ export const useMaestro = create<MaestroState>()(
           correlative: generateCorrelative(quotations),
           client_id:   '', client_name: '', contact_id: null, contact: '',
           enduser:     '', ref:          '', date: today,
-          status:      'Emitida', operState: 'Pendiente de ejecución',
+          status:      'Borrador', operState: 'Pendiente de ejecución',
           uf, iva,
           categories: DEFAULT_CATEGORIES.map(c => ({ ...c })),
           items: {
@@ -355,7 +355,7 @@ export const useMaestro = create<MaestroState>()(
             ...JSON.parse(JSON.stringify(src)),
             id:          `q-${Date.now()}`,
             correlative: newCorr,
-            date:        today, created_at: today, updated_at: today, status: 'Emitida',
+            date:        today, created_at: today, updated_at: today, status: 'Borrador',
           }
           set(s => ({ quotations: [...s.quotations, copy], activeId: copy.id, unsaved: false }))
         }
@@ -376,7 +376,7 @@ export const useMaestro = create<MaestroState>()(
 
       setOperState: async (id, operState) => {
         set(s => ({ quotations: s.quotations.map(q => q.id === id ? { ...q, operState } : q) }))
-        try { await api.setQuotationStatus(id, get().quotations.find(q => q.id === id)?.status ?? 'Emitida', operState) } catch { /* offline */ }
+        try { await api.setQuotationStatus(id, get().quotations.find(q => q.id === id)?.status ?? 'Borrador', operState) } catch { /* offline */ }
       },
 
       importQuotations: (qs) => set(s => ({

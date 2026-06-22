@@ -15,6 +15,7 @@ import {
 // ── Constants ────────────────────────────────────────────────────
 
 const STATUS_CFG = [
+  { key: 'Borrador',    color: '#94a3b8' },
   { key: 'Emitida',     color: '#64748b' },
   { key: 'Enviada',     color: '#2563eb' },
   { key: 'Adjudicada',  color: '#059669' },

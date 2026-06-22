@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Clients from './pages/Clients'
 import Catalogo from './pages/Catalogo'
 import Projects from './pages/Projects'
+import Logistica from './pages/Logistica'
 import { useMaestro } from './stores/maestro-store'
 import { useProjects } from './stores/projects-store'
 
@@ -66,7 +67,7 @@ function NavSyncButton() {
   )
 }
 
-type Page = 'dashboard' | 'quotations' | 'clients' | 'catalogo' | 'projects' | 'invoices'
+type Page = 'dashboard' | 'quotations' | 'clients' | 'catalogo' | 'projects' | 'logistica' | 'invoices'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -133,6 +134,9 @@ function App() {
             Proyectos
             {criticalCount > 0 && <span className="nav-badge">{criticalCount}</span>}
           </button>
+          <button type="button" className={cls('logistica')}  onClick={() => nav('logistica')}>
+            Logística
+          </button>
           <button type="button" className={cls('invoices')}   onClick={() => nav('invoices')}>
             Facturas
           </button>
@@ -156,6 +160,7 @@ function App() {
         {currentPage === 'clients'    && <Clients />}
         {currentPage === 'catalogo'   && <Catalogo />}
         {currentPage === 'projects'   && <Projects />}
+        {currentPage === 'logistica'  && <Logistica />}
         {currentPage === 'invoices'   && <div className="page-placeholder">Módulo de Facturas — Próximamente</div>}
       </main>
     </div>

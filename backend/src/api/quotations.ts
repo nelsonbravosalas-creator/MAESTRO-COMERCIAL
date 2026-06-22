@@ -3,12 +3,12 @@ import { Pool, PoolClient } from 'pg'
 import { logger } from '../utils/logger'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 
-const VALID_STATUSES = ['Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada']
+const VALID_STATUSES = ['Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada']
 const VALID_OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
 const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins']
 
 const normalizeStatus = (status: string | undefined) =>
-  VALID_STATUSES.includes(status ?? '') ? status : 'Emitida'
+  VALID_STATUSES.includes(status ?? '') ? status : 'Borrador'
 
 const normalizeOperState = (state: string | undefined | null) =>
   state && VALID_OPER_STATES.includes(state) ? state : null
@@ -344,7 +344,7 @@ export const createQuotationsRouter = (pool: Pool) => {
           source.enduser,
           source.ref,
           source.valid_until,
-          'Emitida',
+          'Borrador',
           source.oper_state,
           source.uf_value,
           source.iva_pct,

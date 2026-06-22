@@ -11,6 +11,7 @@ import { downloadHtml } from '../utils/htmlExport'
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const STATUS_META: Record<QuoteStatus, { label: string; cls: string }> = {
+  Borrador:    { label: 'Borrador',    cls: 'st-borrador'    },
   Emitida:     { label: 'Emitida',     cls: 'st-emitida'     },
   Enviada:     { label: 'Enviada',     cls: 'st-enviada'     },
   Adjudicada:  { label: 'Adjudicada', cls: 'st-adjudicada'  },
@@ -109,6 +110,7 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
             <tbody>
               {filtered.map(q => {
                 const totals = calcTotals(q)
+                const venta = totals.venta > 0 ? totals.venta : (q.total ?? 0)
                 return (
                   <tr key={q.id} className={q.id === activeId ? 'q-row-active' : ''}>
                     <td>
@@ -141,7 +143,7 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                         {OP_STATES.map(s => <option key={s} value={s}>{s.trim() || '—'}</option>)}
                       </select>
                     </td>
-                    <td className="text-right q-total">{fmtCLP.format(totals.venta)}</td>
+                    <td className="text-right q-total">{fmtCLP.format(venta)}</td>
                     <td>
                       <div className="q-row-actions">
                         <button className="btn-icon" title="Editar" onClick={() => handleEdit(q.id)}>✎</button>

@@ -6,7 +6,7 @@
 // ── Enums ─────────────────────────────────────────────────────
 export type UserRole        = 'admin' | 'manager' | 'user'
 export type CategoryId      = 'mo' | 'log' | 'mat' | 'rep' | 'ins'
-export type QuoteStatus     = 'Emitida' | 'Enviada' | 'Perdida' | 'Adjudicada' | 'Anulada'
+export type QuoteStatus     = 'Borrador' | 'Emitida' | 'Enviada' | 'Perdida' | 'Adjudicada' | 'Anulada'
 export type OperState       = 'Pendiente de ejecución' | 'En ejecución' | 'Terminada'
 export type ProjectStatus   = 'planning' | 'in_progress' | 'completed' | 'paused' | 'cancelled'
 export type InvoiceStatus   = 'draft' | 'issued' | 'paid' | 'cancelled'

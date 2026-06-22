@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ── ENUMs ─────────────────────────────────────────────────────
 CREATE TYPE user_role        AS ENUM ('admin', 'manager', 'user');
-CREATE TYPE quote_status     AS ENUM ('Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada');
+CREATE TYPE quote_status     AS ENUM ('Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada');
 CREATE TYPE oper_state       AS ENUM ('Pendiente de ejecución', 'En ejecución', 'Terminada');
 CREATE TYPE project_status   AS ENUM ('planning', 'in_progress', 'completed', 'paused', 'cancelled');
 CREATE TYPE invoice_status   AS ENUM ('draft', 'issued', 'paid', 'cancelled');
@@ -153,7 +153,7 @@ CREATE TABLE quotations (
   ref         TEXT,
   date        DATE         NOT NULL DEFAULT CURRENT_DATE,
   valid_until DATE,
-  status      quote_status NOT NULL DEFAULT 'Emitida',
+  status      quote_status NOT NULL DEFAULT 'Borrador',
   oper_state  oper_state,
   uf_value    NUMERIC(10,2) NOT NULL,
   iva_pct     SMALLINT     NOT NULL DEFAULT 19 CHECK (iva_pct BETWEEN 0 AND 100),

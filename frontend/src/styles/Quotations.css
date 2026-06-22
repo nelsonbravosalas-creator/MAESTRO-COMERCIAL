@@ -161,6 +161,7 @@
   background: #f1f5f9;
   color: #475569;
 }
+.q-status-sel.st-borrador   { background: #f1f5f9; color: #475569; }
 .q-status-sel.st-emitida    { background: #dbeafe; color: #1d4ed8; }
 .q-status-sel.st-enviada    { background: #fef3c7; color: #b45309; }
 .q-status-sel.st-adjudicada { background: #dcfce7; color: #15803d; }

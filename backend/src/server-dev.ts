@@ -489,7 +489,7 @@ app.post('/api/quotations', requireAuth, (req: AuthReq, res: Response) => {
       enduser: enduser || null, ref: ref || null,
       date: date || new Date().toISOString().slice(0, 10),
       valid_until: valid_until || null,
-      status: status || 'Emitida',
+      status: status || 'Borrador',
       oper_state: oper_state || null,
       uf_value: Number(uf_value) || Number(cfg('uf_value')) || 39500,
       iva_pct: Number(iva_pct) || Number(cfg('iva_pct')) || 19,
@@ -652,7 +652,7 @@ app.post('/api/quotations/:id/duplicate', requireAuth, (req: AuthReq, res: Respo
     return res.status(409).json({ error: 'Correlativo ya existe' })
 
   const newId = uid()
-  const copy = { ...src, id: newId, correlative, status: 'Emitida', version: 1, created_at: now(), updated_at: now() }
+  const copy = { ...src, id: newId, correlative, status: 'Borrador', version: 1, created_at: now(), updated_at: now() }
   db.quotations.push(copy)
 
   db.quotation_categories

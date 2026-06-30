@@ -56,8 +56,10 @@ async function tryRefresh(): Promise<boolean> {
       body: JSON.stringify({ refresh_token: rt }),
     })
     if (!res.ok) return false
-    const { token } = await res.json()
-    localStorage.setItem('authToken', token)
+    const data = await res.json()
+    localStorage.setItem('authToken', data.token)
+    // Actualizar refresh token si el backend rota tokens
+    if (data.refresh_token) localStorage.setItem('refreshToken', data.refresh_token)
     return true
   } catch {
     return false
@@ -119,12 +121,14 @@ function toMasterQuotation(q: any): MasterQuotation {
     ins: { label: 'Insumos Industriales y Gases',   color: '#164e63' },
   }
 
+  const defaultMargins: Record<string, number> = { mo: 35, log: 30, mat: 30, rep: 30, ins: 30 }
+
   const categories: CostCategory[] = catIds.map(cid => {
     const qc = catMap[cid]
     return {
       id:          cid,
       label:       qc?.label       ?? defaultCatMeta[cid].label,
-      margin:      qc?.margin_pct  ?? 30,
+      margin:      qc?.margin_pct  ?? defaultMargins[cid] ?? 30,
       color:       qc?.color       ?? defaultCatMeta[cid].color,
       showDetails: false,
       showValues:  false,
@@ -168,10 +172,13 @@ function toMasterQuotation(q: any): MasterQuotation {
     enduser:     q.enduser ?? '',
     ref:         q.ref ?? '',
     date:        (q.date ?? '').slice(0, 10),
+    valid_until: q.valid_until ?? null,
     status:      q.status,
-    operState:   q.oper_state ?? '',
+    operState:   q.oper_state ?? null,
     uf:          q.uf_value,
     iva:         q.iva_pct,
+    notes:       q.notes ?? null,
+    version:     q.version ?? 1,
     categories,
     items,
     scope,
@@ -222,10 +229,12 @@ function fromMasterQuotation(q: MasterQuotation) {
     enduser:      q.enduser,
     ref:          q.ref,
     date:         q.date,
+    valid_until:  q.valid_until || null,
     status:       q.status,
     oper_state:   q.operState?.trim() ? q.operState : null,
     uf_value:     q.uf,
     iva_pct:      q.iva,
+    notes:        q.notes || null,
     categories,
     line_items,
     terms,
@@ -297,7 +306,7 @@ export const api = {
 
   updateClient: async (c: MasterClient): Promise<MasterClient> => {
     // Actualizar datos del cliente
-    const raw: any = await put(`/api/clients/${c.id}`, {
+    await put(`/api/clients/${c.id}`, {
       name:     c.name,
       rut:      c.rut      || null,
       activity: c.activity || null,
@@ -319,7 +328,9 @@ export const api = {
         name: c.contact, cargo: c.cargo, email: c.email, phone: c.phone, is_primary: true,
       })
     }
-    return toMasterClient({ ...raw, contacts: [{ name: c.contact, cargo: c.cargo, email: c.email, phone: c.phone, is_primary: true }] })
+    // Re-fetch para obtener el estado real guardado en el backend
+    const updated: any = await get(`/api/clients/${c.id}`)
+    return toMasterClient(updated)
   },
 
   deleteClient: (id: string) => del(`/api/clients/${id}`),

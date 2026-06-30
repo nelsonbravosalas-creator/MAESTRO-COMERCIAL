@@ -310,8 +310,11 @@ export const useMaestro = create<MaestroState>()(
           correlative: generateCorrelative(quotations),
           client_id:   '', client_name: '', contact_id: null, contact: '',
           enduser:     '', ref:          '', date: today,
+          valid_until: null,
           status:      'Borrador', operState: 'Pendiente de ejecución',
           uf, iva,
+          notes:   null,
+          version: 1,
           categories: DEFAULT_CATEGORIES.map(c => ({ ...c })),
           items: {
             mo:  DEFAULT_ITEMS.mo.map(i  => ({ ...i, id: `mo-${Date.now()}`  })),

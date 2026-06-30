@@ -78,7 +78,15 @@ export const useProjects = create<ProjectsState>()((set, _get) => ({
   loadProjects: async () => {
     set({ loading: true })
     try {
-      const projects = await api.getProjects() as ProjectFull[]
+      const raw = await api.getProjects() as ProjectFull[]
+      // El endpoint GET /projects no devuelve assignments ni costs; normalizar para evitar undefined
+      const projects = raw.map(p => ({
+        ...p,
+        gasto_real:  Number(p.gasto_real)  || 0,
+        saldo:       Number(p.saldo)        ?? 0,
+        assignments: p.assignments          ?? [],
+        costs:       p.costs               ?? [],
+      }))
       set({ projects, criticalCount: computeCritical(projects), loading: false })
     } catch {
       set({ loading: false })
@@ -100,8 +108,11 @@ export const useProjects = create<ProjectsState>()((set, _get) => ({
 
   createProject: async (data) => {
     const created = await api.createProject(data) as ProjectFull
+    // El backend devuelve solo la fila insertada sin estos campos calculados
     created.assignments = []
-    created.costs = []
+    created.costs       = []
+    created.gasto_real  = 0
+    created.saldo       = Number(created.budget) || 0
     set(s => {
       const projects = [...s.projects, created]
       return { projects, criticalCount: computeCritical(projects) }

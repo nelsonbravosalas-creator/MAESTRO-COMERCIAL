@@ -23,9 +23,15 @@ const quotationSelect = `
     LEFT JOIN client_contacts cc ON cc.id = q.contact_id
 `
 
-const totalsFor = async (db: Pool | PoolClient, quotationId: string) => {
-  const result = await db.query('SELECT * FROM v_quotation_totals WHERE quotation_id = $1', [quotationId])
-  const totals = result.rows[0] ?? {
+const totalsFor = async (db: Pool | PoolClient, quotationId: string, ivaPctOverride?: number) => {
+  const [totalsResult, ivaPctResult] = await Promise.all([
+    db.query('SELECT * FROM v_quotation_totals WHERE quotation_id = $1', [quotationId]),
+    ivaPctOverride !== undefined
+      ? Promise.resolve(null)
+      : db.query('SELECT iva_pct FROM quotations WHERE id = $1', [quotationId]),
+  ])
+
+  const totals = totalsResult.rows[0] ?? {
     quotation_id: quotationId,
     costo_neto: 0,
     venta_neta: 0,
@@ -33,7 +39,7 @@ const totalsFor = async (db: Pool | PoolClient, quotationId: string) => {
   }
 
   const venta = Number(totals.venta_neta) || 0
-  const ivaPct = Number(totals.iva_pct) || 19
+  const ivaPct = ivaPctOverride ?? Number(ivaPctResult?.rows[0]?.iva_pct) || 19
   return {
     ...totals,
     iva_monto: venta * (ivaPct / 100),
@@ -55,7 +61,7 @@ const fullQuotation = async (db: Pool | PoolClient, quotationId: string) => {
     db.query('SELECT * FROM quotation_categories WHERE quotation_id = $1 ORDER BY sort_order', [quotationId]),
     db.query('SELECT * FROM quotation_line_items WHERE quotation_id = $1 ORDER BY sort_order, created_at', [quotationId]),
     db.query('SELECT * FROM quotation_terms WHERE quotation_id = $1 ORDER BY sort_order', [quotationId]),
-    totalsFor(db, quotationId),
+    totalsFor(db, quotationId, Number(quotation.rows[0].iva_pct) || 19),
   ])
 
   return {

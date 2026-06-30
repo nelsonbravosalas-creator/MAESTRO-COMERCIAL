@@ -349,10 +349,13 @@ export interface MasterQuotation {
   enduser:     string
   ref:         string
   date:        string
+  valid_until: string | null
   status:      QuoteStatus
-  operState:   OperState
+  operState:   OperState | null
   uf:          number
   iva:         number
+  notes:       string | null
+  version:     number
   categories:  CostCategory[]
   items:       Record<CategoryId, CostItem[]>
   scope:       string[]

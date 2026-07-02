@@ -39,7 +39,7 @@ const totalsFor = async (db: Pool | PoolClient, quotationId: string, ivaPctOverr
   }
 
   const venta = Number(totals.venta_neta) || 0
-  const ivaPct = ivaPctOverride ?? Number(ivaPctResult?.rows[0]?.iva_pct) || 19
+  const ivaPct = ivaPctOverride ?? (Number(ivaPctResult?.rows[0]?.iva_pct) || 19)
   return {
     ...totals,
     iva_monto: venta * (ivaPct / 100),

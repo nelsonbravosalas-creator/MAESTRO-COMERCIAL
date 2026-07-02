@@ -137,7 +137,7 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                     <td>
                       <select
                         className="q-opstate-sel"
-                        value={q.operState}
+                        value={q.operState ?? ''}
                         onChange={e => setOperState(q.id, e.target.value as OperState)}
                         onClick={e => e.stopPropagation()}
                       >
@@ -261,7 +261,7 @@ function TabBase() {
           <div className="base-row">
             <label>Estado operativo</label>
             <select
-              value={q.operState}
+              value={q.operState ?? ''}
               className="base-input"
               onChange={e => patch({ operState: e.target.value as OperState })}
             >

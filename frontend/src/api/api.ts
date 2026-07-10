@@ -18,6 +18,17 @@ const clearAuth = () => {
   localStorage.removeItem('user')
 }
 
+// ── Errores ───────────────────────────────────────────────────
+// Lleva el status HTTP para que el caller distinga p.ej. un 409
+// (conflicto de versión) de un error genérico de red/servidor.
+export class ApiError extends Error {
+  status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
 // ── Fetch base ────────────────────────────────────────────────
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -35,12 +46,12 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     if (refreshed) return req<T>(method, path, body)
     clearAuth()
     window.location.reload()
-    throw new Error('Session expired')
+    throw new ApiError(401, 'Session expired')
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
-    throw new Error(err.message ?? err.error ?? `HTTP ${res.status}`)
+    throw new ApiError(res.status, err.message ?? err.error ?? `HTTP ${res.status}`)
   }
 
   return res.json() as Promise<T>
@@ -235,6 +246,7 @@ function fromMasterQuotation(q: MasterQuotation) {
     uf_value:     q.uf,
     iva_pct:      q.iva,
     notes:        q.notes || null,
+    version:      q.version || 1,
     categories,
     line_items,
     terms,

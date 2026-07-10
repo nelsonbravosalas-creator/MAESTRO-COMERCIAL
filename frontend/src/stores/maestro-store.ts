@@ -146,6 +146,7 @@ interface MaestroState {
   // ── API sync
   loadData:     () => Promise<void>
   forceSyncAll: () => Promise<{ pushed: number; pulled: number; errors: number }>
+  reloadActive: () => Promise<void>
 
   // ── Config
   setUF:  (uf: number)  => void
@@ -270,6 +271,18 @@ export const useMaestro = create<MaestroState>()(
         let pulled = 0
         try { await get().loadData(); pulled = 1 } catch { errors++ }
         return { pushed, pulled, errors }
+      },
+
+      // Descarta los cambios locales de la cotización activa y trae la
+      // versión actual del servidor. Se usa tras un conflicto de versión (409).
+      reloadActive: async () => {
+        const { activeId } = get()
+        if (!activeId || activeId.startsWith('q-')) return
+        const fresh = await api.getQuotation(activeId)
+        set(s => ({
+          quotations: s.quotations.map(x => x.id === activeId ? fresh : x),
+          unsaved: false,
+        }))
       },
 
       setUF:  (uf)  => set({ uf }),
@@ -405,41 +418,42 @@ export const useMaestro = create<MaestroState>()(
         if (!q) return
         const totals  = calcTotals(q)
         const updated = { ...q, total: totals.venta, updated_at: new Date().toISOString().slice(0, 10) }
+        // Guarda el cálculo local de inmediato, pero "unsaved" solo se apaga
+        // tras confirmar que el backend aceptó el cambio (ver catch más abajo).
         set(s => ({
           quotations: s.quotations.map(x => x.id === activeId ? updated : x),
-          unsaved:    false,
         }))
-        try {
-          const isLocal = activeId.startsWith('q-')
-          if (isLocal) {
-            let payload = updated
-            let saved: typeof updated
-            try {
+        const isLocal = activeId.startsWith('q-')
+        if (isLocal) {
+          let payload = updated
+          let saved: typeof updated
+          try {
+            saved = await api.createQuotation(payload)
+          } catch (err: any) {
+            // Correlativo duplicado: regenerar y reintentar una vez
+            if (err.message?.includes('409') || err.message?.toLowerCase().includes('correlative')) {
+              const freshCorr = generateCorrelative(get().quotations.filter(x => !x.id.startsWith('q-')))
+              payload = { ...payload, correlative: freshCorr }
+              set(s => ({
+                quotations: s.quotations.map(x => x.id === activeId ? { ...x, correlative: freshCorr } : x),
+              }))
               saved = await api.createQuotation(payload)
-            } catch (err: any) {
-              // Correlativo duplicado: regenerar y reintentar una vez
-              if (err.message?.includes('409') || err.message?.toLowerCase().includes('correlative')) {
-                const freshCorr = generateCorrelative(get().quotations.filter(x => !x.id.startsWith('q-')))
-                payload = { ...payload, correlative: freshCorr }
-                set(s => ({
-                  quotations: s.quotations.map(x => x.id === activeId ? { ...x, correlative: freshCorr } : x),
-                }))
-                saved = await api.createQuotation(payload)
-              } else {
-                throw err
-              }
+            } else {
+              throw err
             }
-            set(s => ({
-              quotations: s.quotations.map(x => x.id === activeId ? saved : x),
-              activeId:   saved.id,
-            }))
-          } else {
-            const saved = await api.updateQuotation(updated)
-            set(s => ({
-              quotations: s.quotations.map(x => x.id === activeId ? saved : x),
-            }))
           }
-        } catch { /* offline: ya se guardó local */ }
+          set(s => ({
+            quotations: s.quotations.map(x => x.id === activeId ? saved : x),
+            activeId:   saved.id,
+            unsaved:    false,
+          }))
+        } else {
+          const saved = await api.updateQuotation(updated)
+          set(s => ({
+            quotations: s.quotations.map(x => x.id === activeId ? saved : x),
+            unsaved:    false,
+          }))
+        }
       },
 
       // Items

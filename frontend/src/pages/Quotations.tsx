@@ -5,6 +5,7 @@ import {
 } from '../stores/maestro-store'
 import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
+import { ApiError } from '../api/api'
 import { downloadDocx } from '../utils/docxExport'
 import { downloadHtml } from '../utils/htmlExport'
 import { CITIES, getDistance } from '../data/cityDistances'
@@ -915,11 +916,13 @@ export const Quotations: React.FC = () => {
   const [view, setView] = useState<'list' | 'edit'>('list')
   const [syncing, setSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'ok' | 'err'>('idle')
-  const { activeTab, setTab, unsaved, saveActive } = useMaestro()
+  const { activeTab, setTab, unsaved, saveActive, reloadActive } = useMaestro()
   const active = useActiveQuotation()
 
   const goList = () => {
-    if (unsaved) saveActive()
+    // Fire-and-forget: si falla, "unsaved" queda en true y el punto naranja
+    // sigue visible al volver a entrar a esta cotización.
+    if (unsaved) saveActive().catch(() => {})
     setView('list')
   }
 
@@ -931,7 +934,15 @@ export const Quotations: React.FC = () => {
     try {
       await saveActive()
       setSyncStatus('ok')
-    } catch {
+    } catch (err) {
+      // 409 = otro usuario guardó esta cotización primero (control de
+      // concurrencia optimista vía "version"). Ofrecemos traer su versión.
+      if (err instanceof ApiError && err.status === 409) {
+        const shouldReload = window.confirm(
+          `${err.message}\n\n¿Recargar la versión del servidor? Perderás tus cambios locales no guardados.`
+        )
+        if (shouldReload) await reloadActive().catch(() => {})
+      }
       setSyncStatus('err')
     } finally {
       setSyncing(false)

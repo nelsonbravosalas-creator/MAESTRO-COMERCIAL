@@ -217,7 +217,13 @@ export const createQuotationsRouter = (pool: Pool) => {
       const body = req.body
       if (!body.client_id) return res.status(400).json({ error: 'client_id is required' })
 
+      const expectedVersion = Number(body.version) || 1
+
       await db.query('BEGIN')
+      // El WHERE version = $14 es el chequeo de concurrencia optimista: si otro
+      // usuario guardó esta cotización entre que la cargamos y la guardamos,
+      // el número de filas afectadas es 0 y lo tratamos como conflicto (409),
+      // no como "no encontrado".
       const result = await db.query(
         `UPDATE quotations
             SET correlative = $1,
@@ -232,9 +238,11 @@ export const createQuotationsRouter = (pool: Pool) => {
                 uf_value = $10,
                 iva_pct = $11,
                 notes = $12,
+                version = version + 1,
                 updated_at = NOW()
           WHERE id = $13
             AND deleted_at IS NULL
+            AND version = $14
           RETURNING *`,
         [
           body.correlative,
@@ -250,12 +258,25 @@ export const createQuotationsRouter = (pool: Pool) => {
           Number(body.iva_pct) || 19,
           body.notes || null,
           quotationId,
+          expectedVersion,
         ]
       )
 
       if (result.rows.length === 0) {
+        const existing = await db.query(
+          'SELECT version FROM quotations WHERE id = $1 AND deleted_at IS NULL',
+          [quotationId]
+        )
         await db.query('ROLLBACK')
-        return res.status(404).json({ error: 'Quotation not found' })
+
+        if (existing.rows.length === 0) {
+          return res.status(404).json({ error: 'Quotation not found' })
+        }
+        return res.status(409).json({
+          error: 'Version conflict',
+          message: 'Esta cotización fue modificada por otro usuario. Recarga los datos antes de guardar.',
+          current_version: existing.rows[0].version,
+        })
       }
 
       await replaceChildren(db, quotationId, body)

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import '../styles/Quotations.css'
 import {
-  useMaestro, useActiveQuotation, calcCat, calcTotals, fmtCLP,
+  useMaestro, useActiveQuotation, calcCat, calcTotals, fmtCLP, fmtDecimal,
 } from '../stores/maestro-store'
 import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
@@ -11,6 +11,22 @@ import { downloadHtml } from '../utils/htmlExport'
 import { CITIES, getDistance } from '../data/cityDistances'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Explica por qué falló saveActive() en vez de dejar que el botón muestre
+// solo "offline"/"solo local" sin motivo. Compartido por los 4 botones de
+// guardar de este archivo (header, Base, Costeo, Cotización) para que todos
+// avisen lo mismo: conflicto de versión (409, ofrece recargar) o cualquier
+// otro error (red, validación, sesión) con su mensaje real.
+async function reportSaveError(err: unknown, reloadActive: () => Promise<void>) {
+  if (err instanceof ApiError && err.status === 409) {
+    const shouldReload = window.confirm(
+      `${err.message}\n\n¿Recargar la versión del servidor? Perderás tus cambios locales no guardados.`
+    )
+    if (shouldReload) await reloadActive().catch(() => {})
+    return
+  }
+  window.alert(err instanceof Error ? err.message : 'No se pudo guardar la cotización. Verifica tu conexión.')
+}
 
 const STATUS_META: Record<QuoteStatus, { label: string; cls: string }> = {
   Borrador:    { label: 'Borrador',    cls: 'st-borrador'    },
@@ -208,11 +224,23 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
 // ── Tab Base ──────────────────────────────────────────────────────────────────
 
 function TabBase() {
-  const { clients, patchActive, saveActive } = useMaestro()
+  const { clients, patchActive, saveActive, reloadActive } = useMaestro()
   const q = useActiveQuotation()
+  const [saving, setSaving] = useState(false)
   if (!q) return null
 
   const patch = (fields: Partial<typeof q>) => patchActive(fields)
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await saveActive()
+    } catch (err) {
+      await reportSaveError(err, reloadActive)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="tab-base">
@@ -308,7 +336,9 @@ function TabBase() {
       </div>
 
       <div className="base-save-row">
-        <button className="btn-save-quote" onClick={saveActive}>Guardar encabezado</button>
+        <button className="btn-save-quote" onClick={handleSave} disabled={saving}>
+          {saving ? 'Guardando…' : 'Guardar encabezado'}
+        </button>
       </div>
     </div>
   )
@@ -492,7 +522,7 @@ function CosteoRow({ catId }: { catId: CategoryId }) {
 }
 
 function TabCosteo() {
-  const { patchActive, saveActive } = useMaestro()
+  const { patchActive, saveActive, reloadActive } = useMaestro()
   const q = useActiveQuotation()
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'ok' | 'offline'>('idle')
 
@@ -509,7 +539,8 @@ function TabCosteo() {
     try {
       await saveActive()
       setSaveState('ok')
-    } catch {
+    } catch (err) {
+      await reportSaveError(err, reloadActive)
       setSaveState('offline')
     } finally {
       setTimeout(() => setSaveState('idle'), 3000)
@@ -571,7 +602,7 @@ function TabCosteo() {
           </div>
           <div className="costeo-kpi">
             <em>En UF</em>
-            <strong>{enUF.toFixed(2)} UF</strong>
+            <strong>{fmtDecimal.format(enUF)} UF</strong>
           </div>
         </div>
         <button
@@ -609,8 +640,8 @@ function TabCosteo() {
                   <td className="text-right mono">{fmtCLP.format(r.costo)}</td>
                   <td className="text-right mono">{fmtCLP.format(r.venta)}</td>
                   <td className="text-right mono">{fmtCLP.format(r.beneficio)}</td>
-                  <td className="text-right mono">{cat.margin}%</td>
-                  <td className="text-right mono">{q.uf > 0 ? (r.venta / q.uf).toFixed(2) : '—'} UF</td>
+                  <td className="text-right mono">{fmtDecimal.format(cat.margin)}%</td>
+                  <td className="text-right mono">{q.uf > 0 ? fmtDecimal.format(r.venta / q.uf) : '—'} UF</td>
                 </tr>
               )
             })}
@@ -622,9 +653,9 @@ function TabCosteo() {
               <td className="text-right mono">{fmtCLP.format(totals.venta)}</td>
               <td className="text-right mono">{fmtCLP.format(totals.beneficio)}</td>
               <td className="text-right mono">
-                {totals.venta > 0 ? ((totals.beneficio / totals.venta) * 100).toFixed(1) : 0}%
+                {totals.venta > 0 ? fmtDecimal.format((totals.beneficio / totals.venta) * 100) : 0}%
               </td>
-              <td className="text-right mono">{enUF.toFixed(2)} UF</td>
+              <td className="text-right mono">{fmtDecimal.format(enUF)} UF</td>
             </tr>
           </tfoot>
         </table>
@@ -696,7 +727,7 @@ const fmtDateLong = (d: string) =>
 
 function TabCotizacion() {
   const q = useActiveQuotation()
-  const { clients, saveActive } = useMaestro()
+  const { clients, saveActive, reloadActive } = useMaestro()
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set())
   const [toast, setToast]   = useState<{ msg: string; ok: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -722,9 +753,15 @@ function TabCotizacion() {
 
   const handleSave = async () => {
     setSaving(true)
-    try   { await saveActive(); showToast('Cambios guardados correctamente') }
-    catch { showToast('Error al guardar. Intente nuevamente.', false) }
-    finally { setSaving(false) }
+    try {
+      await saveActive()
+      showToast('Cambios guardados correctamente')
+    } catch (err) {
+      await reportSaveError(err, reloadActive)
+      showToast('No se pudo guardar en el servidor', false)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleDocx = async () => {
@@ -866,18 +903,17 @@ function TabCotizacion() {
                       <td>{cat.label}</td>
                       <td className="text-right mono">{fmtCLP.format(r.venta)}</td>
                     </tr>
+                    {/* Detalle expandido: solo descripción, cantidad y unidad —
+                        sin valores unitarios ni totales de línea. */}
                     {isOpen && items.map(item => (
                       <tr key={item.id} className="doc-detail-row no-print-detail">
                         <td className="doc-detail-indent" colSpan={2} />
-                        <td className="doc-detail-desc">
+                        <td className="doc-detail-desc" colSpan={2}>
                           <span className="doc-detail-bullet">·</span>
                           <span className="doc-detail-name">{item.desc}</span>
                           <span className="doc-detail-meta">
                             {item.cant} {item.unidad}{item.days && item.days > 1 ? ` × ${item.days} días` : ''}
                           </span>
-                        </td>
-                        <td className="text-right mono doc-detail-value">
-                          {fmtCLP.format(item.cant * (item.days ?? 1) * item.unit)}
                         </td>
                       </tr>
                     ))}
@@ -970,16 +1006,7 @@ export const Quotations: React.FC = () => {
       await saveActive()
       setSyncStatus('ok')
     } catch (err) {
-      // 409 = otro usuario guardó esta cotización primero (control de
-      // concurrencia optimista vía "version"). Ofrecemos traer su versión.
-      if (err instanceof ApiError && err.status === 409) {
-        const shouldReload = window.confirm(
-          `${err.message}\n\n¿Recargar la versión del servidor? Perderás tus cambios locales no guardados.`
-        )
-        if (shouldReload) await reloadActive().catch(() => {})
-      } else {
-        window.alert(err instanceof Error ? err.message : 'No se pudo guardar la cotización. Verifica tu conexión.')
-      }
+      await reportSaveError(err, reloadActive)
       setSyncStatus('err')
     } finally {
       setSyncing(false)

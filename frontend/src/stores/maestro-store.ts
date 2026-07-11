@@ -114,6 +114,11 @@ export function calcTotals(q: MasterQuotation) {
 
 export const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
+// Para UF/porcentajes: sin ceros de relleno (22 -> "22", no "22,00") y con
+// coma decimal chilena — a diferencia de toFixed(2), que siempre fuerza 2
+// decimales y usa "." como separador.
+export const fmtDecimal = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 })
+
 export function generateCorrelative(quotations: MasterQuotation[]): string {
   const now  = new Date()
   const mm   = String(now.getMonth() + 1).padStart(2, '0')

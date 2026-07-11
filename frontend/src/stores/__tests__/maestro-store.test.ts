@@ -1,15 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { CategoryId, CostCategory, CostItem, MasterQuotation } from '../../types'
 
+// vi.mock() se hoistea al tope del archivo, así que cualquier variable que
+// use la factory debe declararse con vi.hoisted() para no romper por orden.
+const { MockApiError } = vi.hoisted(() => {
+  class MockApiError extends Error {
+    status: number
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  }
+  return { MockApiError }
+})
+
 vi.mock('../../api/api', () => ({
+  ApiError: MockApiError,
   default: {
     createQuotation: vi.fn(),
     updateQuotation: vi.fn(),
+    duplicateQuotation: vi.fn(),
+    getQuotations: vi.fn().mockResolvedValue([]),
   },
 }))
 
-import api from '../../api/api'
-import { calcCat, calcTotals, generateCorrelative, useMaestro } from '../maestro-store'
+import api, { ApiError } from '../../api/api'
+import {
+  calcCat, calcTotals, generateCorrelative, generateVersionCorrelative, useMaestro,
+} from '../maestro-store'
 
 function makeCategory(overrides: Partial<CostCategory> = {}): CostCategory {
   return {
@@ -86,6 +104,29 @@ describe('generateCorrelative', () => {
   })
 })
 
+describe('generateVersionCorrelative — botón "Nueva versión"', () => {
+  it('agrega -V1 la primera vez, manteniendo el mismo N° base', () => {
+    const existing = [makeQuotation({ correlative: 'SYM-003-07-2026' })]
+    expect(generateVersionCorrelative(existing, 'SYM-003-07-2026')).toBe('SYM-003-07-2026-V1')
+  })
+
+  it('sigue la secuencia V2, V3... a partir de la versión más alta ya creada', () => {
+    const existing = [
+      makeQuotation({ correlative: 'SYM-003-07-2026' }),
+      makeQuotation({ correlative: 'SYM-003-07-2026-V1' }),
+    ]
+    expect(generateVersionCorrelative(existing, 'SYM-003-07-2026-V1')).toBe('SYM-003-07-2026-V2')
+  })
+
+  it('no se confunde con correlativos de otro N° base', () => {
+    const existing = [
+      makeQuotation({ correlative: 'SYM-003-07-2026-V1' }),
+      makeQuotation({ correlative: 'SYM-009-07-2026-V5' }),
+    ]
+    expect(generateVersionCorrelative(existing, 'SYM-003-07-2026-V1')).toBe('SYM-003-07-2026-V2')
+  })
+})
+
 // Regression test: saveActive() solía marcar `unsaved: false` de inmediato y
 // tragarse cualquier error de red, haciendo que los botones de sync mintieran
 // sobre si el guardado realmente llegó al backend. Ver maestro-store.ts.
@@ -119,6 +160,50 @@ describe('saveActive — no debe marcar "unsaved:false" si el backend rechaza el
     useMaestro.setState({ quotations: [q], activeId: 'q-123', unsaved: true })
 
     await expect(useMaestro.getState().saveActive()).rejects.toThrow('Network down')
+    expect(useMaestro.getState().unsaved).toBe(true)
+  })
+
+  it('rechaza sin llamar al backend si la cotización no tiene client_id', async () => {
+    const q = makeQuotation({ id: 'q-999', client_id: '' })
+    useMaestro.setState({ quotations: [q], activeId: 'q-999', unsaved: true })
+
+    await expect(useMaestro.getState().saveActive()).rejects.toThrow(/cliente/i)
+    expect(api.createQuotation).not.toHaveBeenCalled()
+    expect(useMaestro.getState().unsaved).toBe(true)
+  })
+
+  it('borrador local: reintenta con un correlativo fresco si el backend devuelve 409 por correlativo duplicado', async () => {
+    const q = makeQuotation({ id: 'q-321', correlative: 'SYM-001-01-2026' })
+    ;(api.createQuotation as any)
+      .mockRejectedValueOnce(new ApiError(409, 'Quotation correlative already exists'))
+      .mockResolvedValueOnce({ ...q, id: 'srv-321', correlative: 'SYM-002-01-2026', version: 1 })
+    ;(api.getQuotations as any).mockResolvedValueOnce([
+      makeQuotation({ id: 'srv-1', correlative: 'SYM-001-01-2026' }),
+    ])
+    useMaestro.setState({ quotations: [q], activeId: 'q-321', unsaved: true })
+
+    await useMaestro.getState().saveActive()
+
+    expect(api.createQuotation).toHaveBeenCalledTimes(2)
+    expect(useMaestro.getState().unsaved).toBe(false)
+    expect(useMaestro.getState().activeId).toBe('srv-321')
+  })
+
+  it('no pisa activeId/unsaved si el usuario ya pasó a otra cotización antes de que termine el guardado', async () => {
+    const x = makeQuotation({ id: 'q-1', correlative: 'SYM-001-01-2026' })
+    const y = makeQuotation({ id: 'srv-2', correlative: 'SYM-002-01-2026' })
+    let resolveSave!: (v: MasterQuotation) => void
+    ;(api.createQuotation as any).mockReturnValue(new Promise(res => { resolveSave = res }))
+    useMaestro.setState({ quotations: [x, y], activeId: 'q-1', unsaved: true })
+
+    const savePromise = useMaestro.getState().saveActive()
+    // El usuario navega a "y" antes de que el guardado de "x" responda
+    useMaestro.setState({ activeId: 'srv-2', unsaved: true })
+
+    resolveSave({ ...x, id: 'srv-1', version: 1 })
+    await savePromise
+
+    expect(useMaestro.getState().activeId).toBe('srv-2')
     expect(useMaestro.getState().unsaved).toBe(true)
   })
 })

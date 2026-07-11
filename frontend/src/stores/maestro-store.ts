@@ -4,7 +4,7 @@ import {
   CategoryId, CatalogItemUI, CatalogsUI, CostCategory, CostItem,
   MasterClient, MasterQuotation, QuoteStatus, OperState,
 } from '../types'
-import api from '../api/api'
+import api, { ApiError } from '../api/api'
 
 // ── Defaults ──────────────────────────────────────────────────
 
@@ -125,6 +125,24 @@ export function generateCorrelative(quotations: MasterQuotation[]): string {
   return `SYM-${String(next).padStart(3, '0')}-${mm}-${yyyy}`
 }
 
+// Correlativos de "nueva versión" reusan el mismo N° y agregan un sufijo
+// -V1, -V2... para poder reestudiar (p.ej. el margen) sin perder el N° original.
+const VERSION_SUFFIX_RE = /-V(\d+)$/i
+
+export function baseCorrelative(correlative: string): string {
+  return correlative.replace(VERSION_SUFFIX_RE, '')
+}
+
+export function generateVersionCorrelative(quotations: MasterQuotation[], sourceCorrelative: string): string {
+  const base = baseCorrelative(sourceCorrelative)
+  const maxVersion = quotations.reduce((max, q) => {
+    if (baseCorrelative(q.correlative) !== base) return max
+    const m = q.correlative.match(VERSION_SUFFIX_RE)
+    return Math.max(max, m ? parseInt(m[1], 10) : 0)
+  }, 0)
+  return `${base}-V${maxVersion + 1}`
+}
+
 // ── State interface ────────────────────────────────────────────
 
 interface MaestroState {
@@ -160,6 +178,7 @@ interface MaestroState {
   newDraft:          ()                              => void
   loadQuote:         (id: string)                    => void
   duplicateQuote:    (id: string)                    => Promise<void>
+  createVersion:     (id: string)                    => Promise<void>
   deleteQuote:       (id: string)                    => Promise<void>
   setStatus:         (id: string, s: QuoteStatus)    => Promise<void>
   setOperState:      (id: string, s: OperState)      => Promise<void>
@@ -196,6 +215,58 @@ interface MaestroState {
   // UI
   setTab:     (t: 'base' | 'costeo' | 'coti') => void
   markSaved:  ()                               => void
+}
+
+// Lógica compartida entre "Duplicar" (correlativo nuevo) y "Nueva versión"
+// (mismo correlativo base + sufijo -V{n}) — solo cambia cómo se calcula el
+// correlativo. Sin fallback local silencioso: si falla, se propaga el error
+// para que la UI lo muestre (evita copias "zombie" con id falso).
+// Si el correlativo choca (409, p.ej. otro usuario creó uno igual mientras
+// tanto), reintenta un par de veces recalculándolo con datos frescos del
+// servidor en vez de con el estado local, que puede estar desactualizado.
+async function cloneQuoteWithCorrelative(
+  set: (partial: Partial<MaestroState> | ((s: MaestroState) => Partial<MaestroState>)) => void,
+  src: MasterQuotation,
+  initialCorrelative: string,
+  regenerateCorrelative: (freshQuotations: MasterQuotation[]) => string
+) {
+  let correlative = initialCorrelative
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const copy = await api.duplicateQuotation(src.id, correlative)
+      set(s => ({ quotations: [...s.quotations, copy], activeId: copy.id, unsaved: false }))
+      return
+    } catch (err) {
+      const isCorrelativeConflict = err instanceof ApiError && err.status === 409
+      if (!isCorrelativeConflict || attempt >= 2) throw err
+      const fresh = await api.getQuotations().catch(() => [] as MasterQuotation[])
+      correlative = regenerateCorrelative(fresh)
+    }
+  }
+}
+
+// Mismo patrón de reintento para POST /quotations (creación de un borrador
+// local nuevo, no un clon) — el correlativo se recalcula con generateCorrelative().
+async function createQuotationWithRetry(
+  set: (partial: Partial<MaestroState> | ((s: MaestroState) => Partial<MaestroState>)) => void,
+  activeId: string,
+  initialPayload: MasterQuotation
+): Promise<MasterQuotation> {
+  let payload = initialPayload
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await api.createQuotation(payload)
+    } catch (err) {
+      const isCorrelativeConflict = err instanceof ApiError && err.status === 409
+      if (!isCorrelativeConflict || attempt >= 2) throw err
+      const fresh = await api.getQuotations().catch(() => [] as MasterQuotation[])
+      const freshCorr = generateCorrelative(fresh.filter(x => !x.id.startsWith('q-')))
+      payload = { ...payload, correlative: freshCorr }
+      set(s => ({
+        quotations: s.quotations.map(x => x.id === activeId ? { ...x, correlative: freshCorr } : x),
+      }))
+    }
+  }
 }
 
 // ── Store ──────────────────────────────────────────────────────
@@ -279,39 +350,35 @@ export const useMaestro = create<MaestroState>()(
         const { activeId } = get()
         if (!activeId || activeId.startsWith('q-')) return
         const fresh = await api.getQuotation(activeId)
-        set(s => ({
-          quotations: s.quotations.map(x => x.id === activeId ? fresh : x),
-          unsaved: false,
-        }))
+        set(s => s.activeId === activeId
+          ? { quotations: s.quotations.map(x => x.id === activeId ? fresh : x), unsaved: false }
+          : { quotations: s.quotations.map(x => x.id === activeId ? fresh : x) }
+        )
       },
 
       setUF:  (uf)  => set({ uf }),
       setIVA: (iva) => set({ iva }),
 
       // ── Clients ───────────────────────────────────────────────
+      // No hay fallback "solo local": un cliente que no llegó al backend
+      // tendría un id falso (cl-...) que no es un UUID válido, y cualquier
+      // cotización que lo use después fallaría al guardar con un error
+      // críptico. Mejor propagar el error para que la UI lo muestre y el
+      // usuario pueda corregirlo (p.ej. RUT duplicado) antes de seguir.
       upsertClient: async (c) => {
-        try {
-          const saved = c.id && !c.id.startsWith('cl-')
-            ? await api.updateClient(c)
-            : await api.createClient(c)
-          set(s => ({
-            clients: s.clients.some(x => x.id === saved.id)
-              ? s.clients.map(x => x.id === saved.id ? saved : x)
-              : [...s.clients, saved],
-          }))
-        } catch {
-          // fallback: guardar solo local
-          set(s => ({
-            clients: s.clients.some(x => x.id === c.id)
-              ? s.clients.map(x => x.id === c.id ? c : x)
-              : [...s.clients, { ...c, id: c.id || `cl-${Date.now()}` }],
-          }))
-        }
+        const saved = c.id && !c.id.startsWith('cl-')
+          ? await api.updateClient(c)
+          : await api.createClient(c)
+        set(s => ({
+          clients: s.clients.some(x => x.id === saved.id)
+            ? s.clients.map(x => x.id === saved.id ? saved : x)
+            : [...s.clients, saved],
+        }))
       },
 
       deleteClient: async (id) => {
+        await api.deleteClient(id)
         set(s => ({ clients: s.clients.filter(c => c.id !== id) }))
-        try { await api.deleteClient(id) } catch { /* offline */ }
       },
 
       // ── Quotation list ────────────────────────────────────────
@@ -362,20 +429,18 @@ export const useMaestro = create<MaestroState>()(
         const { quotations } = get()
         const src = quotations.find(q => q.id === id)
         if (!src) return
-        const today = new Date().toISOString().slice(0, 10)
         const newCorr = generateCorrelative(quotations)
-        try {
-          const copy = await api.duplicateQuotation(id, newCorr)
-          set(s => ({ quotations: [...s.quotations, copy], activeId: copy.id, unsaved: false }))
-        } catch {
-          const copy: MasterQuotation = {
-            ...JSON.parse(JSON.stringify(src)),
-            id:          `q-${Date.now()}`,
-            correlative: newCorr,
-            date:        today, created_at: today, updated_at: today, status: 'Borrador',
-          }
-          set(s => ({ quotations: [...s.quotations, copy], activeId: copy.id, unsaved: false }))
-        }
+        await cloneQuoteWithCorrelative(set, src, newCorr, fresh => generateCorrelative(fresh))
+      },
+
+      // Copia la cotización manteniendo el mismo N° pero con sufijo -V{n},
+      // para reestudiar (p.ej. el margen) sin generar un correlativo nuevo.
+      createVersion: async (id) => {
+        const { quotations } = get()
+        const src = quotations.find(q => q.id === id)
+        if (!src) return
+        const newCorr = generateVersionCorrelative(quotations, src.correlative)
+        await cloneQuoteWithCorrelative(set, src, newCorr, fresh => generateVersionCorrelative(fresh, src.correlative))
       },
 
       deleteQuote: async (id) => {
@@ -416,43 +481,31 @@ export const useMaestro = create<MaestroState>()(
         if (!activeId) return
         const q = quotations.find(x => x.id === activeId)
         if (!q) return
+        if (!q.client_id) {
+          throw new Error('Selecciona un cliente antes de guardar la cotización')
+        }
         const totals  = calcTotals(q)
         const updated = { ...q, total: totals.venta, updated_at: new Date().toISOString().slice(0, 10) }
-        // Guarda el cálculo local de inmediato, pero "unsaved" solo se apaga
-        // tras confirmar que el backend aceptó el cambio (ver catch más abajo).
+        // Guarda el cálculo local de inmediato, pero "unsaved"/"activeId" solo
+        // se tocan tras confirmar éxito, y solo si el usuario sigue en esta
+        // misma cotización — si mientras tanto abrió otra, un guardado tardío
+        // de esta no debe pisar el estado de la que está viendo ahora.
         set(s => ({
           quotations: s.quotations.map(x => x.id === activeId ? updated : x),
         }))
         const isLocal = activeId.startsWith('q-')
         if (isLocal) {
-          let payload = updated
-          let saved: typeof updated
-          try {
-            saved = await api.createQuotation(payload)
-          } catch (err: any) {
-            // Correlativo duplicado: regenerar y reintentar una vez
-            if (err.message?.includes('409') || err.message?.toLowerCase().includes('correlative')) {
-              const freshCorr = generateCorrelative(get().quotations.filter(x => !x.id.startsWith('q-')))
-              payload = { ...payload, correlative: freshCorr }
-              set(s => ({
-                quotations: s.quotations.map(x => x.id === activeId ? { ...x, correlative: freshCorr } : x),
-              }))
-              saved = await api.createQuotation(payload)
-            } else {
-              throw err
-            }
-          }
-          set(s => ({
-            quotations: s.quotations.map(x => x.id === activeId ? saved : x),
-            activeId:   saved.id,
-            unsaved:    false,
-          }))
+          const saved = await createQuotationWithRetry(set, activeId, updated)
+          set(s => s.activeId === activeId
+            ? { quotations: s.quotations.map(x => x.id === activeId ? saved : x), activeId: saved.id, unsaved: false }
+            : { quotations: s.quotations.map(x => x.id === activeId ? saved : x) }
+          )
         } else {
           const saved = await api.updateQuotation(updated)
-          set(s => ({
-            quotations: s.quotations.map(x => x.id === activeId ? saved : x),
-            unsaved:    false,
-          }))
+          set(s => s.activeId === activeId
+            ? { quotations: s.quotations.map(x => x.id === activeId ? saved : x), unsaved: false }
+            : { quotations: s.quotations.map(x => x.id === activeId ? saved : x) }
+          )
         }
       },
 

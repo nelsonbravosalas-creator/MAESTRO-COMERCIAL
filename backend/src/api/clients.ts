@@ -170,7 +170,12 @@ export const createClientsRouter = (pool: Pool) => {
     } catch (error: any) {
       await client.query('ROLLBACK')
       logger.error('Create client error', { error: error.message, userId: req.user?.id })
-      if (error.code === '23505') return res.status(409).json({ error: 'Client RUT already exists' })
+      if (error.code === '23505') {
+        return res.status(409).json({
+          error: 'Client RUT already exists',
+          message: 'Ya existe un cliente registrado con ese RUT.',
+        })
+      }
       return res.status(500).json({ error: 'Failed to create client' })
     } finally {
       client.release()
@@ -201,13 +206,32 @@ export const createClientsRouter = (pool: Pool) => {
       return res.json(updated)
     } catch (error: any) {
       logger.error('Update client error', { error: error.message, clientId: req.params.id })
-      if (error.code === '23505') return res.status(409).json({ error: 'Client RUT already exists' })
+      if (error.code === '23505') {
+        return res.status(409).json({
+          error: 'Client RUT already exists',
+          message: 'Ya existe un cliente registrado con ese RUT.',
+        })
+      }
       return res.status(500).json({ error: 'Failed to update client' })
     }
   })
 
   router.delete('/:id', async (req: AuthRequest, res) => {
     try {
+      // Protección server-side: la UI ya deshabilita este botón si hay
+      // cotizaciones asociadas, pero eso depende del estado local (puede
+      // estar desactualizado), así que se repite el chequeo acá.
+      const inUse = await pool.query(
+        'SELECT 1 FROM quotations WHERE client_id = $1 AND deleted_at IS NULL LIMIT 1',
+        [req.params.id]
+      )
+      if (inUse.rows.length > 0) {
+        return res.status(409).json({
+          error: 'Client has quotations',
+          message: 'No se puede eliminar un cliente con cotizaciones asociadas.',
+        })
+      }
+
       const result = await pool.query(
         `UPDATE clients
             SET deleted_at = NOW()

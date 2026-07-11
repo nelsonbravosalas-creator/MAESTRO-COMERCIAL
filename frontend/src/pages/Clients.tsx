@@ -17,13 +17,15 @@ const emptyClient = (): MasterClient => ({
 
 interface ClientFormProps {
   initial: MasterClient | null
-  onSave: (c: MasterClient) => void
+  onSave: (c: MasterClient) => Promise<void>
   onClose: () => void
 }
 
 function ClientForm({ initial, onSave, onClose }: ClientFormProps) {
   const [form, setForm] = useState<MasterClient>(initial ?? emptyClient())
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const patch = (field: keyof MasterClient, value: string) =>
     setForm(f => ({ ...f, [field]: value }))
@@ -36,16 +38,27 @@ function ClientForm({ initial, onSave, onClose }: ClientFormProps) {
     return Object.keys(e).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
+    setSaving(true)
+    setSubmitError(null)
     const now = new Date().toISOString().slice(0, 10)
-    onSave({
-      ...form,
-      id: form.id || `cl-${Date.now()}`,
-      created_at: form.created_at || now,
-      updated_at: now,
-    })
+    try {
+      await onSave({
+        ...form,
+        id: form.id || `cl-${Date.now()}`,
+        created_at: form.created_at || now,
+        updated_at: now,
+      })
+      onClose()
+    } catch (err) {
+      // No cerramos el modal: si el backend rechazó el guardado (p.ej. RUT
+      // duplicado), el usuario necesita ver por qué para poder corregirlo.
+      setSubmitError(err instanceof Error ? err.message : 'No se pudo guardar el cliente')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -122,11 +135,13 @@ function ClientForm({ initial, onSave, onClose }: ClientFormProps) {
             </div>
           </div>
 
+          {submitError && <div className="cl-submit-error">{submitError}</div>}
+
           <div className="cl-form-actions">
-            <button type="submit" className="btn-primary-sm">
-              {initial?.id ? 'Guardar cambios' : 'Crear cliente'}
+            <button type="submit" className="btn-primary-sm" disabled={saving}>
+              {saving ? 'Guardando…' : (initial?.id ? 'Guardar cambios' : 'Crear cliente')}
             </button>
-            <button type="button" className="btn-outline-sm" onClick={onClose}>
+            <button type="button" className="btn-outline-sm" onClick={onClose} disabled={saving}>
               Cancelar
             </button>
           </div>
@@ -143,6 +158,8 @@ export const Clients: React.FC = () => {
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<MasterClient | null | 'new'>(null)
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const quoteCountMap = useMemo(() => {
     const m: Record<string, number> = {}
@@ -164,14 +181,22 @@ export const Clients: React.FC = () => {
     )
   }, [clients, search])
 
-  const handleSave = (c: MasterClient) => {
-    upsertClient(c)
-    setEditing(null)
-  }
+  // upsertClient ya no traga errores: si rechaza, ClientForm lo muestra y
+  // mantiene el modal abierto — por eso el cierre (onClose) vive en el form,
+  // no acá.
+  const handleSave = (c: MasterClient) => upsertClient(c)
 
-  const handleDelete = (id: string) => {
-    deleteClient(id)
-    setConfirmDel(null)
+  const handleDelete = async (id: string) => {
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteClient(id)
+      setConfirmDel(null)
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'No se pudo eliminar el cliente')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const editingClient = editing === 'new' ? null : editing as MasterClient | null
@@ -253,7 +278,7 @@ export const Clients: React.FC = () => {
                         <button
                           className="btn-icon btn-danger"
                           title="Eliminar"
-                          onClick={() => setConfirmDel(c.id)}
+                          onClick={() => { setDeleteError(null); setConfirmDel(c.id) }}
                           disabled={qCount > 0}
                         >
                           ✕
@@ -286,13 +311,18 @@ export const Clients: React.FC = () => {
 
       {/* Delete confirm */}
       {confirmDel && (
-        <div className="modal-overlay" onClick={() => setConfirmDel(null)}>
+        <div className="modal-overlay" onClick={() => !deleting && setConfirmDel(null)}>
           <div className="modal-confirm" onClick={e => e.stopPropagation()}>
             <h3>¿Eliminar cliente?</h3>
             <p>Esta acción no se puede deshacer.</p>
+            {deleteError && <div className="cl-submit-error">{deleteError}</div>}
             <div className="modal-confirm-actions">
-              <button className="btn-danger-sm" onClick={() => handleDelete(confirmDel)}>Eliminar</button>
-              <button className="btn-outline-sm" onClick={() => setConfirmDel(null)}>Cancelar</button>
+              <button className="btn-danger-sm" onClick={() => handleDelete(confirmDel)} disabled={deleting}>
+                {deleting ? 'Eliminando…' : 'Eliminar'}
+              </button>
+              <button className="btn-outline-sm" onClick={() => setConfirmDel(null)} disabled={deleting}>
+                Cancelar
+              </button>
             </div>
           </div>
         </div>

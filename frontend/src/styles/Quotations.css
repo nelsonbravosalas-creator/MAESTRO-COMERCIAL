@@ -1138,6 +1138,8 @@
   transition: all 0.15s;
 }
 .btn-icon:hover { background: #f1f5f9; border-color: #cbd5e1; color: #1e293b; }
+.btn-icon-version { font-size: 0.62rem; font-weight: 700; letter-spacing: -0.03em; }
+.btn-icon-version:hover { background: #eef2ff; border-color: #a5b4fc; color: #4338ca; }
 .btn-icon.btn-danger:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
 
 .btn-icon-sm {

@@ -29,7 +29,7 @@ const fmtDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-
 
 function QuotationsList({ onEdit }: { onEdit: () => void }) {
   const {
-    quotations, newDraft, loadQuote, duplicateQuote, deleteQuote,
+    quotations, newDraft, loadQuote, duplicateQuote, createVersion, deleteQuote,
     setStatus, setOperState, activeId,
   } = useMaestro()
   const [search, setSearch] = useState('')
@@ -51,7 +51,27 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
 
   const handleNew = () => { newDraft(); onEdit() }
   const handleEdit = (id: string) => { loadQuote(id); onEdit() }
-  const handleDuplicate = (id: string) => { duplicateQuote(id); onEdit() }
+
+  // duplicateQuote/createVersion ya no crean una copia local "zombie" si el
+  // backend rechaza el correlativo — si fallan, no hay nada que editar.
+  const handleDuplicate = async (id: string) => {
+    try {
+      await duplicateQuote(id)
+      onEdit()
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'No se pudo duplicar la cotización')
+    }
+  }
+
+  const handleNewVersion = async (id: string) => {
+    try {
+      await createVersion(id)
+      onEdit()
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'No se pudo crear la nueva versión')
+    }
+  }
+
   const handleDelete = (id: string) => { deleteQuote(id); setConfirm(null) }
 
   const handleExport = () => {
@@ -150,6 +170,13 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                       <div className="q-row-actions">
                         <button className="btn-icon" title="Editar" onClick={() => handleEdit(q.id)}>✎</button>
                         <button className="btn-icon" title="Duplicar" onClick={() => handleDuplicate(q.id)}>⧉</button>
+                        <button
+                          className="btn-icon btn-icon-version"
+                          title="Nueva versión (mismo N°, para reestudiar margen)"
+                          onClick={() => handleNewVersion(q.id)}
+                        >
+                          V+
+                        </button>
                         <button className="btn-icon btn-danger" title="Eliminar" onClick={() => setConfirm(q.id)}>✕</button>
                       </div>
                     </td>
@@ -920,9 +947,17 @@ export const Quotations: React.FC = () => {
   const active = useActiveQuotation()
 
   const goList = () => {
-    // Fire-and-forget: si falla, "unsaved" queda en true y el punto naranja
-    // sigue visible al volver a entrar a esta cotización.
-    if (unsaved) saveActive().catch(() => {})
+    // Fire-and-forget: no bloqueamos la navegación, pero si falla (p.ej. sin
+    // cliente asignado, o red caída) el usuario debe enterarse — "unsaved"
+    // queda en true y el punto naranja sigue visible al reabrir esta cotización.
+    if (unsaved) {
+      saveActive().catch(err => {
+        window.alert(
+          `No se pudo sincronizar con el servidor: ${err instanceof Error ? err.message : 'error desconocido'}.\n` +
+          'Tus cambios quedaron guardados solo en este navegador.'
+        )
+      })
+    }
     setView('list')
   }
 
@@ -942,6 +977,8 @@ export const Quotations: React.FC = () => {
           `${err.message}\n\n¿Recargar la versión del servidor? Perderás tus cambios locales no guardados.`
         )
         if (shouldReload) await reloadActive().catch(() => {})
+      } else {
+        window.alert(err instanceof Error ? err.message : 'No se pudo guardar la cotización. Verifica tu conexión.')
       }
       setSyncStatus('err')
     } finally {

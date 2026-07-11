@@ -278,6 +278,16 @@
   color: #dc2626;
 }
 
+.cl-submit-error {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
 .cl-form-actions {
   display: flex;
   gap: 10px;

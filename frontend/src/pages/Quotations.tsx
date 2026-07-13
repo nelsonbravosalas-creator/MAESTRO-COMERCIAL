@@ -8,6 +8,7 @@ import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { ApiError } from '../api/api'
 import { downloadDocx } from '../utils/docxExport'
 import { downloadHtml } from '../utils/htmlExport'
+import { buildQuotationValuationRows } from '../utils/quotationRows'
 import { CITIES, getDistance } from '../data/cityDistances'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -40,17 +41,52 @@ const STATUS_META: Record<QuoteStatus, { label: string; cls: string }> = {
 const OP_STATES: OperState[] = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
 
 const fmtDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+const IMPORT_CATEGORY_IDS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
+
+type ImportPreview = {
+  fileName: string
+  payload: any
+  counts: Record<CategoryId, number>
+  totalCosto: number
+  totalVenta: number
+}
+
+const buildImportPreview = (payload: any, fileName: string): ImportPreview => {
+  const counts: Record<CategoryId, number> = { mo: 0, log: 0, mat: 0, rep: 0, ins: 0 }
+  const margins = new Map<string, number>()
+  for (const category of payload?.categorias ?? []) {
+    margins.set(category.category_id, Number(category.margin_pct) || 30)
+  }
+
+  let totalCosto = 0
+  let totalVenta = 0
+  for (const line of payload?.lineas ?? []) {
+    const categoryId = line?.category_id as CategoryId
+    if (IMPORT_CATEGORY_IDS.includes(categoryId)) counts[categoryId] += 1
+    const costo = (Number(line?.cantidad) || 0) * Math.max(1, Number(line?.dias) || 1) * (Number(line?.precio_unitario) || 0)
+    const margin = Math.max(0, Math.min(99.9, margins.get(categoryId) ?? 30))
+    totalCosto += costo
+    totalVenta += margin >= 99.9 ? costo : costo / (1 - margin / 100)
+  }
+
+  return { fileName, payload, counts, totalCosto, totalVenta }
+}
 
 // ── Master List ────────────────────────────────────────────────────────────────
 
 function QuotationsList({ onEdit }: { onEdit: () => void }) {
   const {
-    quotations, newDraft, loadQuote, duplicateQuote, createVersion, deleteQuote,
+    quotations, newDraft, loadQuote, duplicateQuote, createVersion, deleteQuote, importQuotation,
     setStatus, setOperState, activeId,
   } = useMaestro()
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [confirm, setConfirm] = useState<string | null>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null)
+  const [importResult, setImportResult] = useState<any | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -96,6 +132,44 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
     a.download = `maestro-cotizaciones-${new Date().toISOString().slice(0,10)}.json`; a.click()
   }
 
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    setImportResult(null)
+    setImportError(null)
+    try {
+      const payload = JSON.parse(await file.text())
+      setImportPreview(buildImportPreview(payload, file.name))
+    } catch {
+      setImportPreview(null)
+      setImportError('JSON invalido. Revisa el archivo y vuelve a intentarlo.')
+    }
+  }
+
+  const handleConfirmImport = async () => {
+    if (!importPreview) return
+    setImporting(true)
+    setImportError(null)
+    try {
+      const result = await importQuotation(importPreview.payload)
+      setImportResult(result)
+      setImportPreview(null)
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'No se pudo importar la cotizacion')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleViewImported = () => {
+    const id = importResult?.quotation?.id
+    if (id) loadQuote(id)
+    setImportResult(null)
+    onEdit()
+  }
+
   return (
     <div className="q-list">
       {/* Toolbar */}
@@ -117,6 +191,16 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
           </select>
           <button className="btn-outline-sm" onClick={handleExport} title="Exportar JSON">
             ↓ Export
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="sr-only"
+            onChange={handleImportFile}
+          />
+          <button className="btn-outline-sm" onClick={() => importInputRef.current?.click()}>
+            Importar cotizacion
           </button>
           <button className="btn-primary-sm" onClick={handleNew}>
             + Nueva
@@ -201,6 +285,83 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {(importPreview || (importError && !importResult)) && (
+        <div className="modal-overlay" onClick={() => { if (!importing) { setImportPreview(null); setImportError(null) } }}>
+          <div className="modal-confirm import-modal" onClick={e => e.stopPropagation()}>
+            <h3>{importPreview ? 'Previsualizar importacion' : 'No se pudo leer el archivo'}</h3>
+            {importPreview ? (
+              <>
+                <div className="import-summary">
+                  <div><strong>Archivo</strong><span>{importPreview.fileName}</span></div>
+                  <div><strong>Correlativo</strong><span>{importPreview.payload?.correlative || '-'}</span></div>
+                  <div><strong>Cliente</strong><span>{importPreview.payload?.cliente?.nombre || '-'}</span></div>
+                  <div><strong>Usuario final</strong><span>{importPreview.payload?.enduser || '-'}</span></div>
+                  <div><strong>Referencia</strong><span>{importPreview.payload?.ref || '-'}</span></div>
+                  <div><strong>Costo neto estimado</strong><span>{fmtCLP.format(importPreview.totalCosto)}</span></div>
+                  <div><strong>Venta neta estimada</strong><span>{fmtCLP.format(importPreview.totalVenta)}</span></div>
+                </div>
+                <div className="import-counts">
+                  {IMPORT_CATEGORY_IDS.map(cid => (
+                    <span key={cid}>{cid.toUpperCase()}: {importPreview.counts[cid]}</span>
+                  ))}
+                </div>
+                {importError && <p className="import-error">{importError}</p>}
+                <div className="modal-confirm-actions">
+                  <button className="btn-primary-sm" onClick={handleConfirmImport} disabled={importing}>
+                    {importing ? 'Importando...' : 'Confirmar importacion'}
+                  </button>
+                  <button className="btn-outline-sm" onClick={() => importInputRef.current?.click()} disabled={importing}>Seleccionar otro JSON</button>
+                  <button className="btn-outline-sm" onClick={() => { setImportPreview(null); setImportError(null) }} disabled={importing}>Cancelar</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="import-error">{importError}</p>
+                <div className="modal-confirm-actions">
+                  <button className="btn-outline-sm" onClick={() => importInputRef.current?.click()}>Seleccionar JSON</button>
+                  <button className="btn-outline-sm" onClick={() => setImportError(null)}>Cerrar</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {importResult && (
+        <div className="modal-overlay" onClick={() => setImportResult(null)}>
+          <div className="modal-confirm import-modal" onClick={e => e.stopPropagation()}>
+            <h3>Importacion completada</h3>
+            <div className="import-summary">
+              <div><strong>Cliente</strong><span>{importResult.reporte_importacion.cliente.accion}</span></div>
+              <div><strong>UF usada</strong><span>{fmtCLP.format(importResult.reporte_importacion.uf.valor)} ({importResult.reporte_importacion.uf.fuente})</span></div>
+              <div><strong>Lineas</strong><span>{importResult.reporte_importacion.lineas_vinculadas_catalogo} / {importResult.reporte_importacion.lineas_total} vinculadas</span></div>
+            </div>
+            {importResult.reporte_importacion.lineas_sin_match.length > 0 && (
+              <div className="import-unmatched">
+                <strong>Lineas sin match</strong>
+                <ul>
+                  {importResult.reporte_importacion.lineas_sin_match.map((line: any, idx: number) => (
+                    <li key={`${line.descripcion}-${idx}`}>{line.descripcion} - {line.motivo}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {importResult.reporte_importacion.advertencias.length > 0 && (
+              <div className="import-unmatched">
+                <strong>Advertencias</strong>
+                <ul>
+                  {importResult.reporte_importacion.advertencias.map((warning: string, idx: number) => <li key={idx}>{warning}</li>)}
+                </ul>
+              </div>
+            )}
+            <div className="modal-confirm-actions">
+              <button className="btn-primary-sm" onClick={handleViewImported}>Ver cotizacion</button>
+              <button className="btn-outline-sm" onClick={() => setImportResult(null)}>Cerrar</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -767,7 +928,7 @@ function TabCotizacion() {
   const handleDocx = async () => {
     setLoadingDocx(true)
     try {
-      await downloadDocx({ q, client, sessionUserName: sessionUser?.name || '—' })
+      await downloadDocx({ q, client, sessionUserName: sessionUser?.name || '\u2014', expandedCategoryIds: expandedCats })
       showToast('Documento DOCX generado')
     } catch { showToast('Error al generar DOCX', false) }
     finally { setLoadingDocx(false) }
@@ -775,7 +936,7 @@ function TabCotizacion() {
 
   const handleHtml = () => {
     try {
-      downloadHtml({ q, client, sessionUserName: sessionUser?.name || '—' })
+      downloadHtml({ q, client, sessionUserName: sessionUser?.name || '\u2014', expandedCategoryIds: expandedCats })
       showToast('Documento HTML generado')
     } catch { showToast('Error al generar HTML', false) }
   }
@@ -883,36 +1044,34 @@ function TabCotizacion() {
               </tr>
             </thead>
             <tbody>
-              {q.categories.map((cat, i) => {
-                const r     = calcCat(cat.id, q.categories, q.items)
-                if (r.venta === 0) return null
-                const items  = (q.items[cat.id] || []).filter(it => it.cant > 0 && it.desc)
-                const isOpen = expandedCats.has(cat.id)
+              {buildQuotationValuationRows(q, expandedCats).map(row => {
+                const items  = (q.items[row.cat.id] || []).filter(it => it.cant > 0 && it.desc)
+                const isOpen = row.details.length > 0
                 return (
-                  <React.Fragment key={cat.id}>
+                  <React.Fragment key={row.cat.id}>
                     <tr className={`doc-valuation-row ${isOpen ? 'doc-row-expanded' : ''}`}>
                       <td className="val-expand no-print">
                         {items.length > 0 && (
                           <label className="doc-expand-toggle" title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}>
-                            <input type="checkbox" checked={isOpen} onChange={() => toggleCat(cat.id)} />
+                            <input type="checkbox" checked={expandedCats.has(row.cat.id)} onChange={() => toggleCat(row.cat.id)} />
                             <span className="doc-expand-icon">{isOpen ? '▾' : '▸'}</span>
                           </label>
                         )}
                       </td>
-                      <td className="val-num">{i + 1}</td>
-                      <td>{cat.label}</td>
-                      <td className="text-right mono">{fmtCLP.format(r.venta)}</td>
+                      <td className="val-num">{row.rowNumber}</td>
+                      <td>{row.cat.label}</td>
+                      <td className="text-right mono">{fmtCLP.format(row.venta)}</td>
                     </tr>
                     {/* Detalle expandido: solo descripción, cantidad y unidad —
                         sin valores unitarios ni totales de línea. */}
-                    {isOpen && items.map(item => (
+                    {row.details.map(({ item, meta }) => (
                       <tr key={item.id} className="doc-detail-row no-print-detail">
                         <td className="doc-detail-indent" colSpan={2} />
                         <td className="doc-detail-desc" colSpan={2}>
                           <span className="doc-detail-bullet">·</span>
                           <span className="doc-detail-name">{item.desc}</span>
                           <span className="doc-detail-meta">
-                            {item.cant} {item.unidad}{item.days && item.days > 1 ? ` × ${item.days} días` : ''}
+                            {meta}
                           </span>
                         </td>
                       </tr>

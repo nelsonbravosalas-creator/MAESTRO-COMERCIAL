@@ -1,5 +1,6 @@
-import { calcCat, calcTotals, fmtCLP } from '../stores/maestro-store'
+import { calcTotals, fmtCLP } from '../stores/maestro-store'
 import type { MasterClient, MasterQuotation } from '../types'
+import { buildQuotationValuationRows } from './quotationRows'
 
 const fmtDateLong = (d: string) =>
   new Date(d + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -11,21 +12,26 @@ export function downloadHtml(params: {
   q:               MasterQuotation
   client:          MasterClient | undefined
   sessionUserName: string
+  expandedCategoryIds?: Iterable<string>
 }): void {
-  const { q, client, sessionUserName } = params
+  const { q, client, sessionUserName, expandedCategoryIds } = params
   const totals = calcTotals(q)
   const iva    = totals.venta * (q.iva / 100)
   const conIva = totals.venta + iva
   const enUF   = q.uf > 0 ? totals.venta / q.uf : 0
 
-  const valRows = q.categories.map((cat, i) => {
-    const r = calcCat(cat.id, q.categories, q.items)
-    if (r.venta === 0) return ''
+  const valRows = buildQuotationValuationRows(q, expandedCategoryIds).map(row => {
+    const detailRows = row.details.map(({ item, meta }) => `        <tr class="det">
+          <td class="cn det-indent"></td>
+          <td class="det-desc"><span class="det-bullet">&middot;</span><span>${esc(item.desc)}</span><span class="det-meta">${esc(meta)}</span></td>
+          <td></td>
+        </tr>`).join('\n')
+
     return `        <tr>
-          <td class="cn">${i + 1}</td>
-          <td>${esc(cat.label)}</td>
-          <td class="cm">${fmtCLP.format(r.venta)}</td>
-        </tr>`
+          <td class="cn">${row.rowNumber}</td>
+          <td>${esc(row.cat.label)}</td>
+          <td class="cm">${fmtCLP.format(row.venta)}</td>
+        </tr>${detailRows ? `\n${detailRows}` : ''}`
   }).join('\n')
 
   const listRows = (items: string[]) =>
@@ -64,6 +70,11 @@ export function downloadHtml(params: {
     .vt .cm,.vt .cn{text-align:right}.vt .cn{text-align:center;color:#94a3b8;width:40px}
     .vt tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:10pt;color:#334155}
     .vt .cm{font-family:'Courier New',monospace;white-space:nowrap}
+    .vt .det td{background:#f8fafc;border-bottom:none;padding-top:4px;padding-bottom:4px;font-size:9pt}
+    .vt .det-indent{border-right:2px solid #cbd5e1}
+    .vt .det-desc{display:flex;align-items:baseline;gap:8px;color:#475569}
+    .vt .det-bullet{color:#94a3b8;flex-shrink:0}
+    .vt .det-meta{color:#94a3b8;font-size:8pt;margin-left:auto;white-space:nowrap}
     .sub td{background:#f8fafc;font-weight:600;border-top:2px solid #e2e8f0!important}
     .sub .cm{color:#1e3a8a}
     .riv td{color:#64748b;font-size:9.5pt;background:#f8fafc}

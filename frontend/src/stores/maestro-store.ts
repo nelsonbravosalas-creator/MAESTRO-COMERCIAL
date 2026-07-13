@@ -5,6 +5,7 @@ import {
   MasterClient, MasterQuotation, QuoteStatus, OperState,
 } from '../types'
 import api, { ApiError } from '../api/api'
+import type { ImportQuotationResult } from '../api/api'
 
 // ── Defaults ──────────────────────────────────────────────────
 
@@ -188,6 +189,7 @@ interface MaestroState {
   setStatus:         (id: string, s: QuoteStatus)    => Promise<void>
   setOperState:      (id: string, s: OperState)      => Promise<void>
   importQuotations:  (qs: MasterQuotation[])         => void
+  importQuotation:   (payload: unknown)              => Promise<ImportQuotationResult>
 
   // ── Active quotation
   patchActive: (fields: Partial<MasterQuotation>) => void
@@ -471,6 +473,20 @@ export const useMaestro = create<MaestroState>()(
       })),
 
       // ── Active quotation mutations ────────────────────────────
+      importQuotation: async (payload) => {
+        const result = await api.importQuotation(payload)
+        set(s => ({
+          quotations: s.quotations.some(q => q.id === result.quotation.id)
+            ? s.quotations.map(q => q.id === result.quotation.id ? result.quotation : q)
+            : [result.quotation, ...s.quotations],
+          activeId: result.quotation.id,
+          activeTab: 'base',
+          unsaved: false,
+        }))
+        await get().loadData()
+        return result
+      },
+
       patchActive: (fields) => set(s => {
         if (!s.activeId) return {}
         return {

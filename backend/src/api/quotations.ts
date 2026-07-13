@@ -6,6 +6,21 @@ import { authMiddleware, AuthRequest } from '../middleware/auth'
 const VALID_STATUSES = ['Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada']
 const VALID_OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
 const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins']
+const TERM_TYPES = ['scope', 'exclusion', 'commercial']
+const CATEGORY_LABELS: Record<string, string> = {
+  mo: 'Mano de Obra Especializada',
+  log: 'Logistica y Operacion',
+  mat: 'Provision de Materiales',
+  rep: 'Suministro Equipos o Repuestos',
+  ins: 'Insumos Industriales y Gases',
+}
+const CATEGORY_COLORS: Record<string, string> = {
+  mo: '#1e293b',
+  log: '#475569',
+  mat: '#1e3a8a',
+  rep: '#312e81',
+  ins: '#164e63',
+}
 
 const normalizeStatus = (status: string | undefined) =>
   VALID_STATUSES.includes(status ?? '') ? status : 'Borrador'
@@ -133,6 +148,270 @@ const replaceChildren = async (db: PoolClient, quotationId: string, body: any) =
   }
 }
 
+const normalizeText = (value: string) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/["']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const normalizeRutDigits = (value: string) =>
+  String(value ?? '').replace(/[^0-9kK]/g, '').toUpperCase()
+
+const normalizeRut = (value: string) => {
+  const raw = normalizeRutDigits(value)
+  if (raw.length < 2) return null
+  return `${raw.slice(0, -1)}-${raw.slice(-1)}`
+}
+
+const isValidRut = (value: string) => {
+  const raw = normalizeRutDigits(value)
+  if (!/^\d{1,8}[0-9K]$/.test(raw)) return false
+  const body = raw.slice(0, -1)
+  const dv = raw.slice(-1)
+  let sum = 0
+  let multiplier = 2
+  for (let i = body.length - 1; i >= 0; i--) {
+    sum += Number(body[i]) * multiplier
+    multiplier = multiplier === 7 ? 2 : multiplier + 1
+  }
+  const expectedValue = 11 - (sum % 11)
+  const expected = expectedValue === 11 ? '0' : expectedValue === 10 ? 'K' : String(expectedValue)
+  return dv === expected
+}
+
+const parseNumber = (value: any) => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : NaN
+}
+
+const validateImportPayload = (body: any) => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { status: 400, payload: { error: 'Payload malformado' } }
+  }
+  if (body.esquema_version !== '1.0') {
+    return { status: 422, payload: { error: 'esquema_version debe ser 1.0' } }
+  }
+  if (!body.correlative || !/^SYM-\d{3}-\d{2}-\d{4}$/.test(String(body.correlative))) {
+    return {
+      status: 422,
+      payload: {
+        error: 'Correlativo invalido',
+        message: 'El correlativo debe cumplir el formato SYM-000-MM-YYYY. Ejemplo: SYM-006-07-2026.',
+      },
+    }
+  }
+  if (!body.cliente?.nombre || !body.cliente?.rut) {
+    return { status: 422, payload: { error: 'cliente.nombre y cliente.rut son requeridos' } }
+  }
+  if (!isValidRut(body.cliente.rut)) {
+    return { status: 422, payload: { error: 'RUT invalido', message: 'El RUT del cliente no tiene digito verificador valido.' } }
+  }
+  if (!Array.isArray(body.lineas) || body.lineas.length === 0) {
+    return { status: 422, payload: { error: 'Debe incluir al menos una linea' } }
+  }
+  for (const [idx, line] of body.lineas.entries()) {
+    const categoryId = line?.category_id
+    const cantidad = parseNumber(line?.cantidad)
+    const dias = parseNumber(line?.dias ?? 1)
+    const precio = parseNumber(line?.precio_unitario)
+    if (!CATEGORY_IDS.includes(categoryId)) {
+      return { status: 422, payload: { error: `lineas[${idx}].category_id invalido` } }
+    }
+    if (!Number.isFinite(cantidad) || cantidad < 0) {
+      return { status: 422, payload: { error: `lineas[${idx}].cantidad debe ser >= 0` } }
+    }
+    if (!Number.isFinite(dias) || dias < 1) {
+      return { status: 422, payload: { error: `lineas[${idx}].dias debe ser >= 1` } }
+    }
+    if (!Number.isFinite(precio) || precio < 0) {
+      return { status: 422, payload: { error: `lineas[${idx}].precio_unitario debe ser >= 0` } }
+    }
+  }
+  for (const category of body.categorias ?? []) {
+    if (!CATEGORY_IDS.includes(category?.category_id)) {
+      return { status: 422, payload: { error: `categorias.category_id invalido: ${category?.category_id}` } }
+    }
+  }
+  for (const termType of Object.keys(body.terminos ?? {})) {
+    if (!TERM_TYPES.includes(termType)) {
+      return { status: 422, payload: { error: `term_type invalido: ${termType}` } }
+    }
+    if (!Array.isArray(body.terminos[termType])) {
+      return { status: 422, payload: { error: `terminos.${termType} debe ser un arreglo` } }
+    }
+  }
+  return null
+}
+
+const suggestNextCorrelative = async (db: Pool | PoolClient, correlative: string) => {
+  const match = correlative.match(/^SYM-\d{3}-(\d{2})-(\d{4})$/)
+  if (!match) return null
+  const [, month, year] = match
+  const result = await db.query(
+    'SELECT correlative FROM quotations WHERE correlative LIKE $1',
+    [`SYM-%-${month}-${year}`]
+  )
+  const used = new Set(
+    result.rows
+      .map((row: any) => String(row.correlative).match(/^SYM-(\d{3})-\d{2}-\d{4}$/)?.[1])
+      .filter((n: string | undefined): n is string => Boolean(n))
+      .map((n: string) => Number(n))
+  )
+  let next = 1
+  while (used.has(next)) next++
+  return `SYM-${String(next).padStart(3, '0')}-${month}-${year}`
+}
+
+const fetchUfValue = async () => {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 5000)
+  try {
+    const res = await fetch('https://mindicador.cl/api/uf', { signal: controller.signal })
+    if (!res.ok) throw new Error(`mindicador ${res.status}`)
+    const data: any = await res.json()
+    const value = Number(data?.serie?.[0]?.valor)
+    if (!Number.isFinite(value) || value <= 0) throw new Error('UF response without valid value')
+    return value
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+const resolveUf = async (body: any) => {
+  const manual = Number(body.uf_manual)
+  if (Number.isFinite(manual) && manual > 0) {
+    return { valor: manual, fuente: 'manual' as const }
+  }
+  const value = await fetchUfValue()
+  return { valor: value, fuente: 'mindicador' as const }
+}
+
+const findCatalogMatch = async (db: PoolClient, categoryId: string, description: string) => {
+  const normalized = normalizeText(description)
+  const result = await db.query(
+    `SELECT id, description
+       FROM catalog_items
+      WHERE category_id = $1
+        AND is_active = true`,
+    [categoryId]
+  )
+  const candidates = result.rows.map((row: any) => ({
+    id: row.id,
+    description: row.description,
+    normalized: normalizeText(row.description),
+  }))
+
+  const exact = candidates.filter(c => c.normalized === normalized)
+  if (exact.length === 1) return { catalogItemId: exact[0].id, motivo: null as string | null }
+  if (exact.length > 1) return { catalogItemId: null, motivo: 'ambiguo' }
+
+  const contained = candidates.filter(c =>
+    c.normalized && (normalized.includes(c.normalized) || c.normalized.includes(normalized))
+  )
+  if (contained.length === 1) return { catalogItemId: contained[0].id, motivo: null as string | null }
+  if (contained.length > 1) return { catalogItemId: null, motivo: 'ambiguo' }
+  return { catalogItemId: null, motivo: 'sin_match' }
+}
+
+const upsertImportClient = async (db: PoolClient, body: any, userId: string | null) => {
+  const input = body.cliente
+  const normalizedRut = normalizeRut(input.rut)!
+  const rutDigits = normalizeRutDigits(normalizedRut)
+  const existing = await db.query(
+    `SELECT *
+       FROM clients
+      WHERE regexp_replace(COALESCE(rut, ''), '[^0-9kK]', '', 'g') = $1
+        AND deleted_at IS NULL
+      LIMIT 1`,
+    [rutDigits]
+  )
+
+  let action: 'existente' | 'creado' = 'existente'
+  let clientRow: any
+  if (existing.rows[0]) {
+    clientRow = existing.rows[0]
+    const updated = await db.query(
+      `UPDATE clients
+          SET activity = COALESCE(activity, $1),
+              address = COALESCE(address, $2),
+              city = COALESCE(city, $3),
+              updated_at = NOW()
+        WHERE id = $4
+        RETURNING *`,
+      [input.actividad || null, input.direccion || null, input.ciudad || null, clientRow.id]
+    )
+    clientRow = updated.rows[0]
+  } else {
+    action = 'creado'
+    const inserted = await db.query(
+      `INSERT INTO clients (name, rut, activity, address, city, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        input.nombre,
+        normalizedRut,
+        input.actividad || null,
+        input.direccion || null,
+        input.ciudad || null,
+        userId,
+      ]
+    )
+    clientRow = inserted.rows[0]
+  }
+
+  let contactId: string | null = null
+  const contact = input.contacto
+  const contactName = String(contact?.nombre ?? '').trim()
+  const contactEmail = String(contact?.email ?? '').trim()
+  if (contact && (contactName || contactEmail)) {
+    const contactResult = contactEmail
+      ? await db.query(
+          'SELECT * FROM client_contacts WHERE client_id = $1 AND lower(COALESCE(email, \'\')) = lower($2) LIMIT 1',
+          [clientRow.id, contactEmail]
+        )
+      : await db.query(
+          'SELECT * FROM client_contacts WHERE client_id = $1 AND name = $2 LIMIT 1',
+          [clientRow.id, contactName]
+        )
+
+    if (contactResult.rows[0]) {
+      const updated = await db.query(
+        `UPDATE client_contacts
+            SET name = COALESCE(NULLIF($1, ''), name),
+                cargo = COALESCE(cargo, $2),
+                email = COALESCE(NULLIF(email, ''), $3),
+                phone = COALESCE(phone, $4),
+                updated_at = NOW()
+          WHERE id = $5
+          RETURNING id`,
+        [contactName, contact?.cargo || null, contactEmail || null, contact?.telefono || null, contactResult.rows[0].id]
+      )
+      contactId = updated.rows[0].id
+    } else {
+      const hasPrimary = await db.query('SELECT 1 FROM client_contacts WHERE client_id = $1 AND is_primary = true LIMIT 1', [clientRow.id])
+      const inserted = await db.query(
+        `INSERT INTO client_contacts (client_id, name, cargo, email, phone, is_primary)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [
+          clientRow.id,
+          contactName || contactEmail,
+          contact?.cargo || null,
+          contactEmail || null,
+          contact?.telefono || null,
+          hasPrimary.rows.length === 0,
+        ]
+      )
+      contactId = inserted.rows[0].id
+    }
+  }
+
+  return { action, clientId: clientRow.id as string, contactId }
+}
+
 export const createQuotationsRouter = (pool: Pool) => {
   const router = Router()
   router.use(authMiddleware)
@@ -149,6 +428,161 @@ export const createQuotationsRouter = (pool: Pool) => {
     } catch (error: any) {
       logger.error('Get quotations error', { error: error.message })
       return res.status(500).json({ error: 'Failed to fetch quotations' })
+    }
+  })
+
+  router.post('/import', async (req: AuthRequest, res) => {
+    const validationError = validateImportPayload(req.body)
+    if (validationError) return res.status(validationError.status).json(validationError.payload)
+
+    const db = await pool.connect()
+    try {
+      const body = req.body
+      const duplicate = await db.query('SELECT id FROM quotations WHERE correlative = $1 LIMIT 1', [body.correlative])
+      if (duplicate.rows.length > 0) {
+        const suggested = await suggestNextCorrelative(db, body.correlative)
+        return res.status(409).json({
+          error: 'Correlativo ya existe',
+          message: `Correlativo ya existe: ${body.correlative}`,
+          correlative: body.correlative,
+          sugerido: suggested,
+        })
+      }
+
+      await db.query('BEGIN')
+
+      const client = await upsertImportClient(db, body, req.user?.id ?? null)
+      let uf
+      try {
+        uf = await resolveUf(body)
+      } catch (error: any) {
+        const err = new Error('No se pudo obtener UF automatica; reintente o envie uf_manual') as any
+        err.status = 502
+        err.cause = error
+        throw err
+      }
+
+      const inserted = await db.query(
+        `INSERT INTO quotations
+          (correlative, client_id, contact_id, enduser, ref, date, valid_until,
+           status, oper_state, uf_value, iva_pct, notes, created_by)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, 'Borrador', NULL, $7, $8, $9, $10)
+         RETURNING *`,
+        [
+          body.correlative,
+          client.clientId,
+          client.contactId,
+          body.enduser || null,
+          body.ref || null,
+          body.valid_until || null,
+          uf.valor,
+          Number(body.iva_pct) || 19,
+          body.notes || null,
+          req.user?.id ?? null,
+        ]
+      )
+      const quotationId = inserted.rows[0].id
+
+      const categoryInput = new Map<string, any>()
+      for (const category of body.categorias ?? []) {
+        if (CATEGORY_IDS.includes(category?.category_id)) categoryInput.set(category.category_id, category)
+      }
+      for (const line of body.lineas) {
+        if (!categoryInput.has(line.category_id)) {
+          categoryInput.set(line.category_id, {
+            category_id: line.category_id,
+            label: CATEGORY_LABELS[line.category_id] ?? line.category_id,
+            margin_pct: 30,
+          })
+        }
+      }
+
+      for (const categoryId of CATEGORY_IDS) {
+        const category = categoryInput.get(categoryId)
+        if (!category) continue
+        await db.query(
+          `INSERT INTO quotation_categories
+            (quotation_id, category_id, label, margin_pct, color, note, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            quotationId,
+            categoryId,
+            category.label || CATEGORY_LABELS[categoryId] || categoryId,
+            Number(category.margin_pct) || 30,
+            category.color || CATEGORY_COLORS[categoryId] || null,
+            category.note || null,
+            CATEGORY_IDS.indexOf(categoryId),
+          ]
+        )
+      }
+
+      const unmatched: Array<{ descripcion: string; motivo: string }> = []
+      let linkedCount = 0
+      for (const [idx, line] of body.lineas.entries()) {
+        const match = await findCatalogMatch(db, line.category_id, line.descripcion)
+        if (match.catalogItemId) linkedCount++
+        else unmatched.push({ descripcion: line.descripcion, motivo: match.motivo ?? 'sin_match' })
+
+        await db.query(
+          `INSERT INTO quotation_line_items
+            (quotation_id, category_id, catalog_item_id, description, unit_name,
+             quantity, days, unit_price, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            quotationId,
+            line.category_id,
+            match.catalogItemId,
+            line.descripcion,
+            line.unidad || 'Und',
+            Number(line.cantidad) || 0,
+            Math.max(1, Number(line.dias) || 1),
+            Number(line.precio_unitario) || 0,
+            idx,
+          ]
+        )
+      }
+
+      for (const termType of TERM_TYPES) {
+        const terms = body.terminos?.[termType] ?? []
+        for (const [idx, content] of terms.entries()) {
+          if (!content) continue
+          await db.query(
+            `INSERT INTO quotation_terms (quotation_id, term_type, content, sort_order)
+             VALUES ($1, $2, $3, $4)`,
+            [quotationId, termType, String(content), idx]
+          )
+        }
+      }
+
+      await db.query('COMMIT')
+
+      const created = await fullQuotation(pool, quotationId)
+      return res.status(201).json({
+        quotation: created,
+        reporte_importacion: {
+          cliente: { accion: client.action, client_id: client.clientId },
+          uf,
+          lineas_total: body.lineas.length,
+          lineas_vinculadas_catalogo: linkedCount,
+          lineas_sin_match: unmatched,
+          advertencias: [],
+        },
+      })
+    } catch (error: any) {
+      await db.query('ROLLBACK').catch(() => {})
+      logger.error('Import quotation error', { error: error.message, userId: req.user?.id })
+      if (error.status === 502) {
+        return res.status(502).json({
+          error: 'No se pudo obtener UF automatica; reintente o envie uf_manual',
+          message: 'No se pudo obtener UF automatica; reintente o envie uf_manual',
+        })
+      }
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'Correlativo ya existe', message: 'Correlativo ya existe' })
+      }
+      return res.status(500).json({ error: 'Failed to import quotation', message: 'No se pudo importar la cotizacion' })
+    } finally {
+      db.release()
     }
   })
 

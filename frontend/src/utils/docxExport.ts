@@ -3,8 +3,9 @@ import {
   Document, Packer, Paragraph, ShadingType,
   Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType,
 } from 'docx'
-import { calcCat, calcTotals, fmtCLP } from '../stores/maestro-store'
+import { calcTotals, fmtCLP } from '../stores/maestro-store'
 import type { MasterClient, MasterQuotation } from '../types'
+import { buildQuotationValuationRows } from './quotationRows'
 
 const C = {
   DARK:  '0F172A', NAVY:  '1E3A8A', BLUE:  '2563EB',
@@ -114,8 +115,9 @@ export async function downloadDocx(params: {
   q:               MasterQuotation
   client:          MasterClient | undefined
   sessionUserName: string
+  expandedCategoryIds?: Iterable<string>
 }): Promise<void> {
-  const { q, client, sessionUserName } = params
+  const { q, client, sessionUserName, expandedCategoryIds } = params
   const totals = calcTotals(q)
   const iva    = totals.venta * (q.iva / 100)
   const conIva = totals.venta + iva
@@ -153,17 +155,32 @@ export async function downloadDocx(params: {
 
   // ── Valuation table ─────────────────────────────────────────────────
   const valRows: TableRow[] = []
-  q.categories.forEach((cat, idx) => {
-    const r = calcCat(cat.id, q.categories, q.items)
-    if (r.venta === 0) return
+  buildQuotationValuationRows(q, expandedCategoryIds).forEach(row => {
     valRows.push(new TableRow({
       cantSplit: true,
       children: [
-        mkCell([para([tr(String(idx + 1), { sz: 10, color: C.GRAY })], AlignmentType.CENTER)], { w: 8 }),
-        mkCell([para([tr(cat.label, { sz: 10 })])],                                             { w: 72 }),
-        mkCell([para([tr(fmtCLP.format(r.venta), { sz: 10, bold: true })], AlignmentType.RIGHT)], { w: 20 }),
+        mkCell([para([tr(String(row.rowNumber), { sz: 10, color: C.GRAY })], AlignmentType.CENTER)], { w: 8 }),
+        mkCell([para([tr(row.cat.label, { sz: 10 })])],                                             { w: 72 }),
+        mkCell([para([tr(fmtCLP.format(row.venta), { sz: 10, bold: true })], AlignmentType.RIGHT)], { w: 20 }),
       ],
     }))
+
+    row.details.forEach(({ item, meta }) => {
+      valRows.push(new TableRow({
+        cantSplit: true,
+        children: [
+          mkCell([para([tr('', { sz: 9, color: C.GRAY })], AlignmentType.CENTER)], { w: 8, shade: 'F8FAFC' }),
+          mkCell([
+            para([
+              tr('·  ', { sz: 9, color: C.GRAY }),
+              tr(item.desc, { sz: 9, color: '334155' }),
+              tr(`    ${meta}`, { sz: 8, color: C.GRAY }),
+            ]),
+          ], { w: 72, shade: 'F8FAFC' }),
+          mkCell([para([tr('', { sz: 9, color: C.GRAY })], AlignmentType.RIGHT)], { w: 20, shade: 'F8FAFC' }),
+        ],
+      }))
+    })
   })
 
   const valuationTable = new Table({

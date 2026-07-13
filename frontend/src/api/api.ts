@@ -23,9 +23,11 @@ const clearAuth = () => {
 // (conflicto de versión) de un error genérico de red/servidor.
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  data?: any
+  constructor(status: number, message: string, data?: any) {
     super(message)
     this.status = status
+    this.data = data
   }
 }
 
@@ -51,7 +53,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
-    throw new ApiError(res.status, err.message ?? err.error ?? `HTTP ${res.status}`)
+    throw new ApiError(res.status, err.message ?? err.error ?? `HTTP ${res.status}`, err)
   }
 
   return res.json() as Promise<T>
@@ -253,6 +255,20 @@ function fromMasterQuotation(q: MasterQuotation) {
   }
 }
 
+export interface ImportQuotationReport {
+  cliente: { accion: 'existente' | 'creado'; client_id: string }
+  uf: { valor: number; fuente: 'mindicador' | 'manual' }
+  lineas_total: number
+  lineas_vinculadas_catalogo: number
+  lineas_sin_match: Array<{ descripcion: string; motivo: 'sin_match' | 'ambiguo' | string }>
+  advertencias: string[]
+}
+
+export interface ImportQuotationResult {
+  quotation: MasterQuotation
+  reporte_importacion: ImportQuotationReport
+}
+
 // ── API pública ───────────────────────────────────────────────
 
 export const api = {
@@ -383,6 +399,14 @@ export const api = {
   },
 
   deleteQuotation: (id: string) => del(`/api/quotations/${id}`),
+
+  importQuotation: async (payload: unknown): Promise<ImportQuotationResult> => {
+    const raw: any = await post('/api/quotations/import', payload)
+    return {
+      quotation: toMasterQuotation(raw.quotation),
+      reporte_importacion: raw.reporte_importacion,
+    }
+  },
 
   // ── Proyectos ───────────────────────────────────────────────
   getProjects: () => get<any[]>('/api/projects'),

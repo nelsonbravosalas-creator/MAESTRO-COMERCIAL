@@ -1,0 +1,72 @@
+{
+  "esquema_version": "1.0",
+  "origen": {
+    "skill": "cotizaciones-inf-hvac-maestro-comercial",
+    "informe_numero": "ID-2026-003",
+    "generado_en": "2026-07-13T18:30:00Z"
+  },
+  "correlative": "SYM-006-07-2026",
+  "cliente": {
+    "nombre": "CLIMATEMP SPA",
+    "rut": "77.381.030-3",
+    "actividad": "Climatizacion",
+    "direccion": "Av. Providencia 1234",
+    "ciudad": "Santiago",
+    "contacto": {
+      "nombre": "Maria Gonzalez",
+      "cargo": "Jefa de Mantencion",
+      "email": "maria.gonzalez@climatemp.cl",
+      "telefono": "+56 9 1234 5678"
+    }
+  },
+  "enduser": "TYPSA",
+  "ref": "Reparacion Modulo N2 climatizacion de precision Emerson S17",
+  "valid_until": "2026-07-28",
+  "uf_manual": 39500,
+  "iva_pct": 19,
+  "notes": "Generada desde informe ID-2026-003 via skill.",
+  "categorias": [
+    { "category_id": "mo",  "label": "Mano de Obra", "margin_pct": 35 },
+    { "category_id": "log", "label": "Logistica",    "margin_pct": 30 },
+    { "category_id": "mat", "label": "Materiales",   "margin_pct": 30 },
+    { "category_id": "rep", "label": "Repuestos",    "margin_pct": 30 },
+    { "category_id": "ins", "label": "Insumos",      "margin_pct": 30 }
+  ],
+  "lineas": [
+    {
+      "category_id": "mo",
+      "descripcion": "Tecnico Especializado HVAC",
+      "unidad": "Jornada",
+      "cantidad": 1,
+      "dias": 4,
+      "precio_unitario": 150000,
+      "match_catalogo": "auto"
+    },
+    {
+      "category_id": "ins",
+      "descripcion": "Acidol COTACO 2kg",
+      "unidad": "kg",
+      "cantidad": 2,
+      "dias": 1,
+      "precio_unitario": 25500,
+      "match_catalogo": "propuesto"
+    }
+  ],
+  "terminos": {
+    "scope": [
+      "Recuperacion de refrigerante (si aplica)",
+      "Pruebas de presurizacion con nitrogeno",
+      "Puesta en marcha y ajuste de parametros"
+    ],
+    "exclusion": [
+      "Obras civiles.",
+      "Demoliciones.",
+      "Todo lo no indicado expresamente como incluido."
+    ],
+    "commercial": [
+      "Validez de la oferta: 15 dias corridos.",
+      "Forma de pago: 50% anticipo con la OC, saldo contra entrega.",
+      "Facturacion en pesos chilenos (CLP)."
+    ]
+  }
+}

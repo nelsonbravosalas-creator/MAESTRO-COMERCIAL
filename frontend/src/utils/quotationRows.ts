@@ -16,8 +16,11 @@ export interface QuotationValuationRow {
 const toExpandedSet = (expandedCategoryIds?: Iterable<string>): Set<string> =>
   new Set(expandedCategoryIds ?? [])
 
-export const formatDetailMeta = (item: CostItem): string =>
-  `${item.cant} ${item.unidad}${item.days && item.days > 1 ? ` \u00d7 ${item.days} dias` : ''}`
+export const formatDetailMeta = (item: CostItem): string => {
+  const route = item.puntoA && item.puntoB ? `${item.puntoA} \u2192 ${item.puntoB} \u00b7 ` : ''
+  const days  = item.days && item.days > 1 ? ` \u00d7 ${item.days} dias` : ''
+  return `${route}${item.cant} ${item.unidad}${days}`
+}
 
 export function buildQuotationValuationRows(
   q: MasterQuotation,

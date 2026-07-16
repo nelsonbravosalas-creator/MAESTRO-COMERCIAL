@@ -209,6 +209,7 @@ interface MaestroState {
 
   // Lists
   addListItem:    (key: 'scope' | 'exclusions' | 'commercial')                    => void
+  insertListItemAfter: (key: 'scope' | 'exclusions' | 'commercial', idx: number)   => void
   removeListItem: (key: 'scope' | 'exclusions' | 'commercial', idx: number)       => void
   patchListItem:  (key: 'scope' | 'exclusions' | 'commercial', idx: number, value: string) => void
 
@@ -624,6 +625,19 @@ export const useMaestro = create<MaestroState>()(
             q.id !== s.activeId ? q
               : { ...q, [key]: [...(q[key] as string[]), '...'] }
           ),
+          unsaved: true,
+        }
+      }),
+
+      insertListItemAfter: (key, idx) => set(s => {
+        if (!s.activeId) return {}
+        return {
+          quotations: s.quotations.map(q => {
+            if (q.id !== s.activeId) return q
+            const arr = [...(q[key] as string[])]
+            arr.splice(idx + 1, 0, '')
+            return { ...q, [key]: arr }
+          }),
           unsaved: true,
         }
       }),

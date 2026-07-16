@@ -1156,6 +1156,7 @@
   color: #94a3b8;
   transition: all 0.15s;
 }
+.btn-insert-row:hover { background: #dbeafe; color: #1d4ed8; }
 .btn-del-row:hover { background: #fee2e2; color: #b91c1c; }
 
 .btn-danger-sm {

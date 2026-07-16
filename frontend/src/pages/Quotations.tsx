@@ -862,7 +862,7 @@ function AutoTextarea({ value, onChange, ariaLabel }: {
 }
 
 function EditableList({ items, listKey }: { items: string[]; listKey: 'scope' | 'exclusions' | 'commercial' }) {
-  const { addListItem, removeListItem, patchListItem } = useMaestro()
+  const { addListItem, insertListItemAfter, removeListItem, patchListItem } = useMaestro()
   return (
     <ol className="doc-list">
       {items.map((item, i) => (
@@ -873,6 +873,15 @@ function EditableList({ items, listKey }: { items: string[]; listKey: 'scope' | 
             value={item}
             onChange={v => patchListItem(listKey, i, v)}
           />
+          <button
+            type="button"
+            className="btn-icon-sm btn-insert-row no-print"
+            title={`Insertar linea despues del item ${i + 1}`}
+            aria-label={`Insertar linea despues del item ${i + 1}`}
+            onClick={() => insertListItemAfter(listKey, i)}
+          >
+            {'\u21B5'}
+          </button>
           <button type="button" className="btn-icon-sm btn-del-row" onClick={() => removeListItem(listKey, i)}>✕</button>
         </li>
       ))}

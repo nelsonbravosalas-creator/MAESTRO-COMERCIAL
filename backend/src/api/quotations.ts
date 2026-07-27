@@ -419,7 +419,15 @@ export const createQuotationsRouter = (pool: Pool) => {
   router.get('/', async (_req: AuthRequest, res) => {
     try {
       const result = await pool.query(
-        `${quotationSelect}
+        `SELECT q.*,
+                c.name AS client_name,
+                cc.name AS contact_name,
+                COALESCE(vt.costo_neto, 0) AS costo_neto,
+                COALESCE(vt.venta_neta, 0) AS venta_neta,
+                COALESCE(vt.beneficio_bruto, 0) AS beneficio_bruto
+           FROM quotations q
+           LEFT JOIN clients c ON c.id = q.client_id
+           LEFT JOIN client_contacts cc ON cc.id = q.contact_id
           LEFT JOIN v_quotation_totals vt ON vt.quotation_id = q.id
           WHERE q.deleted_at IS NULL
           ORDER BY q.created_at DESC`

@@ -792,6 +792,23 @@
   position: relative;
 }
 
+.coti-doc.pdf-exporting .no-print,
+.coti-doc.pdf-exporting .btn-icon-sm,
+.coti-doc.pdf-exporting .btn-add-row,
+.coti-doc.pdf-exporting .btn-add-list,
+.coti-doc.pdf-exporting .doc-list-add,
+.coti-doc.pdf-exporting .val-expand {
+  display: none !important;
+}
+
+.coti-doc.pdf-exporting .doc-list-textarea {
+  border: none !important;
+  background: transparent !important;
+  padding: 2px 0 !important;
+  resize: none !important;
+  overflow: visible !important;
+}
+
 /* ── Membrete / Letterhead ──────────────────────────────────── */
 
 .doc-letterhead {
@@ -1452,6 +1469,67 @@
   /* Evitar secciones huérfanas */
   .doc-section-title,
   .doc-group-title { break-after: avoid; page-break-after: avoid; }
+}
+
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 0;
+  }
+
+  html,
+  body,
+  #root,
+  .app-container,
+  .app-main,
+  .quotations-root,
+  .q-editor,
+  .q-tab-content,
+  .tab-coti {
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .coti-doc,
+  .coti-doc * {
+    visibility: visible !important;
+  }
+
+  .app-header,
+  .no-print,
+  .coti-toolbar,
+  .coti-toast,
+  .q-editor-header,
+  .btn-icon-sm,
+  .btn-add-row,
+  .btn-add-list,
+  .doc-list-add,
+  .val-expand {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .coti-doc {
+    position: static !important;
+    display: block !important;
+    width: 216mm !important;
+    min-height: 279mm !important;
+    margin: 0 !important;
+    padding: 20mm 19mm 18mm !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    box-sizing: border-box !important;
+  }
 }
 
 .import-modal {

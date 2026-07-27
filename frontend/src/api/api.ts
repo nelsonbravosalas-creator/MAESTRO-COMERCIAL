@@ -119,6 +119,10 @@ function toMasterClient(c: any): MasterClient {
   }
 }
 
+function quotationVentaNeta(q: any): number {
+  return Number(q.totals?.venta_neta ?? q.venta_neta ?? 0) || 0
+}
+
 function toMasterQuotation(q: any): MasterQuotation {
   // Reconstruir categorías desde quotation_categories
   const catMap: Record<string, any> = {}
@@ -197,7 +201,7 @@ function toMasterQuotation(q: any): MasterQuotation {
     scope,
     exclusions,
     commercial,
-    total:       q.totals?.venta_neta ?? 0,
+    total:       quotationVentaNeta(q),
     created_at:  q.created_at,
     updated_at:  q.updated_at,
   }
@@ -366,12 +370,13 @@ export const api = {
   // ── Cotizaciones ────────────────────────────────────────────
   getQuotations: async (): Promise<MasterQuotation[]> => {
     const raw: any[] = await get('/api/quotations')
-    // Backend devuelve filas planas (JOIN con v_quotation_totals), normalizamos totals
+    // Backend SQL devuelve venta_neta plano; el backend JSON-dev devuelve totals.
+    // Conservamos ambos formatos para que la columna NETO CLP no vuelva a $0.
     return raw.map(q => toMasterQuotation({
       ...q,
       line_items: [],
       terms:      [],
-      totals:     { venta_neta: q.venta_neta ?? 0 },
+      totals:     q.totals ?? { venta_neta: q.venta_neta ?? 0 },
     }))
   },
 

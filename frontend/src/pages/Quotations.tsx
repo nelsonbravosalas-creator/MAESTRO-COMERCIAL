@@ -8,6 +8,7 @@ import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { ApiError } from '../api/api'
 import { downloadDocx } from '../utils/docxExport'
 import { downloadHtml } from '../utils/htmlExport'
+import { downloadPdfFromElement } from '../utils/pdfExport'
 import { buildQuotationValuationRows } from '../utils/quotationRows'
 import { CITIES, getDistance } from '../data/cityDistances'
 
@@ -902,6 +903,8 @@ function TabCotizacion() {
   const [toast, setToast]   = useState<{ msg: string; ok: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
   const [loadingDocx, setLoadingDocx] = useState(false)
+  const [loadingPdf, setLoadingPdf] = useState(false)
+  const docRef = useRef<HTMLDivElement>(null)
 
   const sessionUser = useMemo(() => {
     try { const u = localStorage.getItem('user'); return u ? JSON.parse(u) : null }
@@ -950,6 +953,19 @@ function TabCotizacion() {
     } catch { showToast('Error al generar HTML', false) }
   }
 
+  const handlePdf = async () => {
+    if (!docRef.current) return
+    setLoadingPdf(true)
+    try {
+      await downloadPdfFromElement(docRef.current, `Cotizacion-${q.correlative}-${q.date}.pdf`)
+      showToast('Documento PDF generado')
+    } catch {
+      showToast('Error al generar PDF', false)
+    } finally {
+      setLoadingPdf(false)
+    }
+  }
+
   const toggleCat = (catId: string) => {
     setExpandedCats(prev => {
       const next = new Set(prev)
@@ -984,14 +1000,14 @@ function TabCotizacion() {
           <span className="btn-act-icon">&lt;/&gt;</span>
           Descargar HTML
         </button>
-        <button className="btn-act btn-act-print" onClick={() => window.print()}>
+        <button className="btn-act btn-act-print" onClick={handlePdf} disabled={loadingPdf}>
           <span>🖨</span>
-          Imprimir / PDF
+          {loadingPdf ? 'Generando...' : 'Descargar PDF'}
         </button>
       </div>
 
       {/* ── Document (letter format) ── */}
-      <div className="coti-doc">
+      <div className="coti-doc" ref={docRef}>
 
         {/* Letterhead */}
         <div className="doc-letterhead">

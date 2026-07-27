@@ -88,6 +88,14 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
   const [importResult, setImportResult] = useState<any | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
+  const elaboratedBy = useMemo(() => {
+    try {
+      const user = localStorage.getItem('user')
+      return user ? JSON.parse(user)?.name || '—' : '—'
+    } catch {
+      return '—'
+    }
+  }, [])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -223,6 +231,7 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                 <th>Correlativo</th>
                 <th>Cliente</th>
                 <th>Referencia</th>
+                <th>Elaborada por</th>
                 <th>Fecha</th>
                 <th>Estado</th>
                 <th>Op. Estado</th>
@@ -244,6 +253,9 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                     </td>
                     <td>
                       <span className="q-ref">{q.ref || '—'}</span>
+                    </td>
+                    <td>
+                      <span className="q-elaborated-by">{elaboratedBy}</span>
                     </td>
                     <td className="q-date">{fmtDate(q.date)}</td>
                     <td>

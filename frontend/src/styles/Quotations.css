@@ -146,6 +146,7 @@
 
 .q-client-name { font-weight: 600; color: #0f172a; }
 .q-ref         { color: #64748b; font-size: 0.82rem; }
+.q-elaborated-by { color: #334155; font-size: 0.82rem; font-weight: 600; white-space: nowrap; }
 .q-date        { color: #64748b; font-size: 0.8rem; white-space: nowrap; }
 .q-total       { font-family: 'Space Mono', monospace; font-size: 0.85rem; font-weight: 600; color: #0f172a; }
 .q-empty-cell  { color: #94a3b8; font-style: italic; }

@@ -23,9 +23,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       const apiBase = import.meta.env.VITE_API_URL ?? ''
       const response = await fetch(`${apiBase}/api/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
 
@@ -46,12 +44,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     } finally {
       setLoading(false)
     }
-  }
-
-  const quickLogin = (testEmail: string, testPassword: string) => {
-    if (emailRef.current) emailRef.current.value = testEmail
-    if (passwordRef.current) passwordRef.current.value = testPassword
-    passwordRef.current?.focus()
   }
 
   return (
@@ -91,45 +83,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
           {error && <div className="error-message">{error}</div>}
 
-          <button
-            type="submit"
-            className="btn-login"
-            disabled={loading}
-          >
+          <button type="submit" className="btn-login" disabled={loading}>
             {loading ? '⏳ Ingresando...' : '🔓 Ingresar'}
           </button>
         </form>
-
-        <div className="quick-access">
-          <p>Usuarios de Prueba:</p>
-          <div className="test-buttons">
-            <button
-              type="button"
-              className="btn-test admin"
-              onClick={() => quickLogin('nbravo.nbyb@gmail.com', '3571')}
-              disabled={loading}
-            >
-              👨‍💼 Admin
-              <small>nbravo / 3571</small>
-            </button>
-            <button
-              type="button"
-              className="btn-test manager"
-              onClick={() => quickLogin('hmeza.nbyb@gmail.com', '4321')}
-              disabled={loading}
-            >
-              👤 Manager
-              <small>hmeza / 4321</small>
-            </button>
-          </div>
-        </div>
-
-        <div className="login-info">
-          <p>
-            <strong>Modo Development:</strong> Base de datos JSON local
-          </p>
-          <p>Backend: http://localhost:3000</p>
-        </div>
       </div>
     </div>
   )

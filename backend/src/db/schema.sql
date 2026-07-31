@@ -38,6 +38,8 @@ CREATE TABLE users (
   role          user_role   NOT NULL DEFAULT 'user',
   is_active     BOOLEAN     NOT NULL DEFAULT true,
   last_login_at TIMESTAMPTZ,
+  failed_login_attempts SMALLINT NOT NULL DEFAULT 0,
+  locked_until  TIMESTAMPTZ,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at    TIMESTAMPTZ,

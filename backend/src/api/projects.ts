@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { Pool } from 'pg'
 import { logger } from '../utils/logger'
-import { authMiddleware, AuthRequest } from '../middleware/auth'
+import { authMiddleware, AuthRequest, roleMiddleware } from '../middleware/auth'
 
 const VALID_STATUS = ['planning', 'in_progress', 'completed', 'paused', 'cancelled']
 
@@ -170,7 +170,7 @@ export const createProjectsRouter = (pool: Pool) => {
     }
   })
 
-  router.delete('/:id', async (req: AuthRequest, res) => {
+  router.delete('/:id', roleMiddleware('admin'), async (req: AuthRequest, res) => {
     try {
       const result = await pool.query(
         `UPDATE projects

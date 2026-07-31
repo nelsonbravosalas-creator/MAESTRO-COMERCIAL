@@ -54,13 +54,20 @@ Write-Host "Ejecutando: npm run seed" -ForegroundColor Yellow
 # Primero compilamos TypeScript
 npm run build 2>&1 | Out-Null
 
+# Credenciales solo para este entorno LOCAL (no reutilizar en staging/producción).
+# Cámbialas aquí si quieres otras; nunca se versionan reales en el repo.
+$env:SEED_ADMIN_EMAIL    = "admin@local.test"
+$env:SEED_ADMIN_PASSWORD = "ChangeMe123!"
+$env:SEED_MANAGER_EMAIL    = "manager@local.test"
+$env:SEED_MANAGER_PASSWORD = "ChangeMe123!"
+
 # Luego ejecutamos seed con node
 node -r ts-node/register src/db/seed.ts
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "✓ Base de datos poblada con usuarios iniciales" -ForegroundColor Green
-    Write-Host "  - nbravo.nbyb@gmail.com / 3571 (admin)" -ForegroundColor Cyan
-    Write-Host "  - hmeza.nbyb@gmail.com / 4321 (manager)" -ForegroundColor Cyan
+    Write-Host "✓ Base de datos poblada con usuarios de desarrollo LOCAL" -ForegroundColor Green
+    Write-Host "  - $($env:SEED_ADMIN_EMAIL) / $($env:SEED_ADMIN_PASSWORD) (admin)" -ForegroundColor Cyan
+    Write-Host "  - $($env:SEED_MANAGER_EMAIL) / $($env:SEED_MANAGER_PASSWORD) (manager)" -ForegroundColor Cyan
 } else {
     Write-Host "⚠ Advertencia: Seed podría haber fallado" -ForegroundColor Yellow
     Write-Host "  Continúa de todos modos..." -ForegroundColor Yellow
@@ -93,9 +100,9 @@ Write-Host "  Backend:   http://localhost:3000" -ForegroundColor Cyan
 Write-Host "  PgAdmin:   http://localhost:5050" -ForegroundColor Cyan
 Write-Host "  Database:  localhost:5432" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "👤 Usuarios de Prueba:" -ForegroundColor Yellow
-Write-Host "  Admin:    nbravo.nbyb@gmail.com / 3571" -ForegroundColor Cyan
-Write-Host "  Manager:  hmeza.nbyb@gmail.com / 4321" -ForegroundColor Cyan
+Write-Host "👤 Usuarios de Prueba (solo local):" -ForegroundColor Yellow
+Write-Host "  Admin:    admin@local.test / ChangeMe123!" -ForegroundColor Cyan
+Write-Host "  Manager:  manager@local.test / ChangeMe123!" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "📖 Guía de Testing:" -ForegroundColor Yellow
 Write-Host "  Ver: QA_TESTING_GUIDE.md" -ForegroundColor Cyan

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { Pool } from 'pg'
 import { logger } from '../utils/logger'
-import { authMiddleware, AuthRequest } from '../middleware/auth'
+import { authMiddleware, AuthRequest, roleMiddleware } from '../middleware/auth'
 
 const withContacts = async (pool: Pool, clients: any[]) => {
   if (clients.length === 0) return []
@@ -216,7 +216,7 @@ export const createClientsRouter = (pool: Pool) => {
     }
   })
 
-  router.delete('/:id', async (req: AuthRequest, res) => {
+  router.delete('/:id', roleMiddleware('admin'), async (req: AuthRequest, res) => {
     try {
       // Protección server-side: la UI ya deshabilita este botón si hay
       // cotizaciones asociadas, pero eso depende del estado local (puede

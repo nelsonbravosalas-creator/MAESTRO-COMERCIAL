@@ -60,13 +60,23 @@ docker-compose ps
 
 Deberías ver: `bravocrm_db ... Up (healthy)`
 
-### Paso 2: Iniciar Backend
+### Paso 1.5: Crear el esquema (migraciones)
 
 ```bash
 cd backend
 npm install  # Si es primera vez
+npm run migrate:up
+```
+
+Ver `docs/MIGRACIONES.md`. El esquema ya no se monta automáticamente al iniciar
+Docker: hay que correr esto una vez después de levantar Postgres.
+
+### Paso 2: Iniciar Backend
+
+```bash
+cd backend
 npm run build
-npm run seed  # Crea usuarios iniciales
+npm run seed  # Opcional: crea usuarios definiendo SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD en el entorno
 npm run dev
 ```
 
@@ -107,12 +117,12 @@ Una vez que todo está corriendo:
 
 ```
 Admin:
-  Email: nbravo.nbyb@gmail.com
-  Password: 3571
+  Email: admin@local.test
+  Password: ChangeMe123!
 
 Manager:
-  Email: hmeza.nbyb@gmail.com
-  Password: 4321
+  Email: manager@local.test
+  Password: ChangeMe123!
 ```
 
 ---

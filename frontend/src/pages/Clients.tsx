@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import '../styles/Clients.css'
 import { useMaestro } from '../stores/maestro-store'
+import { usePermissions } from '../hooks/usePermissions'
 import { MasterClient } from '../types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -155,6 +156,7 @@ function ClientForm({ initial, onSave, onClose }: ClientFormProps) {
 
 export const Clients: React.FC = () => {
   const { clients, quotations, upsertClient, deleteClient } = useMaestro()
+  const { canDeleteClient } = usePermissions()
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<MasterClient | null | 'new'>(null)
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
@@ -231,7 +233,7 @@ export const Clients: React.FC = () => {
               <button className="btn-primary-sm" onClick={() => setEditing('new')}>Agregar primer cliente</button>
             </>
           ) : (
-            <p>Sin resultados para <strong>"{search}"</strong></p>
+            <p>Sin resultados para <strong>&quot;{search}&quot;</strong></p>
           )}
         </div>
       ) : (
@@ -275,14 +277,16 @@ export const Clients: React.FC = () => {
                     <td>
                       <div className="cl-row-actions">
                         <button className="btn-icon" title="Editar" onClick={() => setEditing(c)}>✎</button>
-                        <button
-                          className="btn-icon btn-danger"
-                          title="Eliminar"
-                          onClick={() => { setDeleteError(null); setConfirmDel(c.id) }}
-                          disabled={qCount > 0}
-                        >
-                          ✕
-                        </button>
+                        {canDeleteClient && (
+                          <button
+                            className="btn-icon btn-danger"
+                            title="Eliminar"
+                            onClick={() => { setDeleteError(null); setConfirmDel(c.id) }}
+                            disabled={qCount > 0}
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -53,6 +53,12 @@ cd /d %BACKEND_PATH%
 REM Esperar a que PostgreSQL esté listo
 timeout /t 5 /nobreak
 
+REM Credenciales solo para este entorno LOCAL (no reutilizar en staging/produccion)
+set SEED_ADMIN_EMAIL=admin@local.test
+set SEED_ADMIN_PASSWORD=ChangeMe123!
+set SEED_MANAGER_EMAIL=manager@local.test
+set SEED_MANAGER_PASSWORD=ChangeMe123!
+
 REM Ejecutar seed
 echo Ejecutando seed...
 npm run seed
@@ -81,9 +87,9 @@ echo   Backend:   http://localhost:3000
 echo   PgAdmin:   http://localhost:5050
 echo   Database:  localhost:5432
 echo.
-echo Usuarios de Prueba:
-echo   Admin:    nbravo.nbyb@gmail.com / 3571
-echo   Manager:  hmeza.nbyb@gmail.com / 4321
+echo Usuarios de Prueba (solo local):
+echo   Admin:    admin@local.test / ChangeMe123!
+echo   Manager:  manager@local.test / ChangeMe123!
 echo.
 echo Guia de Testing: QA_TESTING_GUIDE.md
 echo.

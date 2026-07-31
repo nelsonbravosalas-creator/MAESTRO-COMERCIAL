@@ -3,6 +3,7 @@ import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { logger } from '../utils/logger'
+import { env } from '../config/env'
 
 // Compara en tiempo constante para evitar timing attacks sobre el secret
 const secretMatches = (provided: string, expected: string) => {
@@ -19,7 +20,7 @@ export const createAdminRouter = (pool: Pool) => {
   // cuando todavía no hay ninguna sesión válida. Se protege con ADMIN_SETUP_SECRET.
   router.post('/setup', async (req: Request, res: Response) => {
     try {
-      const setupSecret = process.env.ADMIN_SETUP_SECRET
+      const setupSecret = env.ADMIN_SETUP_SECRET
 
       if (!setupSecret) {
         logger.warn('Admin setup attempted but ADMIN_SETUP_SECRET is not configured')

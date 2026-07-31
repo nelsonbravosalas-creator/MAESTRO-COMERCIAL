@@ -11,13 +11,16 @@ import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { randomUUID } from 'crypto'
+import { randomUUID, randomBytes } from 'crypto'
 
 dotenv.config()
 
 const app: Express = express()
 const PORT  = process.env.PORT || 3000
-const SECRET = process.env.JWT_SECRET || 'dev-secret-maestro'
+// Modo dev-json no usa DATABASE_URL, así que no pasa por config/env.ts (que lo exige).
+// Si no hay JWT_SECRET explícito, se genera uno efímero: los tokens no sobreviven
+// un reinicio, pero nunca queda un secreto fijo publicado en el código fuente.
+const SECRET = process.env.JWT_SECRET || randomBytes(48).toString('base64')
 
 const _dirname = typeof __dirname !== 'undefined'
   ? __dirname
@@ -972,9 +975,9 @@ app.listen(PORT, () => {
   console.log('║  GET  /api/dashboard/kpis')
   console.log('║  GET  /api/sync/events')
   console.log('╠══════════════════════════════════════════════╣')
-  console.log('║  Usuarios:')
-  console.log('║  nbravo.nbyb@gmail.com / 3571 (admin)')
-  console.log('║  hmeza.nbyb@gmail.com  / 4321 (manager)')
+  console.log('║  Usuarios (backend/db.json, solo local):')
+  console.log('║  dev-admin@example.test   / devpass123 (admin)')
+  console.log('║  dev-manager@example.test / devpass123 (manager)')
   console.log('╚══════════════════════════════════════════════╝')
   console.log('')
 })

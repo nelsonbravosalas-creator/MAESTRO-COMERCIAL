@@ -26,12 +26,12 @@
 👤 CREDENCIALES DE PRUEBA:
 
    ADMIN (Acceso Total)
-   Email: nbravo.nbyb@gmail.com
-   Pass:  3571
+   Email: admin@local.test
+   Pass:  ChangeMe123!
 
    MANAGER (Acceso Limitado)
-   Email: hmeza.nbyb@gmail.com
-   Pass:  4321
+   Email: manager@local.test
+   Pass:  ChangeMe123!
 
 ═══════════════════════════════════════════════════════════════════════════════
 

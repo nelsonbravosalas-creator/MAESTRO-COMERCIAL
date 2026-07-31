@@ -4,7 +4,7 @@ import request from 'supertest'
 import jwt from 'jsonwebtoken'
 import { createClientsRouter } from '../clients'
 
-const JWT_SECRET = 'test-secret'
+const JWT_SECRET = 'test-secret-test-secret-test-secret'
 
 interface FakeState {
   clients: Record<string, { id: string; deleted: boolean }>

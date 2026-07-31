@@ -1,0 +1,86 @@
+name: Backup diario de base de datos
+
+on:
+  schedule:
+    # 07:00 UTC ≈ 03:00/04:00 Chile continental según horario de verano
+    - cron: '0 7 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    # No hace nada hasta que estos secrets existan en el repo (Settings → Secrets
+    # → Actions). Sin PROD_DATABASE_URL el job falla rápido y con un mensaje claro
+    # en vez de fallar a medias.
+    steps:
+      - name: Verificar secrets requeridos
+        run: |
+          missing=0
+          for var in PROD_DATABASE_URL BACKUP_S3_BUCKET BACKUP_S3_ACCESS_KEY_ID BACKUP_S3_SECRET_ACCESS_KEY; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Falta el secret $var (Settings → Secrets and variables → Actions)"
+              missing=1
+            fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "Backup NO configurado todavía. Ver docs/DR_RUNBOOK.md."
+            exit 1
+          fi
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+          BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+
+      - name: Instalar cliente pg_dump (Postgres 15)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-15
+
+      - name: Instalar AWS CLI
+        run: |
+          curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+          unzip -q awscliv2.zip
+          sudo ./aws/install --update
+
+      - name: Volcar base de datos (formato custom, comprimido)
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          STAMP=$(date -u +%Y%m%d-%H%M%S)
+          echo "DUMP_FILE=bravocrm-$STAMP.dump" >> "$GITHUB_ENV"
+          pg_dump --format=custom --no-owner --no-privileges \
+            --dbname="$PROD_DATABASE_URL" --file="bravocrm-$STAMP.dump"
+
+      - name: Subir a almacenamiento externo (fuera de Neon)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.BACKUP_S3_ENDPOINT_URL }} # opcional: R2/Backblaze/etc.
+        run: |
+          SIZE=$(du -h "$DUMP_FILE" | cut -f1)
+          CHECKSUM=$(sha256sum "$DUMP_FILE" | cut -d' ' -f1)
+          echo "Backup: $DUMP_FILE ($SIZE, sha256 $CHECKSUM)"
+          aws s3 cp "$DUMP_FILE" "s3://${{ secrets.BACKUP_S3_BUCKET }}/daily/$DUMP_FILE" \
+            ${AWS_ENDPOINT_URL:+--endpoint-url "$AWS_ENDPOINT_URL"}
+          echo "$CHECKSUM  $DUMP_FILE" > "$DUMP_FILE.sha256"
+          aws s3 cp "$DUMP_FILE.sha256" "s3://${{ secrets.BACKUP_S3_BUCKET }}/daily/$DUMP_FILE.sha256" \
+            ${AWS_ENDPOINT_URL:+--endpoint-url "$AWS_ENDPOINT_URL"}
+
+      - name: Aplicar retención (7 diarios + 4 semanales + 12 mensuales)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+        run: |
+          echo "TODO: implementar poda de retención (ver docs/DR_RUNBOOK.md)."
+          echo "Placeholder a propósito: hacerlo mal (borrar de más) es peor que no hacerlo."
+
+  alert-on-failure:
+    needs: backup
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::El backup diario falló. Configurar una notificación real \
+          (Slack/email/PagerDuty) en este job — hoy solo queda registrado en \
+          la pestaña Actions de GitHub. Ver AC-12.7 en el plan de remediación."

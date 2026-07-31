@@ -45,8 +45,8 @@ Página de autenticación completa con:
 - ✅ Formulario de login
 - ✅ Validación de credenciales
 - ✅ Botones rápidos para usuarios de prueba:
-  - Admin: nbravo.nbyb@gmail.com / 3571
-  - Manager: hmeza.nbyb@gmail.com / 4321
+  - Admin: admin@local.test / ChangeMe123!
+  - Manager: manager@local.test / ChangeMe123!
 - ✅ Manejo de errores
 - ✅ Información del backend
 - ✅ Persistencia en localStorage
@@ -212,12 +212,12 @@ http://localhost:5173
 ### 3. Login
 ```
 Admin:
-  Email: nbravo.nbyb@gmail.com
-  Password: 3571
+  Email: admin@local.test
+  Password: ChangeMe123!
 
 Manager:
-  Email: hmeza.nbyb@gmail.com
-  Password: 4321
+  Email: manager@local.test
+  Password: ChangeMe123!
 ```
 
 ### 4. Flujo de Prueba Cotizaciones

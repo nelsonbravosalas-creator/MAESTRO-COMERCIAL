@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [backend, frontend]
+    defaults:
+      run:
+        working-directory: ${{ matrix.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: ${{ matrix.workspace }}/package-lock.json
+
+      - run: npm ci
+
+      - run: npx tsc --noEmit
+        if: matrix.workspace == 'backend'
+      # El frontend usa project references (tsconfig.json + tsconfig.node.json):
+      # tsc -b no admite --noEmit combinado con referencias que si emiten, así que
+      # se valida con el mismo comando que usa "npm run build".
+      - run: npx tsc -b
+        if: matrix.workspace == 'frontend'
+
+      - run: npx eslint . --max-warnings 100
+        if: matrix.workspace == 'frontend'
+
+      - run: npm run test:coverage
+
+      - run: npm audit --omit=dev --audit-level=high
+
+      - run: npm run build
+        if: matrix.workspace == 'frontend'
+
+  vercel-function:
+    # api/index.ts (la función serverless real de Vercel) importa backend/src/app.ts
+    # pero se resuelve con las dependencias del package.json RAÍZ, no las de
+    # backend/. Este chequeo tipa exactamente esa combinación para detectar temprano
+    # un "Cannot find module" que solo aparecería en producción (ver docs/RIESGOS_ACEPTADOS.md).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: bravocrm_ci
+          POSTGRES_PASSWORD: bravocrm_ci
+          POSTGRES_DB: bravocrm_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bravocrm_ci -d bravocrm_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - working-directory: backend
+        run: npm ci
+
+      - name: Aplicar migraciones (node-pg-migrate)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://bravocrm_ci:bravocrm_ci@localhost:5432/bravocrm_ci
+        run: npm run migrate:up
+
+      - name: Ejecutar tests de integración
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://bravocrm_ci:bravocrm_ci@localhost:5432/bravocrm_ci
+          JWT_SECRET: ci-integration-secret-at-least-32-characters-long
+          ALLOWED_ORIGINS: http://localhost:5173
+        run: npm test

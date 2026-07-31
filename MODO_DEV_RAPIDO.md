@@ -67,12 +67,12 @@ Backend:  http://localhost:3000
 
 ```
 ADMIN:
-  Email: nbravo.nbyb@gmail.com
-  Password: 3571
+  Email: admin@local.test
+  Password: ChangeMe123!
 
 MANAGER:
-  Email: hmeza.nbyb@gmail.com
-  Password: 4321
+  Email: manager@local.test
+  Password: ChangeMe123!
 ```
 
 ---
@@ -97,8 +97,8 @@ POST http://localhost:3000/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "nbravo.nbyb@gmail.com",
-  "password": "3571"
+  "email": "admin@local.test",
+  "password": "ChangeMe123!"
 }
 
 Response:
@@ -219,8 +219,8 @@ backend/db.json
    ```
 
 4. **Login:**
-   - Email: nbravo.nbyb@gmail.com
-   - Password: 3571
+   - Email: admin@local.test
+   - Password: ChangeMe123!
 
 5. **Prueba funcionalidades:**
    - Crear clientes
@@ -246,7 +246,7 @@ backend/db.json
    ```bash
    curl -X POST http://localhost:3000/api/auth/login \
      -H "Content-Type: application/json" \
-     -d '{"email":"nbravo.nbyb@gmail.com","password":"3571"}'
+     -d '{"email":"admin@local.test","password":"ChangeMe123!"}'
    ```
 
 2. **Usa el token en requests posteriores:**

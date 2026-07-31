@@ -5,6 +5,7 @@ node_modules/
 
 # Testing
 /coverage
+coverage/
 
 # Production
 /dist
@@ -54,3 +55,8 @@ Thumbs.db
 .vercel
 .claude/worktrees/
 .env*
+!**/.env.example
+
+# Base de datos local del servidor dev en modo JSON (server-dev.ts).
+# Nunca debe versionarse: puede contener hashes de credenciales reales.
+backend/db.json

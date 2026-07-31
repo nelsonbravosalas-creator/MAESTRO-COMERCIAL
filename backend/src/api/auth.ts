@@ -4,25 +4,25 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { logger } from '../utils/logger'
 import { AuthRequest, authMiddleware } from '../middleware/auth'
+import { env } from '../config/env'
 
 interface LoginRequest { email: string; password: string }
 
-const jwtSecret = () => process.env.JWT_SECRET || 'default-secret'
-const accessExpiry = () => process.env.JWT_EXPIRY || '8h'
-const refreshExpiry = () => process.env.JWT_REFRESH_EXPIRY || '30d'
+const MAX_FAILED_ATTEMPTS = 10
+const LOCKOUT_MINUTES = 30
 
 const signAccessToken = (user: any) =>
   jwt.sign(
     { id: user.id, email: user.email, name: user.name, role: user.role },
-    jwtSecret(),
-    { expiresIn: accessExpiry() } as jwt.SignOptions
+    env.JWT_SECRET,
+    { expiresIn: env.JWT_EXPIRY } as jwt.SignOptions
   )
 
 const signRefreshToken = (user: any) =>
   jwt.sign(
     { id: user.id, email: user.email, name: user.name, role: user.role, kind: 'refresh' },
-    jwtSecret(),
-    { expiresIn: refreshExpiry() } as jwt.SignOptions
+    env.JWT_SECRET,
+    { expiresIn: env.JWT_REFRESH_EXPIRY } as jwt.SignOptions
   )
 
 const safeUser = (user: any) => ({
@@ -44,7 +44,6 @@ export const createAuthRouter = (pool: Pool) => {
     try {
       const { email, password } = req.body as LoginRequest
       const normalizedEmail = email?.trim().toLowerCase()
-      const allowNoPIN = process.env.ALLOW_NO_PIN === 'true'
 
       if (!normalizedEmail) {
         return res.status(400).json({
@@ -53,7 +52,7 @@ export const createAuthRouter = (pool: Pool) => {
         })
       }
 
-      if (!password && !allowNoPIN) {
+      if (!password) {
         return res.status(400).json({
           error: 'Bad request',
           message: 'PIN es requerido',
@@ -62,7 +61,8 @@ export const createAuthRouter = (pool: Pool) => {
 
       const result = await pool.query(
         `SELECT id, email, name, password_hash, role, is_active,
-                last_login_at, created_at, updated_at
+                last_login_at, failed_login_attempts, locked_until,
+                created_at, updated_at
            FROM users
           WHERE lower(email) = $1
             AND deleted_at IS NULL`,
@@ -85,14 +85,29 @@ export const createAuthRouter = (pool: Pool) => {
         })
       }
 
-      let passwordMatch = false
-      if (password) {
-        passwordMatch = await bcrypt.compare(String(password), user.password_hash)
-      } else if (allowNoPIN) {
-        passwordMatch = true
+      if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
+        logger.warn('Login blocked: account locked', { userId: user.id, email: normalizedEmail })
+        return res.status(423).json({
+          error: 'Locked',
+          message: `Cuenta bloqueada temporalmente por demasiados intentos fallidos. Intente nuevamente en ${LOCKOUT_MINUTES} minutos.`,
+        })
       }
 
+      const passwordMatch = await bcrypt.compare(String(password), user.password_hash)
+
       if (!passwordMatch) {
+        const attempts = (user.failed_login_attempts ?? 0) + 1
+        const lockNow = attempts >= MAX_FAILED_ATTEMPTS
+        await pool.query(
+          `UPDATE users
+              SET failed_login_attempts = $2,
+                  locked_until = CASE WHEN $3 THEN NOW() + INTERVAL '${LOCKOUT_MINUTES} minutes' ELSE locked_until END
+            WHERE id = $1`,
+          [user.id, attempts, lockNow]
+        )
+        if (lockNow) {
+          logger.warn('Account locked after repeated failed logins', { userId: user.id, email: normalizedEmail })
+        }
         return res.status(401).json({
           error: 'Unauthorized',
           message: 'Correo o PIN inválido',
@@ -104,7 +119,9 @@ export const createAuthRouter = (pool: Pool) => {
 
       const updated = await pool.query(
         `UPDATE users
-            SET last_login_at = NOW()
+            SET last_login_at = NOW(),
+                failed_login_attempts = 0,
+                locked_until = NULL
           WHERE id = $1
           RETURNING id, email, name, role, is_active, last_login_at, created_at, updated_at`,
         [user.id]
@@ -164,7 +181,7 @@ export const createAuthRouter = (pool: Pool) => {
     }
 
     try {
-      const decoded = jwt.verify(refresh_token, jwtSecret()) as any
+      const decoded = jwt.verify(refresh_token, env.JWT_SECRET) as any
       if (decoded.kind !== 'refresh') {
         return res.status(401).json({ error: 'Unauthorized', message: 'Refresh token inválido' })
       }

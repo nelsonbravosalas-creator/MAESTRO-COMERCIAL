@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import '../styles/Projects.css'
 import { useProjects, useActiveProject, ProjectFull } from '../stores/projects-store'
 import { useMaestro } from '../stores/maestro-store'
+import { usePermissions } from '../hooks/usePermissions'
 import { CategoryId } from '../types'
 import ProjectsKanban from './ProjectsKanban'
 import ProjectsGantt from './ProjectsGantt'
@@ -184,7 +185,9 @@ function OverviewTab({ project }: OverviewTabProps) {
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
-    } catch {}
+    } catch {
+      // Silencioso a propósito: el formulario conserva los valores para reintentar.
+    }
     setSaving(false)
   }
 
@@ -312,7 +315,9 @@ function CostosTab({ project }: CostosTabProps) {
       })
       setNewCost(emptyCostForm())
       setAddingCost(false)
-    } catch {}
+    } catch {
+      // Silencioso a propósito: el formulario de costo permanece abierto para reintentar.
+    }
     setSaving(false)
   }
 
@@ -339,7 +344,9 @@ function CostosTab({ project }: CostosTabProps) {
         category_id: (editForm.category_id as CategoryId) || null,
       })
       setEditId(null)
-    } catch {}
+    } catch {
+      // Silencioso a propósito: la fila en edición permanece abierta para reintentar.
+    }
     setSaving(false)
   }
 
@@ -574,6 +581,7 @@ interface ProjectDetailProps {
 function ProjectDetail({ project, onDelete }: ProjectDetailProps) {
   const [tab, setTab] = useState<'overview' | 'costos' | 'equipo'>('overview')
   const { loadProject } = useProjects()
+  const { canDeleteProject } = usePermissions()
 
   // Load full project data (with costs + assignments) on mount / id change
   useEffect(() => {
@@ -592,13 +600,15 @@ function ProjectDetail({ project, onDelete }: ProjectDetailProps) {
           <span className={`status-badge ${project.status}`}>{STATUS_LABELS[project.status]}</span>
         </div>
         <div className="project-detail-actions">
-          <button
-            type="button"
-            className="btn btn-danger btn-sm"
-            onClick={() => { if (window.confirm('¿Eliminar este proyecto?')) onDelete(project.id) }}
-          >
-            Eliminar
-          </button>
+          {canDeleteProject && (
+            <button
+              type="button"
+              className="btn btn-danger btn-sm"
+              onClick={() => { if (window.confirm('¿Eliminar este proyecto?')) onDelete(project.id) }}
+            >
+              Eliminar
+            </button>
+          )}
         </div>
       </div>
 

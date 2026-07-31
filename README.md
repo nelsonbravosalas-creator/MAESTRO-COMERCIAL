@@ -82,12 +82,19 @@ npm start          # Producción
 - bcrypt (contraseñas)
 - Winston (logging)
 
-## 🔑 Credenciales Iniciales
+## 🔑 Creación del primer usuario admin
 
-| Email | PIN | Rol |
-|-------|-----|-----|
-| nbravo.nbyb@gmail.com | 3571 | admin |
-| hmeza.nbyb@gmail.com | 4321 | manager |
+No hay credenciales por defecto. El primer administrador se crea (o se promueve, si el
+correo ya existe) llamando al endpoint protegido por `ADMIN_SETUP_SECRET`:
+
+```bash
+curl -X POST "$API_URL/api/admin/setup" \
+  -H "content-type: application/json" \
+  -d '{"secret":"<ADMIN_SETUP_SECRET>","email":"tu@correo.cl","password":"<contraseña de 8+ caracteres>","name":"Tu Nombre"}'
+```
+
+Si `ADMIN_SETUP_SECRET` no está configurado en el entorno, el endpoint responde `503`
+(deshabilitado por seguridad). Ver `backend/.env.example`.
 
 ## 🐛 4 Bugs Corregidos
 

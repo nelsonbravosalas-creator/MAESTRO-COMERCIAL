@@ -5,6 +5,7 @@ import {
 } from '../stores/maestro-store'
 import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
+import { usePermissions } from '../hooks/usePermissions'
 import { ApiError } from '../api/api'
 import { downloadDocx } from '../utils/docxExport'
 import { downloadHtml } from '../utils/htmlExport'
@@ -80,6 +81,7 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
     quotations, newDraft, loadQuote, duplicateQuote, createVersion, deleteQuote, importQuotation,
     setStatus, setOperState, activeId,
   } = useMaestro()
+  const { canDeleteQuotation, canChangeQuotationStatus } = usePermissions()
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [confirm, setConfirm] = useState<string | null>(null)
@@ -264,6 +266,8 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                         value={q.status}
                         onChange={e => setStatus(q.id, e.target.value as QuoteStatus)}
                         onClick={e => e.stopPropagation()}
+                        disabled={!canChangeQuotationStatus}
+                        title={canChangeQuotationStatus ? undefined : 'Tu rol no puede cambiar el estado'}
                       >
                         {Object.keys(STATUS_META).map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -290,7 +294,9 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                         >
                           V+
                         </button>
-                        <button className="btn-icon btn-danger" title="Eliminar" onClick={() => setConfirm(q.id)}>✕</button>
+                        {canDeleteQuotation && (
+                          <button className="btn-icon btn-danger" title="Eliminar" onClick={() => setConfirm(q.id)}>✕</button>
+                        )}
                       </div>
                     </td>
                   </tr>

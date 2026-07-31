@@ -4,7 +4,7 @@ import request from 'supertest'
 import jwt from 'jsonwebtoken'
 import { createQuotationsRouter } from '../quotations'
 
-const JWT_SECRET = 'test-secret'
+const JWT_SECRET = 'test-secret-test-secret-test-secret'
 
 const normRut = (rut: string) => rut.replace(/[^0-9kK]/g, '').toUpperCase()
 

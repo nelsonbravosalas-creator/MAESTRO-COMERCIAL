@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { Pool, PoolClient } from 'pg'
 import { logger } from '../utils/logger'
-import { authMiddleware, AuthRequest } from '../middleware/auth'
+import { authMiddleware, AuthRequest, roleMiddleware } from '../middleware/auth'
 
 const VALID_STATUSES = ['Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada']
 const VALID_OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
@@ -788,8 +788,8 @@ export const createQuotationsRouter = (pool: Pool) => {
     }
   }
 
-  router.patch('/:id/status', updateStatus)
-  router.put('/:id/status', updateStatus)
+  router.patch('/:id/status', roleMiddleware('admin', 'manager'), updateStatus)
+  router.put('/:id/status', roleMiddleware('admin', 'manager'), updateStatus)
 
   router.post('/:id/duplicate', async (req: AuthRequest, res) => {
     const db = await pool.connect()
@@ -837,7 +837,7 @@ export const createQuotationsRouter = (pool: Pool) => {
     }
   })
 
-  router.delete('/:id', async (req: AuthRequest, res) => {
+  router.delete('/:id', roleMiddleware('admin'), async (req: AuthRequest, res) => {
     try {
       const result = await pool.query(
         `UPDATE quotations

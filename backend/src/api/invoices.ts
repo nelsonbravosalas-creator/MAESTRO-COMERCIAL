@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { Pool } from 'pg'
 import { logger } from '../utils/logger'
-import { authMiddleware, AuthRequest } from '../middleware/auth'
+import { authMiddleware, AuthRequest, roleMiddleware } from '../middleware/auth'
 
 const VALID_STATUS = ['draft', 'issued', 'paid', 'cancelled']
 const VALID_PAYMENT = ['cash', 'credit', 'partial']
@@ -146,10 +146,10 @@ export const createInvoicesRouter = (pool: Pool) => {
     }
   }
 
-  router.patch('/:id/status', updateStatus)
-  router.put('/:id/status', updateStatus)
+  router.patch('/:id/status', roleMiddleware('admin', 'manager'), updateStatus)
+  router.put('/:id/status', roleMiddleware('admin', 'manager'), updateStatus)
 
-  router.delete('/:id', async (req: AuthRequest, res) => {
+  router.delete('/:id', roleMiddleware('admin'), async (req: AuthRequest, res) => {
     try {
       const result = await pool.query(
         `UPDATE invoices

@@ -19,13 +19,13 @@
 ## 📝 Credenciales de Prueba
 
 **Usuario Admin:**
-- Email: `nbravo.nbyb@gmail.com`
-- PIN/Contraseña: `3571`
+- Email: `admin@local.test`
+- PIN/Contraseña: `ChangeMe123!`
 - Rol: `admin`
 
 **Usuario Manager:**
-- Email: `hmeza.nbyb@gmail.com`
-- PIN/Contraseña: `4321`
+- Email: `manager@local.test`
+- PIN/Contraseña: `ChangeMe123!`
 - Rol: `manager`
 
 ---
@@ -51,14 +51,14 @@
 
 #### T2.1 Login con Usuario Admin
 - [ ] Navega a http://localhost:5173/login (si existe) o busca formulario login
-- [ ] Email: `nbravo.nbyb@gmail.com`
-- [ ] Contraseña: `3571`
+- [ ] Email: `admin@local.test`
+- [ ] Contraseña: `ChangeMe123!`
 - [ ] Esperado: Login exitoso, redirige a dashboard
 - [ ] Verificar token JWT en localStorage: `localStorage.getItem('authToken')`
 
 #### T2.2 Login con Usuario Manager
 - [ ] Logout del usuario anterior
-- [ ] Login con: `hmeza.nbyb@gmail.com` / `4321`
+- [ ] Login con: `manager@local.test` / `ChangeMe123!`
 - [ ] Esperado: Login exitoso
 
 #### T2.3 Login Fallido

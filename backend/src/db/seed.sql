@@ -14,43 +14,11 @@ INSERT INTO app_config (key, value) VALUES
 ON CONFLICT (key) DO NOTHING;
 
 -- ── Usuarios ──────────────────────────────────────────────────
--- Passwords:  admin -> 3571  |  manager -> 4321
-WITH seed_users(email, password_hash, name, role) AS (
-  VALUES
-    (
-      'nbravo.nbyb@gmail.com',
-      '$2b$10$sMpV3Pa3KW7mOgm3JHh6U.sdS16onwr5D7kIxdiEozLslWcveKGeG',
-      'Nelson Bravo',
-      'admin'::user_role
-    ),
-    (
-      'hmeza.nbyb@gmail.com',
-      '$2b$10$P701tfm7c/.QJ30gJHVkm.MF7Vo1knDbuFSrqJShjgUI.E0mx7FfC',
-      'H. Meza',
-      'manager'::user_role
-    )
-),
-updated AS (
-  UPDATE users u
-     SET password_hash = s.password_hash,
-         name = s.name,
-         role = s.role,
-         is_active = true,
-         updated_at = NOW()
-    FROM seed_users s
-   WHERE lower(u.email) = lower(s.email)
-     AND u.deleted_at IS NULL
-  RETURNING lower(u.email) AS email
-)
-INSERT INTO users (id, email, password_hash, name, role, is_active)
-SELECT gen_random_uuid(), s.email, s.password_hash, s.name, s.role, true
-  FROM seed_users s
- WHERE NOT EXISTS (
-   SELECT 1 FROM updated u WHERE u.email = lower(s.email)
- )
-   AND NOT EXISTS (
-     SELECT 1 FROM users u WHERE lower(u.email) = lower(s.email) AND u.deleted_at IS NULL
-   );
+-- Este script NO crea usuarios: nunca versionar credenciales reales en SQL.
+-- Para crear el primer usuario admin usar uno de:
+--   1) npm run seed  (backend/src/db/seed.ts, lee SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD
+--      y opcionalmente SEED_MANAGER_EMAIL/SEED_MANAGER_PASSWORD desde el entorno)
+--   2) POST /api/admin/setup protegido por ADMIN_SETUP_SECRET (ver README.md)
 
 -- ── Catálogo Maestro de Precios ───────────────────────────────
 

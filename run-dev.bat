@@ -32,9 +32,9 @@ echo.
 echo   Backend:   http://localhost:3000
 echo   Frontend:  http://localhost:5173
 echo.
-echo   Usuarios:
-echo     nbravo.nbyb@gmail.com  /  3571  (admin)
-echo     hmeza.nbyb@gmail.com   /  4321  (manager)
+echo   Usuarios (backend/db.json, solo local):
+echo     dev-admin@example.test    /  devpass123  (admin)
+echo     dev-manager@example.test  /  devpass123  (manager)
 echo.
 
 REM Iniciar Backend en nueva ventana

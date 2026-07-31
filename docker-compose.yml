@@ -5,16 +5,17 @@ services:
     image: postgres:15-alpine
     container_name: bravocrm_db
     environment:
-      POSTGRES_USER: bravocrm_user
-      POSTGRES_PASSWORD: bravocrm_password
-      POSTGRES_DB: bravocrm
+      POSTGRES_USER: ${POSTGRES_USER:-bravocrm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en un .env local, no uses el default}
+      POSTGRES_DB: ${POSTGRES_DB:-bravocrm}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    # El esquema ya NO se monta acá (C-11): tras "docker compose up -d postgres",
+    # correr "cd backend && npm run migrate:up" para crearlo de forma versionada.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bravocrm_user -d bravocrm"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bravocrm_user} -d ${POSTGRES_DB:-bravocrm}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,8 +27,8 @@ services:
     image: dpage/pgadmin4:latest
     container_name: bravocrm_pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@bravocrm.local
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Define PGADMIN_DEFAULT_EMAIL en un .env local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Define PGADMIN_DEFAULT_PASSWORD en un .env local}
     ports:
       - "5050:80"
     networks:

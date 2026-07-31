@@ -83,7 +83,7 @@ export const useProjects = create<ProjectsState>()((set, _get) => ({
       const projects = raw.map(p => ({
         ...p,
         gasto_real:  Number(p.gasto_real)  || 0,
-        saldo:       Number(p.saldo)        ?? 0,
+        saldo:       Number(p.saldo)        || 0,
         assignments: p.assignments          ?? [],
         costs:       p.costs               ?? [],
       }))
@@ -101,7 +101,9 @@ export const useProjects = create<ProjectsState>()((set, _get) => ({
           ? s.projects.map(p => p.id === id ? project : p)
           : [...s.projects, project],
       }))
-    } catch {}
+    } catch {
+      // Silencioso a propósito: si falla, la UI conserva el estado previo del proyecto.
+    }
   },
 
   setActive: (id) => set({ activeId: id }),

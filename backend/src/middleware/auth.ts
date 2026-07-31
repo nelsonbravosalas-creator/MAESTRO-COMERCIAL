@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { logger } from '../utils/logger'
+import { env } from '../config/env'
 
 export interface AuthRequest extends Request {
   user?: {
@@ -34,7 +35,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     }
 
     // FIX BUG #1: Proper JWT validation with try-catch
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as {
+    const decoded = jwt.verify(token, env.JWT_SECRET) as {
       id: string
       email: string
       name: string
@@ -84,7 +85,7 @@ export const optionalAuth = (req: AuthRequest, res: Response, next: NextFunction
 
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '')
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as {
+      const decoded = jwt.verify(token, env.JWT_SECRET) as {
         id: string
         email: string
         name: string

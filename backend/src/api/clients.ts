@@ -2,6 +2,14 @@ import { Router } from 'express'
 import { Pool } from 'pg'
 import { logger } from '../utils/logger'
 import { authMiddleware, AuthRequest, roleMiddleware } from '../middleware/auth'
+import { validate } from '../middleware/validate'
+import { uuidParams, capLimitQuerySchema } from '../schemas/common'
+import {
+  clientCreateSchema,
+  clientUpdateSchema,
+  contactCreateSchema,
+  contactUpdateSchema,
+} from '../schemas/clients'
 
 const withContacts = async (pool: Pool, clients: any[]) => {
   if (clients.length === 0) return []
@@ -26,13 +34,17 @@ export const createClientsRouter = (pool: Pool) => {
   const router = Router()
   router.use(authMiddleware)
 
-  router.get('/', async (_req: AuthRequest, res) => {
+  // A-11: tope duro de filas (paginación real pendiente, ver docs/RIESGOS_ACEPTADOS.md).
+  router.get('/', validate({ query: capLimitQuerySchema }), async (req: AuthRequest, res) => {
     try {
+      const { limit } = req.query as unknown as { limit: number }
       const result = await pool.query(
         `SELECT *
            FROM clients
           WHERE deleted_at IS NULL
-          ORDER BY lower(name)`
+          ORDER BY lower(name)
+          LIMIT $1`,
+        [limit]
       )
       return res.json(await withContacts(pool, result.rows))
     } catch (error: any) {
@@ -41,56 +53,69 @@ export const createClientsRouter = (pool: Pool) => {
     }
   })
 
-  router.get('/:id/contacts', async (req: AuthRequest, res) => {
-    try {
-      const result = await pool.query(
-        `SELECT *
+  router.get(
+    '/:id/contacts',
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      try {
+        const result = await pool.query(
+          `SELECT *
            FROM client_contacts
           WHERE client_id = $1
           ORDER BY is_primary DESC, created_at ASC`,
-        [req.params.id]
-      )
-      return res.json(result.rows)
-    } catch (error: any) {
-      logger.error('Get contacts error', { error: error.message, clientId: req.params.id })
-      return res.status(500).json({ error: 'Failed to fetch contacts' })
-    }
-  })
-
-  router.post('/:id/contacts', async (req: AuthRequest, res) => {
-    try {
-      const { name, cargo, email, phone, is_primary } = req.body
-      if (!name) return res.status(400).json({ error: 'name is required' })
-
-      if (is_primary) {
-        await pool.query('UPDATE client_contacts SET is_primary = false WHERE client_id = $1', [req.params.id])
+          [req.params.id]
+        )
+        return res.json(result.rows)
+      } catch (error: any) {
+        logger.error('Get contacts error', { error: error.message, clientId: req.params.id })
+        return res.status(500).json({ error: 'Failed to fetch contacts' })
       }
+    }
+  )
 
-      const result = await pool.query(
-        `INSERT INTO client_contacts (client_id, name, cargo, email, phone, is_primary)
+  router.post(
+    '/:id/contacts',
+    validate({ params: uuidParams('id'), body: contactCreateSchema }),
+    async (req: AuthRequest, res) => {
+      try {
+        const { name, cargo, email, phone, is_primary } = req.body
+
+        if (is_primary) {
+          await pool.query('UPDATE client_contacts SET is_primary = false WHERE client_id = $1', [
+            req.params.id,
+          ])
+        }
+
+        const result = await pool.query(
+          `INSERT INTO client_contacts (client_id, name, cargo, email, phone, is_primary)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
-        [req.params.id, name, cargo || null, email || null, phone || null, Boolean(is_primary)]
-      )
+          [req.params.id, name, cargo || null, email || null, phone || null, Boolean(is_primary)]
+        )
 
-      return res.status(201).json(result.rows[0])
-    } catch (error: any) {
-      logger.error('Create contact error', { error: error.message, clientId: req.params.id })
-      return res.status(500).json({ error: 'Failed to create contact' })
-    }
-  })
-
-  router.put('/:id/contacts/:contactId', async (req: AuthRequest, res) => {
-    try {
-      const { name, cargo, email, phone, is_primary } = req.body
-      if (!name) return res.status(400).json({ error: 'name is required' })
-
-      if (is_primary) {
-        await pool.query('UPDATE client_contacts SET is_primary = false WHERE client_id = $1', [req.params.id])
+        return res.status(201).json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Create contact error', { error: error.message, clientId: req.params.id })
+        return res.status(500).json({ error: 'Failed to create contact' })
       }
+    }
+  )
 
-      const result = await pool.query(
-        `UPDATE client_contacts
+  router.put(
+    '/:id/contacts/:contactId',
+    validate({ params: uuidParams('id', 'contactId'), body: contactUpdateSchema }),
+    async (req: AuthRequest, res) => {
+      try {
+        const { name, cargo, email, phone, is_primary } = req.body
+
+        if (is_primary) {
+          await pool.query('UPDATE client_contacts SET is_primary = false WHERE client_id = $1', [
+            req.params.id,
+          ])
+        }
+
+        const result = await pool.query(
+          `UPDATE client_contacts
             SET name = $1,
                 cargo = $2,
                 email = $3,
@@ -100,18 +125,30 @@ export const createClientsRouter = (pool: Pool) => {
           WHERE id = $6
             AND client_id = $7
           RETURNING *`,
-        [name, cargo || null, email || null, phone || null, is_primary, req.params.contactId, req.params.id]
-      )
+          [
+            name,
+            cargo || null,
+            email || null,
+            phone || null,
+            is_primary,
+            req.params.contactId,
+            req.params.id,
+          ]
+        )
 
-      if (result.rows.length === 0) return res.status(404).json({ error: 'Contact not found' })
-      return res.json(result.rows[0])
-    } catch (error: any) {
-      logger.error('Update contact error', { error: error.message, contactId: req.params.contactId })
-      return res.status(500).json({ error: 'Failed to update contact' })
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Contact not found' })
+        return res.json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Update contact error', {
+          error: error.message,
+          contactId: req.params.contactId,
+        })
+        return res.status(500).json({ error: 'Failed to update contact' })
+      }
     }
-  })
+  )
 
-  router.get('/:id', async (req: AuthRequest, res) => {
+  router.get('/:id', validate({ params: uuidParams('id') }), async (req: AuthRequest, res) => {
     try {
       const result = await pool.query(
         `SELECT *
@@ -130,11 +167,10 @@ export const createClientsRouter = (pool: Pool) => {
     }
   })
 
-  router.post('/', async (req: AuthRequest, res) => {
+  router.post('/', validate({ body: clientCreateSchema }), async (req: AuthRequest, res) => {
     const client = await pool.connect()
     try {
       const { name, rut, activity, address, city, contacts } = req.body
-      if (!name) return res.status(400).json({ error: 'name is required' })
 
       await client.query('BEGIN')
       const result = await client.query(
@@ -182,13 +218,15 @@ export const createClientsRouter = (pool: Pool) => {
     }
   })
 
-  router.put('/:id', async (req: AuthRequest, res) => {
-    try {
-      const { name, rut, activity, address, city } = req.body
-      if (!name) return res.status(400).json({ error: 'name is required' })
+  router.put(
+    '/:id',
+    validate({ params: uuidParams('id'), body: clientUpdateSchema }),
+    async (req: AuthRequest, res) => {
+      try {
+        const { name, rut, activity, address, city } = req.body
 
-      const result = await pool.query(
-        `UPDATE clients
+        const result = await pool.query(
+          `UPDATE clients
             SET name = $1,
                 rut = $2,
                 activity = $3,
@@ -198,56 +236,62 @@ export const createClientsRouter = (pool: Pool) => {
           WHERE id = $6
             AND deleted_at IS NULL
           RETURNING *`,
-        [name, rut || null, activity || null, address || null, city || null, req.params.id]
-      )
+          [name, rut || null, activity || null, address || null, city || null, req.params.id]
+        )
 
-      if (result.rows.length === 0) return res.status(404).json({ error: 'Client not found' })
-      const [updated] = await withContacts(pool, result.rows)
-      return res.json(updated)
-    } catch (error: any) {
-      logger.error('Update client error', { error: error.message, clientId: req.params.id })
-      if (error.code === '23505') {
-        return res.status(409).json({
-          error: 'Client RUT already exists',
-          message: 'Ya existe un cliente registrado con ese RUT.',
-        })
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Client not found' })
+        const [updated] = await withContacts(pool, result.rows)
+        return res.json(updated)
+      } catch (error: any) {
+        logger.error('Update client error', { error: error.message, clientId: req.params.id })
+        if (error.code === '23505') {
+          return res.status(409).json({
+            error: 'Client RUT already exists',
+            message: 'Ya existe un cliente registrado con ese RUT.',
+          })
+        }
+        return res.status(500).json({ error: 'Failed to update client' })
       }
-      return res.status(500).json({ error: 'Failed to update client' })
     }
-  })
+  )
 
-  router.delete('/:id', roleMiddleware('admin'), async (req: AuthRequest, res) => {
-    try {
-      // Protección server-side: la UI ya deshabilita este botón si hay
-      // cotizaciones asociadas, pero eso depende del estado local (puede
-      // estar desactualizado), así que se repite el chequeo acá.
-      const inUse = await pool.query(
-        'SELECT 1 FROM quotations WHERE client_id = $1 AND deleted_at IS NULL LIMIT 1',
-        [req.params.id]
-      )
-      if (inUse.rows.length > 0) {
-        return res.status(409).json({
-          error: 'Client has quotations',
-          message: 'No se puede eliminar un cliente con cotizaciones asociadas.',
-        })
-      }
+  router.delete(
+    '/:id',
+    roleMiddleware('admin'),
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      try {
+        // Protección server-side: la UI ya deshabilita este botón si hay
+        // cotizaciones asociadas, pero eso depende del estado local (puede
+        // estar desactualizado), así que se repite el chequeo acá.
+        const inUse = await pool.query(
+          'SELECT 1 FROM quotations WHERE client_id = $1 AND deleted_at IS NULL LIMIT 1',
+          [req.params.id]
+        )
+        if (inUse.rows.length > 0) {
+          return res.status(409).json({
+            error: 'Client has quotations',
+            message: 'No se puede eliminar un cliente con cotizaciones asociadas.',
+          })
+        }
 
-      const result = await pool.query(
-        `UPDATE clients
+        const result = await pool.query(
+          `UPDATE clients
             SET deleted_at = NOW()
           WHERE id = $1
             AND deleted_at IS NULL
           RETURNING id`,
-        [req.params.id]
-      )
+          [req.params.id]
+        )
 
-      if (result.rows.length === 0) return res.status(404).json({ error: 'Client not found' })
-      return res.json({ message: 'Client deleted successfully' })
-    } catch (error: any) {
-      logger.error('Delete client error', { error: error.message, clientId: req.params.id })
-      return res.status(500).json({ error: 'Failed to delete client' })
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Client not found' })
+        return res.json({ message: 'Client deleted successfully' })
+      } catch (error: any) {
+        logger.error('Delete client error', { error: error.message, clientId: req.params.id })
+        return res.status(500).json({ error: 'Failed to delete client' })
+      }
     }
-  })
+  )
 
   return router
 }

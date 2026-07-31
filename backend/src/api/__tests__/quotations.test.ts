@@ -6,6 +6,10 @@ import { createQuotationsRouter } from '../quotations'
 
 const JWT_SECRET = 'test-secret-test-secret-test-secret'
 
+const QUOTATION_ID = '22222222-2222-4222-8222-222222222222'
+const CLIENT_ID = '11111111-1111-4111-8111-111111111111'
+const MISSING_ID = '99999999-9999-4999-8999-999999999999'
+
 // ── Fake DB en memoria ──────────────────────────────────────────
 // Simula lo mínimo que quotations.ts necesita de `pool`/`PoolClient`
 // (BEGIN/COMMIT/ROLLBACK + las queries reales del archivo) sin tocar
@@ -13,7 +17,7 @@ const JWT_SECRET = 'test-secret-test-secret-test-secret'
 // (control de concurrencia optimista vía "version"), no el driver `pg`.
 function makeFakeDb(initialRow: Record<string, any>) {
   let row = { ...initialRow }
-  let deleted = false
+  const deleted = false
 
   async function query(sql: string, params: any[] = []) {
     const s = sql.trim()
@@ -24,16 +28,38 @@ function makeFakeDb(initialRow: Record<string, any>) {
 
     if (s.startsWith('UPDATE quotations')) {
       const [
-        correlative, client_id, contact_id, enduser, ref, date, valid_until,
-        status, oper_state, uf_value, iva_pct, notes, quotationId, expectedVersion,
+        correlative,
+        client_id,
+        contact_id,
+        enduser,
+        ref,
+        date,
+        valid_until,
+        status,
+        oper_state,
+        uf_value,
+        iva_pct,
+        notes,
+        quotationId,
+        expectedVersion,
       ] = params
       if (deleted || row.id !== quotationId || row.version !== expectedVersion) {
         return { rows: [] }
       }
       row = {
         ...row,
-        correlative, client_id, contact_id, enduser, ref, date, valid_until,
-        status, oper_state, uf_value, iva_pct, notes,
+        correlative,
+        client_id,
+        contact_id,
+        enduser,
+        ref,
+        date,
+        valid_until,
+        status,
+        oper_state,
+        uf_value,
+        iva_pct,
+        notes,
         version: row.version + 1,
         updated_at: new Date().toISOString(),
       }
@@ -52,7 +78,10 @@ function makeFakeDb(initialRow: Record<string, any>) {
       return { rows: [{ ...row, client_name: 'Cliente Test', contact_name: null }] }
     }
 
-    if (s.startsWith('SELECT * FROM quotation_') || s.startsWith('SELECT * FROM v_quotation_totals')) {
+    if (
+      s.startsWith('SELECT * FROM quotation_') ||
+      s.startsWith('SELECT * FROM v_quotation_totals')
+    ) {
       return { rows: [] }
     }
 
@@ -83,14 +112,17 @@ function buildApp(row: Record<string, any>) {
 }
 
 function authHeader() {
-  const token = jwt.sign({ id: 'u1', email: 'test@test.com', name: 'Test', role: 'admin' }, JWT_SECRET)
+  const token = jwt.sign(
+    { id: 'u1', email: 'test@test.com', name: 'Test', role: 'admin' },
+    JWT_SECRET
+  )
   return `Bearer ${token}`
 }
 
 const baseRow = {
-  id: 'q1',
+  id: QUOTATION_ID,
   correlative: 'SYM-001-01-2026',
-  client_id: 'c1',
+  client_id: CLIENT_ID,
   contact_id: null,
   enduser: null,
   ref: null,
@@ -113,9 +145,9 @@ describe('PUT /api/quotations/:id — concurrencia optimista', () => {
   it('actualiza y sube version cuando el version enviado coincide con el actual', async () => {
     const app = buildApp({ ...baseRow })
     const res = await request(app)
-      .put('/api/quotations/q1')
+      .put(`/api/quotations/${QUOTATION_ID}`)
       .set('Authorization', authHeader())
-      .send({ client_id: 'c1', correlative: 'SYM-001-01-2026', version: 1 })
+      .send({ client_id: CLIENT_ID, correlative: 'SYM-001-01-2026', version: 1 })
 
     expect(res.status).toBe(200)
     expect(res.body.version).toBe(2)
@@ -124,9 +156,9 @@ describe('PUT /api/quotations/:id — concurrencia optimista', () => {
   it('devuelve 409 si otro usuario ya modificó la cotización (version desactualizado)', async () => {
     const app = buildApp({ ...baseRow, version: 3 })
     const res = await request(app)
-      .put('/api/quotations/q1')
+      .put(`/api/quotations/${QUOTATION_ID}`)
       .set('Authorization', authHeader())
-      .send({ client_id: 'c1', correlative: 'SYM-001-01-2026', version: 1 })
+      .send({ client_id: CLIENT_ID, correlative: 'SYM-001-01-2026', version: 1 })
 
     expect(res.status).toBe(409)
     expect(res.body.current_version).toBe(3)
@@ -136,18 +168,28 @@ describe('PUT /api/quotations/:id — concurrencia optimista', () => {
   it('devuelve 404 si la cotización no existe', async () => {
     const app = buildApp({ ...baseRow })
     const res = await request(app)
-      .put('/api/quotations/no-existe')
+      .put(`/api/quotations/${MISSING_ID}`)
       .set('Authorization', authHeader())
-      .send({ client_id: 'c1', correlative: 'X', version: 1 })
+      .send({ client_id: CLIENT_ID, correlative: 'X', version: 1 })
 
     expect(res.status).toBe(404)
+  })
+
+  it('devuelve 400 si el id no es un UUID válido', async () => {
+    const app = buildApp({ ...baseRow })
+    const res = await request(app)
+      .put('/api/quotations/no-es-un-uuid')
+      .set('Authorization', authHeader())
+      .send({ client_id: CLIENT_ID, correlative: 'X', version: 1 })
+
+    expect(res.status).toBe(400)
   })
 
   it('rechaza la petición sin token de autenticación', async () => {
     const app = buildApp({ ...baseRow })
     const res = await request(app)
-      .put('/api/quotations/q1')
-      .send({ client_id: 'c1', correlative: 'SYM-001-01-2026', version: 1 })
+      .put(`/api/quotations/${QUOTATION_ID}`)
+      .send({ client_id: CLIENT_ID, correlative: 'SYM-001-01-2026', version: 1 })
 
     expect(res.status).toBe(401)
   })

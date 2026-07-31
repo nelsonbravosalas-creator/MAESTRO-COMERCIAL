@@ -16,7 +16,7 @@ describe('loadEnv', () => {
   it('arranca con las variables mínimas correctas', () => {
     const env = loadEnv(validEnv)
     expect(env.JWT_SECRET).toBe(validEnv.JWT_SECRET)
-    expect(env.JWT_EXPIRY).toBe('8h')
+    expect(env.JWT_EXPIRY).toBe('1h')
   })
 
   it('falla (exit != 0) si falta JWT_SECRET', () => {

@@ -8,7 +8,7 @@ dotenv.config({ path: '../.env.development.local', override: true })
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false,
 })
 
 interface SeedUser {
@@ -29,7 +29,12 @@ function readSeedUsers(): SeedUser[] {
     if (adminPassword.length < 8) {
       throw new Error('SEED_ADMIN_PASSWORD debe tener al menos 8 caracteres')
     }
-    users.push({ email: adminEmail, password: adminPassword, name: process.env.SEED_ADMIN_NAME || 'Admin', role: 'admin' })
+    users.push({
+      email: adminEmail,
+      password: adminPassword,
+      name: process.env.SEED_ADMIN_NAME || 'Admin',
+      role: 'admin',
+    })
   }
 
   const managerEmail = process.env.SEED_MANAGER_EMAIL
@@ -38,7 +43,12 @@ function readSeedUsers(): SeedUser[] {
     if (managerPassword.length < 8) {
       throw new Error('SEED_MANAGER_PASSWORD debe tener al menos 8 caracteres')
     }
-    users.push({ email: managerEmail, password: managerPassword, name: process.env.SEED_MANAGER_NAME || 'Manager', role: 'manager' })
+    users.push({
+      email: managerEmail,
+      password: managerPassword,
+      name: process.env.SEED_MANAGER_NAME || 'Manager',
+      role: 'manager',
+    })
   }
 
   return users
@@ -51,8 +61,8 @@ async function seedUsers() {
     if (users.length === 0) {
       logger.warn(
         'No hay usuarios para sembrar: defina SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD ' +
-        '(y opcionalmente SEED_MANAGER_EMAIL/SEED_MANAGER_PASSWORD) en el entorno. ' +
-        'Alternativa: POST /api/admin/setup con ADMIN_SETUP_SECRET.'
+          '(y opcionalmente SEED_MANAGER_EMAIL/SEED_MANAGER_PASSWORD) en el entorno. ' +
+          'Alternativa: POST /api/admin/setup con ADMIN_SETUP_SECRET.'
       )
       await pool.end()
       process.exit(0)
@@ -61,10 +71,9 @@ async function seedUsers() {
     logger.info('Starting seed data insertion...')
 
     for (const user of users) {
-      const result = await pool.query(
-        'SELECT id FROM users WHERE lower(email) = lower($1)',
-        [user.email]
-      )
+      const result = await pool.query('SELECT id FROM users WHERE lower(email) = lower($1)', [
+        user.email,
+      ])
 
       const passwordHash = await bcrypt.hash(user.password, 10)
 

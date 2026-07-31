@@ -1,6 +1,75 @@
 # Riesgos aceptados — dependencias y arquitectura
 
-**Actualizado:** 2026-07-30 (remediación C-09).
+**Actualizado:** 2026-07-31 (remediación de riesgo alto, A-11/A-16/A-17).
+
+## A-17 — Antipatrón de conexiones en serverless
+
+**Implementado:**
+
+- `statement_timeout: 10_000` en el `Pool` de `app.ts` — una consulta lenta ya
+  no puede retener una conexión indefinidamente (antes no había ningún límite).
+- TLS validado (`rejectUnauthorized: true`, ver A-05) en vez de solo cifrado sin autenticar.
+- `@neondatabase/serverless` **eliminado** del `package.json` raíz: estaba
+  declarado pero nunca importado en ningún archivo real (`depcheck` manual vía
+  grep confirmó cero usos) — exactamente el hallazgo de la evidencia original.
+
+**No implementado — seguir usando `pg.Pool` clásico con `max: 5`, no el driver
+HTTP de `@neondatabase/serverless` ni el endpoint _pooled_:**
+
+Cambiar de driver reescribe la forma en que se ejecutan **todas** las queries
+del backend (el driver HTTP de Neon no es un reemplazo drop-in de `pg` — no
+soporta transacciones de la misma manera, y varios routers de este proyecto
+usan `pool.connect()` + `BEGIN`/`COMMIT` explícitos). Es un cambio de alto
+impacto que:
+
+1. No se puede probar contra una Neon real en este entorno.
+2. Si se hace mal, rompe silenciosamente las transacciones de
+   `quotations.ts`/`invoices.ts`/`projects.ts` (creación con múltiples inserts
+   relacionados) — el peor lugar posible para un bug sutil.
+
+**Mitigación mientras tanto:** `max: 5` ya es conservador, y `statement_timeout`
+evita que una conexión colgada consuma el pool completo. El riesgo real
+("too many connections" bajo carga concurrente) sigue existiendo si el tráfico
+crece — no se prueba con `k6` en este entorno (ver `A-17` en
+`docs/HALLAZGOS_BLOQUEADOS.md`).
+
+**Revisión sugerida:** antes de migrar el driver, conseguir el endpoint
+_pooled_ de Neon (`...-pooler.neon.tech`) y cambiar solo la `DATABASE_URL` —
+eso ya reduce el riesgo de agotar conexiones sin tocar una sola línea de
+código, y es reversible con solo cambiar la variable de entorno de vuelta.
+
+## A-11 — Alcance reducido de "API sin contrato, versionado ni paginación"
+
+## A-11 — Alcance reducido de "API sin contrato, versionado ni paginación"
+
+**Implementado:** paginación keyset real (`{ data, next_cursor, has_more }`)
+en `GET /api/quotations`, el endpoint explícitamente señalado en la evidencia
+original (`SELECT … FROM quotations … ORDER BY … ` sin `LIMIT`). `clients`,
+`projects` e `invoices` recibieron un tope duro de filas (`?limit`, máx. 500)
+en vez de paginación completa — mitiga el mismo riesgo (consulta sin límite)
+sin la complejidad de construir un cursor para tres criterios de orden
+distintos (alfabético por nombre, fecha de creación, fecha de factura) sin
+poder probarlo contra Postgres real en este entorno.
+
+**No implementado, diferido a propósito:**
+
+- **Versionado `/api/v1`**: mover todas las rutas bajo un prefijo nuevo con
+  `Deprecation` en las viejas toca cada router y cada llamada del frontend a
+  la vez — alto radio de impacto para un cambio que no se puede probar en
+  vivo aquí. El contrato actual (`/api/<recurso>`) se mantiene.
+- **OpenAPI generado desde los esquemas zod** (`/api/docs`): valioso pero
+  separable; no bloquea ningún riesgo de seguridad o disponibilidad.
+- **Formato de error unificado en el 100% de los endpoints**: las rutas
+  nuevas/tocadas en esta remediación devuelven `{ error, message, details? }`
+  de forma consistente; homologar retroactivamente cada handler viejo es
+  trabajo de estilo, no de riesgo, y se dejó fuera para no inflar el diff.
+- **ETag/Cache-Control en `/api/config` y `/api/catalog`**: optimización de
+  rendimiento menor, no un riesgo.
+
+**Revisión sugerida:** si el volumen real de clientes/proyectos/facturas se
+acerca al tope de 500, convertir esos tres listados al mismo patrón de cursor
+que ya tiene `quotations` (la función `buildPage`/`decodeCursor` en
+`backend/src/utils/pagination.ts` ya es reutilizable).
 
 ## Vulnerabilidades de dependencias
 

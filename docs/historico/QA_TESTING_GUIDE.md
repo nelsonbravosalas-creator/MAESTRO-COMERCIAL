@@ -8,22 +8,24 @@
 
 ## 🌐 URLs de Acceso
 
-| Servicio | URL | Puerto |
-|----------|-----|--------|
-| **Frontend** | http://localhost:5173 | 5173 |
-| **Backend API** | http://localhost:3000 | 3000 |
-| **API Health Check** | http://localhost:3000/api/health | 3000 |
+| Servicio             | URL                              | Puerto |
+| -------------------- | -------------------------------- | ------ |
+| **Frontend**         | http://localhost:5173            | 5173   |
+| **Backend API**      | http://localhost:3000            | 3000   |
+| **API Health Check** | http://localhost:3000/api/health | 3000   |
 
 ---
 
 ## 📝 Credenciales de Prueba
 
 **Usuario Admin:**
+
 - Email: `admin@local.test`
 - PIN/Contraseña: `ChangeMe123!`
 - Rol: `admin`
 
 **Usuario Manager:**
+
 - Email: `manager@local.test`
 - PIN/Contraseña: `ChangeMe123!`
 - Rol: `manager`
@@ -35,12 +37,14 @@
 ### FASE 1: Setup Base ✓
 
 #### T1.1 Frontend Carga Correctamente
+
 - [ ] Navega a http://localhost:5173
 - [ ] Deberías ver: Header "BravoCRM" + Dashboard inicial
 - [ ] Verifica que el CSS está cargado (colores dark theme)
 - [ ] Botón "Verificar Backend" visible
 
 #### T1.2 Backend Health Check
+
 - [ ] Click en "Verificar Backend"
 - [ ] Debe mostrar: "Backend conectado: ok"
 - [ ] Verifica http://localhost:3000/api/health directamente (debe retornar JSON)
@@ -50,6 +54,7 @@
 ### FASE 2: Database & Auth ✓
 
 #### T2.1 Login con Usuario Admin
+
 - [ ] Navega a http://localhost:5173/login (si existe) o busca formulario login
 - [ ] Email: `admin@local.test`
 - [ ] Contraseña: `ChangeMe123!`
@@ -57,15 +62,18 @@
 - [ ] Verificar token JWT en localStorage: `localStorage.getItem('authToken')`
 
 #### T2.2 Login con Usuario Manager
+
 - [ ] Logout del usuario anterior
 - [ ] Login con: `manager@local.test` / `ChangeMe123!`
 - [ ] Esperado: Login exitoso
 
 #### T2.3 Login Fallido
+
 - [ ] Intenta login con credenciales inválidas
 - [ ] Esperado: Mensaje de error "Invalid email or password"
 
 #### T2.4 JWT Token Validation
+
 - [ ] Inspecciona Network tab (DevTools)
 - [ ] Requests a `/api/...` deben incluir header: `Authorization: Bearer <token>`
 - [ ] Token debe ser válido por 7 días
@@ -77,6 +85,7 @@
 #### T3.1 CRUD Clientes
 
 **Create Client:**
+
 - [ ] Navega a sección Clientes
 - [ ] Click "Nuevo Cliente"
 - [ ] Completa: Nombre, Email, Teléfono, Dirección, RUC
@@ -84,10 +93,12 @@
 - [ ] Esperado: Cliente aparece en tabla
 
 **Read Clients:**
+
 - [ ] Lista todos los clientes
 - [ ] Verifica que soft-deleted clients NO aparecen
 
 **Update Client:**
+
 - [ ] Selecciona un cliente
 - [ ] Click "Editar"
 - [ ] Modifica algún campo
@@ -95,6 +106,7 @@
 - [ ] Esperado: Cambios se reflejan
 
 **Delete Client:**
+
 - [ ] Selecciona un cliente
 - [ ] Click "Eliminar"
 - [ ] Esperado: Cliente desaparece (soft-deleted)
@@ -102,6 +114,7 @@
 #### T3.2 CRUD Cotizaciones
 
 **Create Quotation:**
+
 - [ ] Navega a "Cotizaciones"
 - [ ] Click "Nueva Cotización"
 - [ ] Selecciona Cliente (dropdown)
@@ -115,12 +128,14 @@
 - [ ] Esperado: Cotización generada con número Q-0001
 
 **Check Calculations:**
+
 - [ ] Subtotal = 2 × 1500 = 3000
 - [ ] IVA = 3000 × 18% = 540
 - [ ] Total = 3540
 - [ ] Verifica cálculos automáticos
 
 **Update Quotation Status:**
+
 - [ ] Abre cotización
 - [ ] Cambia estado: Draft → Sent → Accepted
 - [ ] Esperado: Estado se actualiza
@@ -128,6 +143,7 @@
 #### T3.3 CRUD Proyectos (Planning)
 
 **Create Project from Quotation:**
+
 - [ ] Abre una Cotización Aceptada
 - [ ] Click "Convertir a Proyecto"
 - [ ] Asigna usuarios (si aplica)
@@ -136,6 +152,7 @@
 - [ ] Esperado: Proyecto creado con budget = total cotización
 
 **Update Project Progress:**
+
 - [ ] Abre proyecto
 - [ ] Actualiza: Progreso (%), Estado, Costos Gastados
 - [ ] Click "Guardar"
@@ -144,6 +161,7 @@
 #### T3.4 CRUD Facturas
 
 **Create Invoice:**
+
 - [ ] Navega a "Facturas"
 - [ ] Click "Nueva Factura"
 - [ ] Selecciona Cliente
@@ -154,10 +172,12 @@
 - [ ] Esperado: Factura F-000001 creada
 
 **Verify Sequential Numbers:**
+
 - [ ] Crea 3 facturas
 - [ ] Verifica que numeros son: F-000001, F-000002, F-000003
 
 **Factorization Flag:**
+
 - [ ] Abre factura emitida
 - [ ] Marca "Factura Factorizada"
 - [ ] Click "Guardar"
@@ -168,6 +188,7 @@
 ### FASE 4: Dashboard & Cost Indicator ✓
 
 #### T4.1 CostIndicator Loads
+
 - [ ] Dashboard debe mostrar componente CostIndicator superior
 - [ ] Verifica 5 indicadores:
   - [ ] Total Facturado (mes actual)
@@ -177,6 +198,7 @@
   - [ ] Cotizaciones Pendientes
 
 #### T4.2 KPI Calculations
+
 - [ ] Después de crear cotizaciones/facturas/proyectos
 - [ ] Verifica que KPIs se actualizan
 - [ ] Cálculo correcto:
@@ -186,10 +208,12 @@
   - Margin % = (Margin / Total Invoiced) × 100
 
 #### T4.3 Health Indicator
+
 - [ ] Si Margin % >= 20% → Badge Verde "✓ Margen saludable"
 - [ ] Si Margin % < 20% → Badge Naranja "⚠ Revisar margen"
 
 #### T4.4 Auto-Refresh
+
 - [ ] Crea nueva factura
 - [ ] Espera máximo 5 minutos (o refresh manual si existe)
 - [ ] KPIs deben actualizarse
@@ -229,6 +253,7 @@
 ## 🐛 Pruebas de Bugs Corregidos
 
 ### B1: JWT Validation (BUG #1)
+
 - [ ] Login exitoso genera JWT
 - [ ] Token está en Authorization header
 - [ ] Sin token: Acceso negado a endpoints /api/...
@@ -236,12 +261,14 @@
 - [ ] Token inválido: Error 401 "Invalid token"
 
 ### B2: Soft-Delete (BUG #3)
+
 - [ ] Crea 3 clientes
 - [ ] Elimina 1 cliente
 - [ ] Lista clientes: Debe mostrar solo 2
 - [ ] Verifica en BD que deleted_at está poblado
 
 ### B3: Error Handling (BUG #4)
+
 - [ ] Abre DevTools → Console
 - [ ] Simula error (ej: servidor offline)
 - [ ] Error debe loguear en servidor: Ver logs en `logs/error.log`
@@ -277,12 +304,14 @@ Antes de pasar a Fases 5-8, verifica:
 ## 📞 Reportar Errores
 
 Si encuentras bugs:
+
 1. Anota el paso exacto para reproducir
 2. Captura de pantalla/logs
 3. Error message completo
 4. Browser + version
 
 **Ejemplo:**
+
 ```
 Bug: Cotización no calcula IVA correctamente
 Pasos:

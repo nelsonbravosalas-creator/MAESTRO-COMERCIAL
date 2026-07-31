@@ -91,7 +91,7 @@ echo Usuarios de Prueba (solo local):
 echo   Admin:    admin@local.test / ChangeMe123!
 echo   Manager:  manager@local.test / ChangeMe123!
 echo.
-echo Guia de Testing: QA_TESTING_GUIDE.md
+echo Guia de Testing: docs\historico\QA_TESTING_GUIDE.md
 echo.
 echo [IMPORTANTE]
 echo - Se han abierto 2 ventanas de comando (Backend y Frontend)

@@ -1,6 +1,9 @@
 # PROMPT DE CORRECCIÓN DEFINITIVO — CMMS HVAC PRO IA STUDIO
+
 ## Versión 3.0 — Basado en Auditoría DBA Senior con 35 tablas verificadas en producción Neon
+
 ## Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO | Rama: main
+
 ## Fuente de verdad: Auditoría forense DBA + server.ts (2837 líneas) + vercel.json verificado
 
 ---
@@ -76,6 +79,7 @@ La auditoría DBA ejecutó `SELECT * FROM information_schema.tables` en producci
 y obtuvo el siguiente inventario real. Esta es la fuente de verdad.
 
 ### GRUPO A — TABLAS CANÓNICAS (conservar, son la fuente de verdad)
+
 ```
 clientes      → maestra de tenants/clientes. TODAS las demás tablas operacionales
                  deben tener cliente_id FK → clientes(id)
@@ -86,6 +90,7 @@ users         → técnicos y usuarios. FK: users.cliente_id → clientes(id)
 ```
 
 ### GRUPO B — TABLAS OPERACIONALES ACTIVAS (conservar, tienen rutas y referencias en código)
+
 ```
 work_orders             → src/pages/WorkOrders.tsx, server.ts
 reports                 → src/pages/InformesHVAC.tsx, server.ts
@@ -102,6 +107,7 @@ cmms_auth_failures      → server.ts (bloqueador de fuerza bruta en login) ← 
 ```
 
 ### GRUPO C — TABLAS LEGACY (acción específica requerida)
+
 ```
 clients         → representación dual de clientes para compatibilidad offline Dexie.
                   ACCIÓN: migrar datos a 'clientes' y dejar en modo lectura.
@@ -112,6 +118,7 @@ cmms_idempotency_keys → endpoint /api/cmms/:resource (inactivo).
 ```
 
 ### GRUPO D — TABLAS HUÉRFANAS (eliminar con CASCADE — 0% impacto confirmado por DBA)
+
 ```
 -- Artefactos Neon:
 playing_with_neon         → tabla sandbox de Neon, sin uso alguno
@@ -141,6 +148,7 @@ NOTA: CASCADE en el DROP resuelve automáticamente todas las FK internas del blo
 ```
 
 ### FK ACTIVAS DEL BLOQUE OPERACIONAL (estas deben quedar intactas)
+
 ```
 sucursales.cliente_id          → clientes(id)
 assets.cliente_id              → clientes(id)
@@ -186,6 +194,7 @@ audit_logs.cliente_id          → clients(id)      ← FK a 'clients' (legacy),
 ## CORRECCIÓN C-1 — Ejecutar script SQL de purga de tablas huérfanas en Neon
 
 ### Cuándo ejecutar
+
 Solo después de MANUAL-3 (backup creado). Ejecutar en Neon Console → SQL Editor.
 
 ### Script SQL — copiar y ejecutar íntegro
@@ -254,6 +263,7 @@ ORDER BY table_name;
 ```
 
 ### CONSERVAR EXPLÍCITAMENTE (NO incluir en el DROP):
+
 ```
 cmms_auth_failures   → activo en server.ts como bloqueador de fuerza bruta en /api/auth
 clients              → compatibilidad offline Dexie (ver C-2 para migración controlada)
@@ -264,6 +274,7 @@ clients              → compatibilidad offline Dexie (ver C-2 para migración c
 ## CORRECCIÓN C-2 — server.ts: Migrar FK de 'clients' a 'clientes' y unificar sync
 
 ### Problema verificado
+
 La auditoría DBA identificó que 5 tablas operacionales tienen FK apuntando a `clients`
 (tabla legacy JSON-blob) en lugar de `clientes` (tabla canónica):
 
@@ -276,6 +287,7 @@ audit_logs.cliente_id          → clients(id)   ← INCORRECTO
 ```
 
 ### Qué hacer en server.ts
+
 Encuentra la función `ensureTables()`. Dentro de ella, agrega el siguiente bloque
 de migración de FK **después** del bloque de creación de tablas existente y **antes**
 del cierre de la función. NO toques el resto de `ensureTables()`.
@@ -284,7 +296,7 @@ del cierre de la función. NO toques el resto de `ensureTables()`.
 // ── MIGRACIÓN DE FK: clients → clientes (agregar al final de ensureTables) ──
 // Este bloque se ejecuta una vez por arranque y es idempotente.
 try {
-  console.log("🔄 Migrando datos de 'clients' a 'clientes'...");
+  console.log("🔄 Migrando datos de 'clients' a 'clientes'...")
 
   // 1. Copiar registros de clients que no existan en clientes
   await sql`
@@ -299,11 +311,17 @@ try {
     FROM clients
     WHERE COALESCE(id::text, uuid_sync) IS NOT NULL
     ON CONFLICT (id) DO NOTHING
-  `;
+  `
 
   // 2. Actualizar cliente_id huérfano en tablas operacionales
   //    (registros que apuntan a clients.id que ya está en clientes.id)
-  for (const tbl of ['calendar', 'inventory', 'preventive_maintenance', 'ordenes_servicio', 'audit_logs']) {
+  for (const tbl of [
+    'calendar',
+    'inventory',
+    'preventive_maintenance',
+    'ordenes_servicio',
+    'audit_logs',
+  ]) {
     try {
       await sql.unsafe(`
         UPDATE ${tbl} t
@@ -312,14 +330,27 @@ try {
         JOIN clientes cl ON cl.id = c.id::text OR cl.uuid_sync = c.uuid_sync
         WHERE t.cliente_id = c.id::text
           AND t.cliente_id NOT IN (SELECT id FROM clientes)
-      `);
+      `)
     } catch (e: any) {
-      console.warn(`FK migration skip for ${tbl}: ${e.message}`);
+      console.warn(`FK migration skip for ${tbl}: ${e.message}`)
     }
   }
 
   // 3. Reasignar a 'cliente-default-001' los registros que quedan huérfanos
-  for (const tbl of ['calendar', 'inventory', 'preventive_maintenance', 'ordenes_servicio', 'audit_logs', 'assets', 'work_orders', 'reports', 'users', 'events', 'settings', 'catalog_asset_types']) {
+  for (const tbl of [
+    'calendar',
+    'inventory',
+    'preventive_maintenance',
+    'ordenes_servicio',
+    'audit_logs',
+    'assets',
+    'work_orders',
+    'reports',
+    'users',
+    'events',
+    'settings',
+    'catalog_asset_types',
+  ]) {
     try {
       await sql.unsafe(`
         UPDATE ${tbl}
@@ -327,15 +358,15 @@ try {
         WHERE cliente_id IS NULL
            OR cliente_id = ''
            OR cliente_id NOT IN (SELECT id FROM clientes)
-      `);
+      `)
     } catch (e: any) {
-      console.warn(`Default clienteId skip for ${tbl}: ${e.message}`);
+      console.warn(`Default clienteId skip for ${tbl}: ${e.message}`)
     }
   }
 
-  console.log("✅ Migración FK clients → clientes completada.");
+  console.log('✅ Migración FK clients → clientes completada.')
 } catch (e: any) {
-  console.warn("⚠️ Migración FK parcial (puede ser primera ejecución):", e.message);
+  console.warn('⚠️ Migración FK parcial (puede ser primera ejecución):', e.message)
 }
 ```
 
@@ -344,6 +375,7 @@ try {
 ## CORRECCIÓN C-3 — server.ts: Reemplazar ALLOWED_TABLES y TABLE_ALIAS_MAP
 
 ### Qué hacer
+
 Encuentra las constantes `ALLOWED_TABLES` y `TABLE_ALIAS_MAP` en server.ts.
 Reemplaza AMBAS íntegramente. NO toques nada más.
 
@@ -371,39 +403,39 @@ const ALLOWED_TABLES = [
   'users',
   // Legacy sync (compatibilidad Dexie offline — mantener hasta migración completa)
   'clients',
-] as const;
+] as const
 
 // ─── ALIASES DE NOMBRES ─────────────────────────────────────────────────────
 // Dexie usa nombres en español. El servidor resuelve al nombre canónico de Neon.
 // El cliente puede enviar cualquier alias en el campo 'table' del payload sync.
 const TABLE_ALIAS_MAP: Record<string, string> = {
   // Español → canónico
-  'activos':                'assets',
-  'equipos':                'assets',
-  'ordenes_trabajo':        'work_orders',
-  'ordenes':                'work_orders',
-  'tickets':                'work_orders',
-  'informes':               'reports',
-  'informes_tecnicos':      'reports',
-  'mantenimiento':          'preventive_maintenance',
-  'mantenimientos':         'preventive_maintenance',
-  'planes_pm':              'preventive_maintenance',
-  'inventario':             'inventory',
-  'repuestos':              'inventory',
-  'usuarios':               'users',
-  'tecnicos':               'users',
-  'clientes_lista':         'clientes',
-  'cliente':                'clientes',
-  'calendario':             'calendar',
-  'eventos_calendario':     'calendar',
-  'eventos_sync':           'events',
-  'sucursal':               'sucursales',
-  'sedes':                  'sucursales',
-  'ramas':                  'branches',
-  'configuracion':          'settings',
-  'catalogo':               'catalog_asset_types',
-  'ordenes_servicio':       'ordenes_servicio',   // ya es el nombre canónico
-};
+  activos: 'assets',
+  equipos: 'assets',
+  ordenes_trabajo: 'work_orders',
+  ordenes: 'work_orders',
+  tickets: 'work_orders',
+  informes: 'reports',
+  informes_tecnicos: 'reports',
+  mantenimiento: 'preventive_maintenance',
+  mantenimientos: 'preventive_maintenance',
+  planes_pm: 'preventive_maintenance',
+  inventario: 'inventory',
+  repuestos: 'inventory',
+  usuarios: 'users',
+  tecnicos: 'users',
+  clientes_lista: 'clientes',
+  cliente: 'clientes',
+  calendario: 'calendar',
+  eventos_calendario: 'calendar',
+  eventos_sync: 'events',
+  sucursal: 'sucursales',
+  sedes: 'sucursales',
+  ramas: 'branches',
+  configuracion: 'settings',
+  catalogo: 'catalog_asset_types',
+  ordenes_servicio: 'ordenes_servicio', // ya es el nombre canónico
+}
 ```
 
 ---
@@ -411,6 +443,7 @@ const TABLE_ALIAS_MAP: Record<string, string> = {
 ## CORRECCIÓN C-4 — server.ts: Agregar filtro cliente_id en el switch GET
 
 ### Qué hacer
+
 Encuentra el handler `app.get(["/api/:table", "/api/sync/:table"], ...)`.
 Dentro del switch de ese handler, verifica que CADA case filtra por `cliente_id`.
 Si algún case devuelve `SELECT *` sin filtro de tenant, agrégalo.
@@ -496,6 +529,7 @@ case 'clients':
 ## CORRECCIÓN C-5 — server.ts: Inyectar cliente_id en POST /api/sync
 
 ### Qué hacer
+
 Encuentra el handler `app.post("/api/sync", ...)`.
 Agrega SOLO este bloque después de que se extrae y resuelve el nombre de tabla,
 antes del UPSERT. No reescribas el handler.
@@ -504,19 +538,19 @@ antes del UPSERT. No reescribas el handler.
 // ── Garantizar cliente_id en todo registro que entra por sync ────────────
 // Sin esto, registros quedan huérfanos y rompen las FK hacia clientes.
 const clienteIdSync = String(
-  req.body.clienteId
-  || req.body.cliente_id
-  || req.headers['x-client-id']
-  || req.headers['x-cliente-id']
-  || 'cliente-default-001'
-);
+  req.body.clienteId ||
+    req.body.cliente_id ||
+    req.headers['x-client-id'] ||
+    req.headers['x-cliente-id'] ||
+    'cliente-default-001'
+)
 
 // Inyectar en nivel raíz
-if (!req.body.cliente_id) req.body.cliente_id = clienteIdSync;
+if (!req.body.cliente_id) req.body.cliente_id = clienteIdSync
 
 // Inyectar también dentro del objeto 'data' si existe
 if (req.body.data && typeof req.body.data === 'object') {
-  if (!req.body.data.cliente_id) req.body.data.cliente_id = clienteIdSync;
+  if (!req.body.data.cliente_id) req.body.data.cliente_id = clienteIdSync
 }
 ```
 
@@ -525,6 +559,7 @@ if (req.body.data && typeof req.body.data === 'object') {
 ## CORRECCIÓN C-6 — server.ts: Corregir modelo Gemini en /api/ocr
 
 ### Qué hacer
+
 Busca en server.ts la línea exacta con el nombre del modelo Gemini.
 Reemplaza SOLO esa línea:
 
@@ -541,26 +576,28 @@ model: 'gemini-2.0-flash',
 ## CORRECCIÓN C-7 — server.ts: Corregir validateWorkOrderPayload
 
 ### Qué hacer
+
 Encuentra la función `validateWorkOrderPayload` en server.ts.
 Reemplaza SOLO la línea de detección de `signature`:
 
 ```typescript
 // ANTES — no detecta firmas guardadas por Dexie en data.firmas.tecnico:
-const signature = target.firma
-  || target.firma_conformidad_base64
-  || (target.payload && target.payload.firma_conformidad_base64);
+const signature =
+  target.firma ||
+  target.firma_conformidad_base64 ||
+  (target.payload && target.payload.firma_conformidad_base64)
 
 // DESPUÉS — detecta todas las rutas posibles donde Dexie guarda la firma:
 const signature =
-  target.firma
-  || target.firma_conformidad_base64
-  || (target.firmas?.tecnico)
-  || (target.firmas?.cliente)
-  || (target.signatures?.technician)
-  || (target.payload?.firma_conformidad_base64)
-  || (target.data?.firma_conformidad_base64)
-  || (target.data?.firmas?.tecnico)
-  || (target.data?.firmas?.cliente);
+  target.firma ||
+  target.firma_conformidad_base64 ||
+  target.firmas?.tecnico ||
+  target.firmas?.cliente ||
+  target.signatures?.technician ||
+  target.payload?.firma_conformidad_base64 ||
+  target.data?.firma_conformidad_base64 ||
+  target.data?.firmas?.tecnico ||
+  target.data?.firmas?.cliente
 ```
 
 ---
@@ -568,6 +605,7 @@ const signature =
 ## CORRECCIÓN C-8 — vercel.json: Reemplazar archivo completo
 
 ### Contexto
+
 El `vercel.json` actual tiene 4 rewrites apuntando a rutas serverless inexistentes
 (`/api/work-orders/[id]/complete`, `/api/maintenance/[id]/execute`, etc.).
 Esos archivos no existen — Vercel los busca y devuelve 500.
@@ -591,6 +629,7 @@ Solo el catch-all `/(.*) → /api/server` es correcto.
 ## CORRECCIÓN C-9 — syncEngine.ts: Corregir URLs y payload
 
 ### Qué hacer
+
 Abre `src/lib/syncEngine.ts`. Corrige SOLO los siguientes puntos sin reescribir la lógica.
 
 #### 9.1 — URLs de endpoints
@@ -625,26 +664,26 @@ Abre `src/lib/syncEngine.ts`. Corrige SOLO los siguientes puntos sin reescribir 
 ```typescript
 // Si existe un mapa de tabla en syncEngine.ts, verificar que incluya:
 const DEXIE_TO_NEON: Record<string, string> = {
-  'activos':                'assets',
-  'equipos':                'assets',
-  'ordenes_trabajo':        'work_orders',
-  'tickets':                'work_orders',
-  'informes':               'reports',
-  'mantenimientos':         'preventive_maintenance',
-  'inventario':             'inventory',
-  'calendario':             'calendar',
-  'eventos':                'events',
-  'usuarios':               'users',
-  'tecnicos':               'users',
-  'sucursales':             'sucursales',
-  'sedes':                  'sucursales',
-  'clientes':               'clientes',
-  'configuracion':          'settings',
-  'catalogo':               'catalog_asset_types',
-  'ordenes_servicio':       'ordenes_servicio',
+  activos: 'assets',
+  equipos: 'assets',
+  ordenes_trabajo: 'work_orders',
+  tickets: 'work_orders',
+  informes: 'reports',
+  mantenimientos: 'preventive_maintenance',
+  inventario: 'inventory',
+  calendario: 'calendar',
+  eventos: 'events',
+  usuarios: 'users',
+  tecnicos: 'users',
+  sucursales: 'sucursales',
+  sedes: 'sucursales',
+  clientes: 'clientes',
+  configuracion: 'settings',
+  catalogo: 'catalog_asset_types',
+  ordenes_servicio: 'ordenes_servicio',
   // Legacy sync:
-  'clients':                'clients',
-};
+  clients: 'clients',
+}
 // Si ya existe un mapa similar: NO reemplazar, solo agregar entradas faltantes.
 ```
 
@@ -728,7 +767,7 @@ PENDIENTES MANUALES SIN RESOLVER:
 
 ---
 
-*Prompt v3.0 — generado sobre auditoría DBA Senior con 35 tablas verificadas en producción Neon*
-*server.ts: 2837 líneas | vercel.json: 24 líneas | package.json: 64 líneas | tablas auditadas: 35*
-*Decisión de arquitectura Nelson: sync unificado hacia clientes canónica | 17 tablas huérfanas eliminadas*
-*Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO — rama main — Junio 2026*
+_Prompt v3.0 — generado sobre auditoría DBA Senior con 35 tablas verificadas en producción Neon_
+_server.ts: 2837 líneas | vercel.json: 24 líneas | package.json: 64 líneas | tablas auditadas: 35_
+_Decisión de arquitectura Nelson: sync unificado hacia clientes canónica | 17 tablas huérfanas eliminadas_
+_Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO — rama main — Junio 2026_

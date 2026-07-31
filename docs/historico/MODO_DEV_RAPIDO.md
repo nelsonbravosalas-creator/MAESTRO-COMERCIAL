@@ -3,6 +3,7 @@
 ## ✨ Novedades
 
 Se ha creado **server-dev.ts** que permite ejecutar el backend **sin PostgreSQL**:
+
 - Usa archivo `db.json` como base de datos temporal
 - Perfecto para desarrollo rápido y testing
 - Todo funciona desde el navegador
@@ -14,12 +15,14 @@ Se ha creado **server-dev.ts** que permite ejecutar el backend **sin PostgreSQL*
 ### Opción 1: Automático (Recomendado)
 
 #### Terminal 1 - Backend (Puerto 3000)
+
 ```bash
 cd backend
 npm run dev:json
 ```
 
 Esperado:
+
 ```
 ╔════════════════════════════════════════╗
 ║     BravoCRM Backend - DEV MODE        ║
@@ -31,12 +34,14 @@ Esperado:
 ```
 
 #### Terminal 2 - Frontend (Puerto 5173)
+
 ```bash
 cd frontend
 npm run dev
 ```
 
 Esperado:
+
 ```
 VITE v8.0.16 ready in 2068 ms
 ➜ Local: http://localhost:5173
@@ -45,6 +50,7 @@ VITE v8.0.16 ready in 2068 ms
 ### Opción 2: Ejecutable Combinado
 
 Si quieres iniciar ambos en una sola ventana:
+
 ```bash
 cd backend && npm run dev:json &
 cd frontend && npm run dev
@@ -80,6 +86,7 @@ MANAGER:
 ## 📊 ENDPOINTS DISPONIBLES
 
 ### Health Check
+
 ```
 GET http://localhost:3000/api/health
 
@@ -92,6 +99,7 @@ Response:
 ```
 
 ### Login
+
 ```
 POST http://localhost:3000/api/auth/login
 Content-Type: application/json
@@ -110,6 +118,7 @@ Response:
 ```
 
 ### Clientes
+
 ```
 GET    http://localhost:3000/api/clients
 POST   http://localhost:3000/api/clients
@@ -124,6 +133,7 @@ POST   http://localhost:3000/api/clients
 ```
 
 ### Cotizaciones
+
 ```
 GET    http://localhost:3000/api/quotations
 POST   http://localhost:3000/api/quotations
@@ -142,6 +152,7 @@ POST   http://localhost:3000/api/quotations
 ```
 
 ### Proyectos
+
 ```
 GET    http://localhost:3000/api/projects
 POST   http://localhost:3000/api/projects
@@ -155,6 +166,7 @@ POST   http://localhost:3000/api/projects
 ```
 
 ### Facturas
+
 ```
 GET    http://localhost:3000/api/invoices
 POST   http://localhost:3000/api/invoices
@@ -168,6 +180,7 @@ POST   http://localhost:3000/api/invoices
 ```
 
 ### Dashboard KPIs
+
 ```
 GET http://localhost:3000/api/dashboard/kpis
 
@@ -204,16 +217,19 @@ backend/db.json
 ## 🔄 FLUJO TÍPICO DE DESARROLLO
 
 1. **Inicia Backend (Terminal 1):**
+
    ```bash
    cd backend && npm run dev:json
    ```
 
 2. **Inicia Frontend (Terminal 2):**
+
    ```bash
    cd frontend && npm run dev
    ```
 
 3. **Abre navegador:**
+
    ```
    http://localhost:5173
    ```
@@ -243,6 +259,7 @@ backend/db.json
 ## 🧪 TESTING RÁPIDO CON POSTMAN/INSOMNIA
 
 1. **Obtén el JWT:**
+
    ```bash
    curl -X POST http://localhost:3000/api/auth/login \
      -H "Content-Type: application/json" \
@@ -260,6 +277,7 @@ backend/db.json
 ## 🐛 TROUBLESHOOTING
 
 ### "Port 3000 already in use"
+
 ```bash
 # Busca el proceso
 lsof -i :3000
@@ -269,16 +287,19 @@ PORT=3001 npm run dev:json
 ```
 
 ### "Cannot find module 'tsx'"
+
 ```bash
 npm install tsx --save-dev
 npm run dev:json
 ```
 
 ### "db.json not found"
+
 - El archivo se crea automáticamente si no existe
 - Si tienes problemas, copia `backend/db.json.template` a `backend/db.json`
 
 ### "CORS error"
+
 - Verifica que el backend esté en `http://localhost:3000`
 - Frontend hace requests a `http://localhost:3000/api/*`
 - El CORS debe estar habilitado (está configurado)
@@ -287,14 +308,14 @@ npm run dev:json
 
 ## 📝 DIFERENCIAS: DEV vs PRODUCCIÓN
 
-| Aspecto | Dev (JSON) | Producción |
-|---------|-----------|------------|
-| Database | JSON file (db.json) | PostgreSQL (Neon) |
-| Authentication | JWT simple | JWT + bcrypt hashing |
-| Logs | Console | Winston logger + files |
-| CORS | Abierto localhost | Restringido a dominio |
-| Validación | Básica | Completa |
-| Error Handling | Simple | Detallado con logging |
+| Aspecto        | Dev (JSON)          | Producción             |
+| -------------- | ------------------- | ---------------------- |
+| Database       | JSON file (db.json) | PostgreSQL (Neon)      |
+| Authentication | JWT simple          | JWT + bcrypt hashing   |
+| Logs           | Console             | Winston logger + files |
+| CORS           | Abierto localhost   | Restringido a dominio  |
+| Validación     | Básica              | Completa               |
+| Error Handling | Simple              | Detallado con logging  |
 
 ---
 

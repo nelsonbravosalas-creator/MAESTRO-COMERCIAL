@@ -1,6 +1,9 @@
 # PROMPT QA POST-IMPLEMENTACIÓN — CMMS HVAC PRO IA STUDIO
+
 ## Versión 4.0 — Auditoría de código fuente real (server.ts 2493 líneas verificadas)
+
 ## Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO
+
 ## Estado: Post-corrección v3 — verificación de regresiones y bugs residuales
 
 ---
@@ -30,6 +33,7 @@ Cada sección indica exactamente qué líneas tocar. Nada más.
 ## BUG CRÍTICO #1 — cmms_auth_failures incluida en la lista DROP (líneas 149-154)
 
 ### Problema verificado en código real
+
 La variable `obsoleteTables` en `ensureTables()` incluye `'cmms_auth_failures'` en la
 lista de tablas a eliminar con `DROP TABLE IF EXISTS ... CASCADE`.
 
@@ -46,29 +50,55 @@ durante el flujo de `/api/auth`. Si la tabla no existe, el login falla con un er
 ### Corrección — Reemplazar SOLO el array `obsoleteTables` (líneas 148-154)
 
 **ANTES** (código actual, problemático):
+
 ```typescript
-    const obsoleteTables = [
-      'cmms_idempotency_keys', 'cmms_auth_failures', 'cmms_usuarios_clientes', 
-      'cmms_informes_mantenimiento', 'cmms_sla_config', 'cmms_pm_planes', 
-      'cmms_pm_plantillas', 'cmms_checklist_plantillas', 'cmms_push_subscriptions', 
-      'cmms_ot_eventos', 'cmms_ot_comentarios', 'cmms_tickets', 
-      'cmms_mantenimientos', 'cmms_equipos', 'cmms_users', 'cmms_clientes',
-      'playing_with_neon', 'providers', 'cmms_one_shot_migrations'
-    ];
+const obsoleteTables = [
+  'cmms_idempotency_keys',
+  'cmms_auth_failures',
+  'cmms_usuarios_clientes',
+  'cmms_informes_mantenimiento',
+  'cmms_sla_config',
+  'cmms_pm_planes',
+  'cmms_pm_plantillas',
+  'cmms_checklist_plantillas',
+  'cmms_push_subscriptions',
+  'cmms_ot_eventos',
+  'cmms_ot_comentarios',
+  'cmms_tickets',
+  'cmms_mantenimientos',
+  'cmms_equipos',
+  'cmms_users',
+  'cmms_clientes',
+  'playing_with_neon',
+  'providers',
+  'cmms_one_shot_migrations',
+]
 ```
 
 **DESPUÉS** (eliminar `cmms_auth_failures` y `cmms_idempotency_keys` de la lista):
+
 ```typescript
-    const obsoleteTables = [
-      // cmms_auth_failures: CONSERVADA — bloqueador activo de fuerza bruta en /api/auth
-      // cmms_idempotency_keys: CONSERVADA — usada como fallback en /api/cmms/:resource
-      'cmms_usuarios_clientes', 
-      'cmms_informes_mantenimiento', 'cmms_sla_config', 'cmms_pm_planes', 
-      'cmms_pm_plantillas', 'cmms_checklist_plantillas', 'cmms_push_subscriptions', 
-      'cmms_ot_eventos', 'cmms_ot_comentarios', 'cmms_tickets', 
-      'cmms_mantenimientos', 'cmms_equipos', 'cmms_users', 'cmms_clientes',
-      'playing_with_neon', 'providers', 'cmms_one_shot_migrations'
-    ];
+const obsoleteTables = [
+  // cmms_auth_failures: CONSERVADA — bloqueador activo de fuerza bruta en /api/auth
+  // cmms_idempotency_keys: CONSERVADA — usada como fallback en /api/cmms/:resource
+  'cmms_usuarios_clientes',
+  'cmms_informes_mantenimiento',
+  'cmms_sla_config',
+  'cmms_pm_planes',
+  'cmms_pm_plantillas',
+  'cmms_checklist_plantillas',
+  'cmms_push_subscriptions',
+  'cmms_ot_eventos',
+  'cmms_ot_comentarios',
+  'cmms_tickets',
+  'cmms_mantenimientos',
+  'cmms_equipos',
+  'cmms_users',
+  'cmms_clientes',
+  'playing_with_neon',
+  'providers',
+  'cmms_one_shot_migrations',
+]
 ```
 
 ### Asegurar que cmms_auth_failures existe al arrancar
@@ -76,23 +106,23 @@ durante el flujo de `/api/auth`. Si la tabla no existe, el login falla con un er
 Inmediatamente DESPUÉS del bucle `for (const table of obsoleteTables)`, agrega este bloque:
 
 ```typescript
-    // Garantizar que la tabla de seguridad de autenticación existe siempre
-    try {
-      await sql`
+// Garantizar que la tabla de seguridad de autenticación existe siempre
+try {
+  await sql`
         CREATE TABLE IF NOT EXISTS cmms_auth_failures (
           id          SERIAL PRIMARY KEY,
           email       TEXT NOT NULL,
           ip          TEXT,
           attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-      `;
-      await sql`
+      `
+  await sql`
         CREATE INDEX IF NOT EXISTS idx_auth_failures_email
         ON cmms_auth_failures (LOWER(email), attempted_at)
-      `;
-    } catch (e: any) {
-      console.warn('cmms_auth_failures ya existe o error menor:', e.message);
-    }
+      `
+} catch (e: any) {
+  console.warn('cmms_auth_failures ya existe o error menor:', e.message)
+}
 ```
 
 ---
@@ -100,6 +130,7 @@ Inmediatamente DESPUÉS del bucle `for (const table of obsoleteTables)`, agrega 
 ## BUG CRÍTICO #2 — Ruta GET /api/assets duplicada sombrea el switch de sync (líneas 615-631)
 
 ### Problema verificado en código real
+
 Express registra rutas en orden de declaración. La cadena de rutas es:
 
 ```
@@ -160,14 +191,14 @@ al inicio del handler, antes del primer `if`:
 ```typescript
 // AGREGAR al inicio del handler app.post("/api/assets"), justo después de "const sql = getSql();":
 const clienteIdPost = String(
-  req.body.cliente_id
-  || req.body.clienteId
-  || req.headers['x-client-id']
-  || req.headers['x-cliente-id']
-  || 'cliente-default-001'
-);
+  req.body.cliente_id ||
+    req.body.clienteId ||
+    req.headers['x-client-id'] ||
+    req.headers['x-cliente-id'] ||
+    'cliente-default-001'
+)
 // Inyectar en el body para que los INSERT posteriores lo incluyan
-if (!req.body.cliente_id) req.body.cliente_id = clienteIdPost;
+if (!req.body.cliente_id) req.body.cliente_id = clienteIdPost
 ```
 
 ---
@@ -175,16 +206,20 @@ if (!req.body.cliente_id) req.body.cliente_id = clienteIdPost;
 ## BUG CRÍTICO #3 — Ruta /api/cmms/:resource activa con tablas ya eliminadas (línea 1500)
 
 ### Problema verificado en código real
+
 La ruta `app.post("/api/cmms/:resource", ...)` en la línea 1500 sigue activa y referencia:
+
 - `cmms_equipos`, `cmms_tickets`, `cmms_mantenimientos` (ya eliminadas por el DROP)
 - `cmms_idempotency_keys` (en la lista original de DROP, aunque la corregimos en Bug #1)
 
 Cualquier request a `/api/cmms/equipos` ahora devuelve un error 500 porque intenta
 hacer `SELECT FROM cmms_equipos` que ya no existe. Peor aún, la ruta mapea:
+
 ```
 resource='assets'  → cmms_equipos   (eliminada)
 resource='work_orders' → cmms_tickets (eliminada)
 ```
+
 Esto significa que si algún componente del frontend llama a `/api/cmms/assets`,
 obtiene un 500 en lugar de datos reales.
 
@@ -195,62 +230,61 @@ Reemplaza el handler completo (desde `app.post("/api/cmms/:resource"` hasta
 su `});` de cierre) por este handler que redirige limpiamente a las tablas canónicas:
 
 ```typescript
-  // /api/cmms/:resource — ruta de compatibilidad legacy
-  // Redirige a las tablas canónicas activas. Las tablas cmms_* originales han sido deprecadas.
-  app.post("/api/cmms/:resource", requireCliente, async (req: any, res: any) => {
-    try {
-      const resource = req.params.resource;
+// /api/cmms/:resource — ruta de compatibilidad legacy
+// Redirige a las tablas canónicas activas. Las tablas cmms_* originales han sido deprecadas.
+app.post('/api/cmms/:resource', requireCliente, async (req: any, res: any) => {
+  try {
+    const resource = req.params.resource
 
-      // Mapa de recursos legacy → tablas canónicas activas
-      const legacyToCanonical: Record<string, string> = {
-        'equipos':               'assets',
-        'cmms_equipos':          'assets',
-        'assets':                'assets',
-        'tickets':               'work_orders',
-        'cmms_tickets':          'work_orders',
-        'work_orders':           'work_orders',
-        'mantenimientos':        'preventive_maintenance',
-        'cmms_mantenimientos':   'preventive_maintenance',
-        'preventive_maintenance':'preventive_maintenance',
-        'informes':              'reports',
-        'cmms_informes_mantenimiento': 'reports',
-        'ot_eventos':            'events',
-        'cmms_ot_eventos':       'events',
-        'ot_comentarios':        'audit_logs',
-        'cmms_ot_comentarios':   'audit_logs',
-        'clientes':              'clientes',
-        'cmms_clientes':         'clientes',
-        'usuarios':              'users',
-        'cmms_users':            'users',
-      };
-
-      const canonicalTable = legacyToCanonical[resource];
-      if (!canonicalTable) {
-        return res.status(410).json({
-          success: false,
-          error: `El recurso '${resource}' ha sido deprecado y eliminado. Use /api/v1/:cliente_id/:recurso o /api/sync.`,
-          canonical_tables: Object.keys(legacyToCanonical)
-        });
-      }
-
-      // Redirigir al sync canónico
-      return res.status(301).json({
-        success: false,
-        error: `Endpoint legacy. Use POST /api/sync con table='${canonicalTable}'.`,
-        redirect: `/api/sync`,
-        payload_example: {
-          table: canonicalTable,
-          operation: 'upsert',
-          clienteId: req.clienteId,
-          data: req.body
-        }
-      });
-
-    } catch (error: any) {
-      console.error('Error en /api/cmms/:resource:', error);
-      res.status(500).json({ success: false, error: error.message });
+    // Mapa de recursos legacy → tablas canónicas activas
+    const legacyToCanonical: Record<string, string> = {
+      equipos: 'assets',
+      cmms_equipos: 'assets',
+      assets: 'assets',
+      tickets: 'work_orders',
+      cmms_tickets: 'work_orders',
+      work_orders: 'work_orders',
+      mantenimientos: 'preventive_maintenance',
+      cmms_mantenimientos: 'preventive_maintenance',
+      preventive_maintenance: 'preventive_maintenance',
+      informes: 'reports',
+      cmms_informes_mantenimiento: 'reports',
+      ot_eventos: 'events',
+      cmms_ot_eventos: 'events',
+      ot_comentarios: 'audit_logs',
+      cmms_ot_comentarios: 'audit_logs',
+      clientes: 'clientes',
+      cmms_clientes: 'clientes',
+      usuarios: 'users',
+      cmms_users: 'users',
     }
-  });
+
+    const canonicalTable = legacyToCanonical[resource]
+    if (!canonicalTable) {
+      return res.status(410).json({
+        success: false,
+        error: `El recurso '${resource}' ha sido deprecado y eliminado. Use /api/v1/:cliente_id/:recurso o /api/sync.`,
+        canonical_tables: Object.keys(legacyToCanonical),
+      })
+    }
+
+    // Redirigir al sync canónico
+    return res.status(301).json({
+      success: false,
+      error: `Endpoint legacy. Use POST /api/sync con table='${canonicalTable}'.`,
+      redirect: `/api/sync`,
+      payload_example: {
+        table: canonicalTable,
+        operation: 'upsert',
+        clienteId: req.clienteId,
+        data: req.body,
+      },
+    })
+  } catch (error: any) {
+    console.error('Error en /api/cmms/:resource:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
 ```
 
 ---
@@ -258,17 +292,20 @@ su `});` de cierre) por este handler que redirige limpiamente a las tablas canó
 ## BUG CRÍTICO #4 — Lógica de resolveTable con alias circular (líneas 536-554)
 
 ### Problema verificado en código real
+
 El `TABLE_ALIAS_MAP` contiene:
+
 ```typescript
 'clientes': 'clientes',   // alias que apunta a sí mismo
 'sucursales': 'sucursales', // alias que apunta a sí mismo
 ```
 
 Y la función `resolveTable` es:
+
 ```typescript
 function resolveTable(name: string): string | null {
-  if (ALLOWED_TABLES.includes(name)) return name;      // paso 1
-  return TABLE_ALIAS_MAP[name] || null;                 // paso 2
+  if (ALLOWED_TABLES.includes(name)) return name // paso 1
+  return TABLE_ALIAS_MAP[name] || null // paso 2
 }
 ```
 
@@ -289,66 +326,66 @@ pero es frágil.
 Reemplaza las tres definiciones juntas (líneas 528-552):
 
 ```typescript
-  // ─── TABLAS CANÓNICAS — ÚNICO SET AUTORIZADO PARA SYNC ────────────────────
-  // Fuente: Auditoría DBA Senior — 35 tablas verificadas en producción Neon.
-  // Solo estas tablas tienen rutas GET y POST activas en este servidor.
-  const ALLOWED_TABLES = [
-    'clientes',               // maestra de tenants — tabla canónica única
-    'sucursales',             // sedes por cliente — tabla canónica única
-    'assets',
-    'users',
-    'preventive_maintenance',
-    'work_orders',
-    'reports',
-    'events',
-    'catalog_asset_types',
-    'settings',
-    'ordenes_servicio',
-    'audit_logs',
-    'inventory',
-    'calendar',
-  ];
+// ─── TABLAS CANÓNICAS — ÚNICO SET AUTORIZADO PARA SYNC ────────────────────
+// Fuente: Auditoría DBA Senior — 35 tablas verificadas en producción Neon.
+// Solo estas tablas tienen rutas GET y POST activas en este servidor.
+const ALLOWED_TABLES = [
+  'clientes', // maestra de tenants — tabla canónica única
+  'sucursales', // sedes por cliente — tabla canónica única
+  'assets',
+  'users',
+  'preventive_maintenance',
+  'work_orders',
+  'reports',
+  'events',
+  'catalog_asset_types',
+  'settings',
+  'ordenes_servicio',
+  'audit_logs',
+  'inventory',
+  'calendar',
+]
 
-  // ─── ALIASES DE NOMBRES DEXIE → NEON ──────────────────────────────────────
-  // El cliente (syncEngine) puede usar cualquiera de estos nombres.
-  // IMPORTANTE: 'clients' y 'branches' NO están en ALLOWED_TABLES para forzar
-  // el paso por este alias map y resolver a la tabla canónica correcta.
-  const TABLE_ALIAS_MAP: Record<string, string> = {
-    // Legacy inglés → canónico
-    'clients':                'clientes',     // legacy JSON-blob → tabla maestra
-    'branches':               'sucursales',   // legacy alias → tabla canónica
-    // Español → canónico inglés
-    'activos':                'assets',
-    'equipos':                'assets',
-    'usuarios':               'users',
-    'tecnicos':               'users',
-    'mantenimientos':         'preventive_maintenance',
-    'mantenimiento':          'preventive_maintenance',
-    'planes_pm':              'preventive_maintenance',
-    'tickets':                'work_orders',
-    'ordenes_trabajo':        'work_orders',
-    'informes':               'reports',
-    'informes_tecnicos':      'reports',
-    'eventos':                'events',
-    'eventos_sync':           'events',
-    'inventario':             'inventory',
-    'repuestos':              'inventory',
-    'calendario':             'calendar',
-    'configuracion':          'settings',
-    'catalogo':               'catalog_asset_types',
-    'sucursal':               'sucursales',
-    'sedes':                  'sucursales',
-    'cliente':                'clientes',
-    'clientes_lista':         'clientes',
-  };
+// ─── ALIASES DE NOMBRES DEXIE → NEON ──────────────────────────────────────
+// El cliente (syncEngine) puede usar cualquiera de estos nombres.
+// IMPORTANTE: 'clients' y 'branches' NO están en ALLOWED_TABLES para forzar
+// el paso por este alias map y resolver a la tabla canónica correcta.
+const TABLE_ALIAS_MAP: Record<string, string> = {
+  // Legacy inglés → canónico
+  clients: 'clientes', // legacy JSON-blob → tabla maestra
+  branches: 'sucursales', // legacy alias → tabla canónica
+  // Español → canónico inglés
+  activos: 'assets',
+  equipos: 'assets',
+  usuarios: 'users',
+  tecnicos: 'users',
+  mantenimientos: 'preventive_maintenance',
+  mantenimiento: 'preventive_maintenance',
+  planes_pm: 'preventive_maintenance',
+  tickets: 'work_orders',
+  ordenes_trabajo: 'work_orders',
+  informes: 'reports',
+  informes_tecnicos: 'reports',
+  eventos: 'events',
+  eventos_sync: 'events',
+  inventario: 'inventory',
+  repuestos: 'inventory',
+  calendario: 'calendar',
+  configuracion: 'settings',
+  catalogo: 'catalog_asset_types',
+  sucursal: 'sucursales',
+  sedes: 'sucursales',
+  cliente: 'clientes',
+  clientes_lista: 'clientes',
+}
 
-  function resolveTable(name: string): string | null {
-    // Primero verificar alias (tiene prioridad para forzar canonicalización)
-    if (TABLE_ALIAS_MAP[name]) return TABLE_ALIAS_MAP[name];
-    // Luego verificar tabla canónica directamente
-    if (ALLOWED_TABLES.includes(name)) return name;
-    return null;
-  }
+function resolveTable(name: string): string | null {
+  // Primero verificar alias (tiene prioridad para forzar canonicalización)
+  if (TABLE_ALIAS_MAP[name]) return TABLE_ALIAS_MAP[name]
+  // Luego verificar tabla canónica directamente
+  if (ALLOWED_TABLES.includes(name)) return name
+  return null
+}
 ```
 
 ---
@@ -426,9 +463,12 @@ Archivos NO modificados en esta ronda:
 
 ---
 
-*Prompt v4.0 — generado con lectura forense del server.ts real (2493 líneas)*
-*Bugs detectados: 4 críticos no reportados en implementación anterior*
-*Bugs verificados correctos en implementación anterior: C-2 migración clients→clientes ✅,*
-*C-3 switch GET con cliente_id ✅, C-5 Gemini gemini-2.0-flash ✅, C-6 validateWorkOrderPayload firma ✅*
-*Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO — rama main — Junio 2026*
+_Prompt v4.0 — generado con lectura forense del server.ts real (2493 líneas)_
+_Bugs detectados: 4 críticos no reportados en implementación anterior_
+_Bugs verificados correctos en implementación anterior: C-2 migración clients→clientes ✅,_
+_C-3 switch GET con cliente_id ✅, C-5 Gemini gemini-2.0-flash ✅, C-6 validateWorkOrderPayload firma ✅_
+_Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO — rama main — Junio 2026_
+
+```
+
 ```

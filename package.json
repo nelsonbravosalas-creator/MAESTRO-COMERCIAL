@@ -11,9 +11,14 @@
     "dev:frontend": "cd frontend && npm run dev",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "build": "cd frontend && npm run build",
-    "seed:local": "cd backend && npm run seed"
+    "seed:local": "cd backend && npm run seed",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -21,10 +26,12 @@
     "@types/node": "^25.9.2",
     "@types/pg": "^8.20.0",
     "concurrently": "^8.2.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.2.0",
+    "prettier": "^3.9.6",
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
     "@sentry/node": "^10.69.0",
     "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.2",

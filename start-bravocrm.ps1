@@ -105,7 +105,7 @@ Write-Host "  Admin:    admin@local.test / ChangeMe123!" -ForegroundColor Cyan
 Write-Host "  Manager:  manager@local.test / ChangeMe123!" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "📖 Guía de Testing:" -ForegroundColor Yellow
-Write-Host "  Ver: QA_TESTING_GUIDE.md" -ForegroundColor Cyan
+Write-Host "  Ver: docs\historico\QA_TESTING_GUIDE.md" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "⚠️  IMPORTANTE:" -ForegroundColor Yellow
 Write-Host "  - Se han abierto 2 nuevas ventanas PowerShell (Backend y Frontend)" -ForegroundColor Yellow

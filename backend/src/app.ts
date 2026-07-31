@@ -7,27 +7,40 @@ import dotenv from 'dotenv'
 import { env } from './config/env'
 import { logger } from './utils/logger'
 import { buildCorsOptions } from './config/cors'
-import { apiLimiter, loginLimiter, adminSetupLimiter } from './config/rateLimiters'
+import {
+  apiLimiter,
+  loginLimiter,
+  adminSetupLimiter,
+  forgotPasswordLimiter,
+} from './config/rateLimiters'
 import { requestIdMiddleware, requestLoggingMiddleware } from './middleware/requestId'
 import { captureException } from './config/sentry'
-import { createAuthRouter }       from './api/auth'
-import { createAdminRouter }      from './api/admin'
-import { createConfigRouter }     from './api/config'
-import { createCatalogRouter }    from './api/catalog'
-import { createClientsRouter }    from './api/clients'
+import { createAuthRouter } from './api/auth'
+import { createAdminRouter } from './api/admin'
+import { createConfigRouter } from './api/config'
+import { createCatalogRouter } from './api/catalog'
+import { createClientsRouter } from './api/clients'
 import { createQuotationsRouter } from './api/quotations'
-import { createProjectsRouter }   from './api/projects'
-import { createInvoicesRouter }   from './api/invoices'
-import { createDashboardRouter }  from './api/dashboard'
+import { createProjectsRouter } from './api/projects'
+import { createInvoicesRouter } from './api/invoices'
+import { createDashboardRouter } from './api/dashboard'
 
 dotenv.config()
 
+// A-05: Neon firma sus certificados con una CA pública (confiada por el store
+// por defecto de Node), así que basta con NO desactivar la validación —
+// `rejectUnauthorized: false` aceptaba cualquier certificado, cifrando la
+// conexión pero sin autenticar al servidor (abierto a MITM).
 export const pool = new Pool({
   connectionString: env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: true },
   max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+  // A-17: sin esto, una consulta lenta puede retener una conexión indefinidamente
+  // en un entorno con pool tan chico (max: 5) y muchas invocaciones serverless
+  // concurrentes — ver docs/RIESGOS_ACEPTADOS.md para la discusión completa.
+  statement_timeout: 10_000,
 })
 
 const app: Express = express()
@@ -36,12 +49,16 @@ const app: Express = express()
 // y req.ip verían siempre la IP del proxy, no la del cliente.
 app.set('trust proxy', 1)
 
-app.use(helmet({
-  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
-  contentSecurityPolicy: false, // el CSP del frontend (SPA estática) se define en Vercel/index.html
-}))
+app.use(
+  helmet({
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    contentSecurityPolicy: false, // el CSP del frontend (SPA estática) se define en Vercel/index.html
+  })
+)
 
-const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+const allowedOrigins = env.ALLOWED_ORIGINS.split(',')
+  .map(o => o.trim())
+  .filter(Boolean)
 app.use(cors(buildCorsOptions(allowedOrigins)))
 
 app.use(requestIdMiddleware)
@@ -57,6 +74,7 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '256kb' }))
 app.use('/api', apiLimiter())
 app.use('/api/auth/login', loginLimiter())
 app.use('/api/admin/setup', adminSetupLimiter())
+app.use('/api/auth/forgot-password', forgotPasswordLimiter())
 
 app.get('/api/health', async (_req: Request, res: Response) => {
   try {
@@ -64,19 +82,21 @@ app.get('/api/health', async (_req: Request, res: Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString(), mode: 'postgresql', db: 'ok' })
   } catch (error: any) {
     logger.error('Health check: database unreachable', { error: error.message })
-    res.status(503).json({ status: 'degraded', timestamp: new Date().toISOString(), db: 'unreachable' })
+    res
+      .status(503)
+      .json({ status: 'degraded', timestamp: new Date().toISOString(), db: 'unreachable' })
   }
 })
 
-app.use('/api/auth',       createAuthRouter(pool))
-app.use('/api/admin',      createAdminRouter(pool))
-app.use('/api/config',     createConfigRouter(pool))
-app.use('/api/catalog',    createCatalogRouter(pool))
-app.use('/api/clients',    createClientsRouter(pool))
+app.use('/api/auth', createAuthRouter(pool))
+app.use('/api/admin', createAdminRouter(pool))
+app.use('/api/config', createConfigRouter(pool))
+app.use('/api/catalog', createCatalogRouter(pool))
+app.use('/api/clients', createClientsRouter(pool))
 app.use('/api/quotations', createQuotationsRouter(pool))
-app.use('/api/projects',   createProjectsRouter(pool))
-app.use('/api/invoices',   createInvoicesRouter(pool))
-app.use('/api/dashboard',  createDashboardRouter(pool))
+app.use('/api/projects', createProjectsRouter(pool))
+app.use('/api/invoices', createInvoicesRouter(pool))
+app.use('/api/dashboard', createDashboardRouter(pool))
 
 // 404: rutas no encontradas. Debe ir antes del manejador de errores (Express solo
 // reenvía aquí en el flujo normal; los errores saltan directo al handler de abajo).

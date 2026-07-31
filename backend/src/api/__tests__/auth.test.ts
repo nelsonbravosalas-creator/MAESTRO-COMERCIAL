@@ -67,7 +67,10 @@ async function makeUser(overrides: Partial<FakeUser> = {}): Promise<FakeUser> {
   return {
     id: 'u1',
     email: 'user@test.cl',
-    password_hash: await bcrypt.hash('correcto123', 10),
+    // Cost bajo (4, no el 10 de producción) a propósito: este test hace 10
+    // bcrypt.compare secuenciales para probar el bloqueo de cuenta, y no
+    // necesita el costo real para validar la lógica de conteo de intentos.
+    password_hash: await bcrypt.hash('correcto123', 4),
     name: 'Test User',
     role: 'admin',
     is_active: true,
@@ -88,23 +91,32 @@ describe('POST /api/auth/login', () => {
 
   it('acepta credenciales correctas', async () => {
     const app = buildApp([await makeUser()])
-    const res = await request(app).post('/api/auth/login').send({ email: 'user@test.cl', password: 'correcto123' })
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'user@test.cl', password: 'correcto123' })
     expect(res.status).toBe(200)
     expect(res.body.token).toBeDefined()
   })
 
+  // Timeout ampliado: son 10 bcrypt.compare secuenciales — bajo carga (toda
+  // la suite corriendo en paralelo) puede superar el default de 5s sin que
+  // haya nada roto, solo CPU compartida.
   it('bloquea la cuenta tras 10 intentos fallidos (C-04)', async () => {
     const user = await makeUser()
     const app = buildApp([user])
 
     for (let i = 0; i < 10; i++) {
-      const res = await request(app).post('/api/auth/login').send({ email: 'user@test.cl', password: 'incorrecto' })
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'user@test.cl', password: 'incorrecto' })
       expect(res.status).toBe(401)
     }
 
     expect(user.locked_until).not.toBeNull()
 
-    const lockedRes = await request(app).post('/api/auth/login').send({ email: 'user@test.cl', password: 'correcto123' })
+    const lockedRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'user@test.cl', password: 'correcto123' })
     expect(lockedRes.status).toBe(423)
-  })
+  }, 15000)
 })

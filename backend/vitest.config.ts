@@ -16,11 +16,13 @@ export default defineConfig({
       all: true,
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts', 'src/db/seed.ts', 'src/server.ts', 'src/server-dev.ts'],
-      // Umbral honesto sobre TODO backend/src (real ~32-34% al fijarlo, 2026-07-30):
-      // rutas como catalog/config/invoices/projects/dashboard aún no tienen tests.
-      // Subir el número está bien; bajarlo requiere justificar por qué el cambio redujo
-      // la cobertura, no solo "hacer pasar el build".
-      thresholds: { statements: 30, branches: 25, functions: 30, lines: 30 },
+      // Umbral honesto sobre TODO backend/src (real ~46-48% al actualizar esto,
+      // 2026-07-31, tras A-01/A-02/A-04/A-11): admin/catalog/config/dashboard
+      // siguen sin tests propios (solo se ejercitan indirectamente). AC-13.1 del
+      // plan de riesgo alto pide 60%/50% — no se llegó todavía. Subir el número
+      // está bien; bajarlo requiere justificar por qué el cambio redujo la
+      // cobertura, no solo "hacer pasar el build".
+      thresholds: { statements: 45, branches: 33, functions: 47, lines: 46 },
     },
   },
 })

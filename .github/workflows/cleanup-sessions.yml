@@ -1,0 +1,29 @@
+name: Limpieza de sesiones expiradas
+
+on:
+  schedule:
+    - cron: '0 8 * * 0' # domingos 08:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - working-directory: backend
+        run: npm ci
+      - name: Verificar DATABASE_URL
+        run: |
+          if [ -z "${{ secrets.PROD_DATABASE_URL }}" ]; then
+            echo "::error::Falta el secret PROD_DATABASE_URL (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+      - working-directory: backend
+        run: npm run cleanup:sessions
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}

@@ -1,5 +1,7 @@
 # PROMPT MAESTRO — CMMS HVAC PRO IA STUDIO
+
 ## Corrección de rutas, endpoints y sincronización Front → API → Neon DB
+
 ### Versión: 1.0 | Proyecto: Los Cabros | Repo: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO
 
 ---
@@ -26,6 +28,7 @@
 ## CONTEXTO DEL PROYECTO
 
 ### Stack tecnológico (NO cambiar)
+
 - **Frontend**: React + TypeScript + Vite, desplegado en Vercel
 - **Base de datos**: Neon PostgreSQL (serverless), tablas con nombres en **español**
 - **Offline/sync**: Dexie.js (IndexedDB local), con nombres de stores en **inglés** — esta discrepancia es conocida y se corrige en la capa API, NO en Dexie
@@ -34,6 +37,7 @@
 - **Sync engine**: archivo `src/lib/syncEngine.ts` (existe una sola versión canónica, ver abajo)
 
 ### Estructura de carpetas relevante (solo referencia, NO modificar estructura)
+
 ```
 /
 ├── api/                        ← Serverless functions de Vercel
@@ -103,6 +107,7 @@ Solo puedes tocar estos archivos. Ningún otro.
 ## PROBLEMA 1 — URLs incorrectas en el frontend
 
 ### Descripción
+
 El frontend llama endpoints con nombres incorrectos. Los serverless functions de Vercel usan kebab-case y nombres en inglés, pero el frontend tiene inconsistencias.
 
 ### Correcciones requeridas en `src/lib/api.ts`
@@ -113,38 +118,38 @@ Verifica que el cliente API centralizado use exactamente estas URLs base. Si `ap
 // URLS CANÓNICAS — estas son las únicas correctas
 export const API_ENDPOINTS = {
   // Activos / Equipos HVAC
-  assets:           '/api/assets',
-  assetById:        (id: string) => `/api/assets/${id}`,
+  assets: '/api/assets',
+  assetById: (id: string) => `/api/assets/${id}`,
 
   // Órdenes de trabajo — usar kebab-case, NO camelCase
-  workOrders:       '/api/work-orders',           // ← CORRECTO (no /api/workOrders)
-  workOrderById:    (id: string) => `/api/work-orders/${id}`,
-  workOrderComplete:(id: string) => `/api/work-orders/${id}/complete`,
+  workOrders: '/api/work-orders', // ← CORRECTO (no /api/workOrders)
+  workOrderById: (id: string) => `/api/work-orders/${id}`,
+  workOrderComplete: (id: string) => `/api/work-orders/${id}/complete`,
 
   // Mantenimiento preventivo
-  maintenance:      '/api/maintenance',
-  maintenanceById:  (id: string) => `/api/maintenance/${id}`,
-  maintenanceExec:  (id: string) => `/api/maintenance/${id}/execute`,
+  maintenance: '/api/maintenance',
+  maintenanceById: (id: string) => `/api/maintenance/${id}`,
+  maintenanceExec: (id: string) => `/api/maintenance/${id}/execute`,
 
   // Repuestos — usar /api/parts, NO /api/inventory
-  parts:            '/api/parts',                 // ← CORRECTO (no /api/inventory)
-  partById:         (id: string) => `/api/parts/${id}`,
-  partAdjust:       (id: string) => `/api/parts/${id}/adjust`,
+  parts: '/api/parts', // ← CORRECTO (no /api/inventory)
+  partById: (id: string) => `/api/parts/${id}`,
+  partAdjust: (id: string) => `/api/parts/${id}/adjust`,
 
   // Técnicos
-  technicians:      '/api/technicians',
-  technicianById:   (id: string) => `/api/technicians/${id}`,
+  technicians: '/api/technicians',
+  technicianById: (id: string) => `/api/technicians/${id}`,
 
   // Dashboard
-  dashboardKpis:    '/api/dashboard/kpis',
-  dashboardUpcoming:'/api/dashboard/upcoming',
-  dashboardAlerts:  '/api/dashboard/alerts',
+  dashboardKpis: '/api/dashboard/kpis',
+  dashboardUpcoming: '/api/dashboard/upcoming',
+  dashboardAlerts: '/api/dashboard/alerts',
 
   // Sync
-  syncPush:         '/api/sync/push',
-  syncPull:         '/api/sync/pull',
-  syncStatus:       '/api/sync/status',
-} as const;
+  syncPush: '/api/sync/push',
+  syncPull: '/api/sync/pull',
+  syncStatus: '/api/sync/status',
+} as const
 ```
 
 ### Correcciones en páginas (solo buscar y reemplazar URLs hardcodeadas)
@@ -153,11 +158,11 @@ En cada archivo de página (`Assets.tsx`, `WorkOrders.tsx`, `Maintenance.tsx`, `
 
 Reemplazos exactos a hacer:
 
-| URL incorrecta encontrada | Reemplazar por |
-|--------------------------|----------------|
-| `'/api/equipos'` | `API_ENDPOINTS.assets` |
-| `'/api/workOrders'` | `API_ENDPOINTS.workOrders` |
-| `'/api/inventory'` | `API_ENDPOINTS.parts` |
+| URL incorrecta encontrada                 | Reemplazar por                               |
+| ----------------------------------------- | -------------------------------------------- |
+| `'/api/equipos'`                          | `API_ENDPOINTS.assets`                       |
+| `'/api/workOrders'`                       | `API_ENDPOINTS.workOrders`                   |
+| `'/api/inventory'`                        | `API_ENDPOINTS.parts`                        |
 | `fetch('/api/work-orders/'+id+'/status')` | `fetch(API_ENDPOINTS.workOrderComplete(id))` |
 
 ---
@@ -165,6 +170,7 @@ Reemplazos exactos a hacer:
 ## PROBLEMA 2 — Rutas faltantes en vercel.json
 
 ### Descripción
+
 Las sub-rutas de completar OT, ejecutar PM y sync/status devuelven 404 porque no están declaradas en `vercel.json`.
 
 ### Corrección requerida en `vercel.json`
@@ -199,11 +205,13 @@ Si el `vercel.json` usa el formato `"functions"` en lugar de `"rewrites"`, adapt
 ## PROBLEMA 3 — Schema mismatch: inglés (Dexie) vs español (Neon)
 
 ### Descripción
+
 La capa API recibe datos de Dexie con nombres de campos en inglés y debe mapearlos a columnas Neon en español. El mapeo debe hacerse SOLO dentro de los archivos `api/*.ts`, nunca en el frontend ni en Dexie.
 
 ### Tabla de mapeo canónica (aplicar en todos los archivos api/)
 
 #### Tabla `equipos` (Neon) ← store `assets` (Dexie)
+
 ```
 Dexie field          → Neon column
 ─────────────────────────────────────
@@ -221,6 +229,7 @@ lastUpdated          → ultima_actualizacion
 ```
 
 #### Tabla `ordenes_trabajo` (Neon) ← store `workOrders` (Dexie)
+
 ```
 Dexie field          → Neon column
 ─────────────────────────────────────
@@ -241,6 +250,7 @@ closingNotes         → notas_cierre
 ```
 
 #### Tabla `mantenimiento_preventivo` (Neon) ← store `maintenance` (Dexie)
+
 ```
 Dexie field          → Neon column
 ─────────────────────────────────────
@@ -256,6 +266,7 @@ assignedTo           → tecnico_asignado    ← CRÍTICO: campo faltante
 ```
 
 #### Tabla `repuestos` (Neon) ← store `parts` (Dexie)
+
 ```
 Dexie field          → Neon column
 ─────────────────────────────────────
@@ -281,33 +292,33 @@ Ejemplo de patrón para `api/assets.ts`:
 // MAPEO DEXIE → NEON (agregar al inicio del archivo, no tocar lo demás)
 function dexieToNeon_asset(d: Record<string, unknown>) {
   return {
-    nombre:             d.name,
-    tipo:               d.type,
-    marca:              d.brand,
-    modelo:             d.model,
-    numero_serie:       d.serialNumber,
-    ubicacion:          d.location,
-    estado:             d.status ?? 'activo',
-    fecha_instalacion:  d.installDate,
-    cliente_id:         d.clientId,           // campo antes faltante
+    nombre: d.name,
+    tipo: d.type,
+    marca: d.brand,
+    modelo: d.model,
+    numero_serie: d.serialNumber,
+    ubicacion: d.location,
+    estado: d.status ?? 'activo',
+    fecha_instalacion: d.installDate,
+    cliente_id: d.clientId, // campo antes faltante
     ultima_actualizacion: new Date().toISOString(),
-  };
+  }
 }
 
 function neonToDexie_asset(row: Record<string, unknown>) {
   return {
-    id:           row.id,
-    name:         row.nombre,
-    type:         row.tipo,
-    brand:        row.marca,
-    model:        row.modelo,
+    id: row.id,
+    name: row.nombre,
+    type: row.tipo,
+    brand: row.marca,
+    model: row.modelo,
     serialNumber: row.numero_serie,
-    location:     row.ubicacion,
-    status:       row.estado,
-    installDate:  row.fecha_instalacion,
-    clientId:     row.cliente_id,
-    lastUpdated:  row.ultima_actualizacion,
-  };
+    location: row.ubicacion,
+    status: row.estado,
+    installDate: row.fecha_instalacion,
+    clientId: row.cliente_id,
+    lastUpdated: row.ultima_actualizacion,
+  }
 }
 ```
 
@@ -318,6 +329,7 @@ Replica este patrón para `work-orders.ts`, `maintenance.ts` y `parts.ts` usando
 ## PROBLEMA 4 — Campos obligatorios faltantes en payloads
 
 ### Descripción
+
 Al crear activos y planes PM, el frontend no envía campos que Neon tiene como NOT NULL.
 
 ### Corrección en `api/assets.ts` — handler POST
@@ -326,14 +338,14 @@ Dentro del handler POST, **antes de ejecutar el INSERT**, agrega validación de 
 
 ```typescript
 // Validación campos obligatorios — agregar al inicio del handler POST
-const requiredFields = ['name', 'type', 'clientId'];
-const missing = requiredFields.filter(f => !body[f]);
+const requiredFields = ['name', 'type', 'clientId']
+const missing = requiredFields.filter(f => !body[f])
 if (missing.length > 0) {
   return res.status(400).json({
     error: 'Campos obligatorios faltantes',
     fields: missing,
-    mapping: missing.map(f => ({ dexie: f, neon: dexieToNeon_asset({[f]: null}) }))
-  });
+    mapping: missing.map(f => ({ dexie: f, neon: dexieToNeon_asset({ [f]: null }) })),
+  })
 }
 ```
 
@@ -342,7 +354,7 @@ if (missing.length > 0) {
 Mismo patrón, campos obligatorios para mantenimiento preventivo:
 
 ```typescript
-const requiredFields = ['name', 'assetId', 'frequency', 'nextDate', 'assignedTo'];
+const requiredFields = ['name', 'assetId', 'frequency', 'nextDate', 'assignedTo']
 ```
 
 ---
@@ -350,6 +362,7 @@ const requiredFields = ['name', 'assetId', 'frequency', 'nextDate', 'assignedTo'
 ## PROBLEMA 5 — SyncEngine duplicado
 
 ### Descripción
+
 Existen dos implementaciones de SyncEngine en el proyecto. Solo debe existir `src/lib/syncEngine.ts`. El duplicado debe eliminarse.
 
 ### Pasos exactos
@@ -362,12 +375,12 @@ Existen dos implementaciones de SyncEngine en el proyecto. Solo debe existir `sr
 // En el método que construye el payload para /api/sync/push
 // Asegúrate de que entity_type use estos valores exactos:
 const ENTITY_TYPE_MAP = {
-  assets:      'equipos',
-  workOrders:  'ordenes_trabajo',
+  assets: 'equipos',
+  workOrders: 'ordenes_trabajo',
   maintenance: 'mantenimiento_preventivo',
-  parts:       'repuestos',
+  parts: 'repuestos',
   technicians: 'tecnicos',
-} as const;
+} as const
 ```
 
 3. En `api/sync/push.ts`, el handler debe usar `entity_type` para saber a qué tabla Neon escribir. Si ya existe esta lógica, solo verifica que los nombres de tabla coincidan con `ENTITY_TYPE_MAP`. No reescribas la lógica completa.
@@ -377,6 +390,7 @@ const ENTITY_TYPE_MAP = {
 ## PROBLEMA 6 — Tablas faltantes en schema Neon
 
 ### Descripción
+
 Las tablas `movimientos_inventario` y `sync_log` no existen en `scripts/init-db.ts`.
 
 ### Corrección en `scripts/init-db.ts`
@@ -498,6 +512,6 @@ PENDIENTES MANUALES:
 
 ---
 
-*Prompt generado para: CMMS HVAC PRO IA Studio — Los Cabros*
-*Fecha: Junio 2026*
-*Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO*
+_Prompt generado para: CMMS HVAC PRO IA Studio — Los Cabros_
+_Fecha: Junio 2026_
+_Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO_

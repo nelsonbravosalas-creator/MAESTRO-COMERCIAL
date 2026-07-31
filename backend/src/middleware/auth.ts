@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { logger } from '../utils/logger'
 import { env } from '../config/env'
+import { maskEmail } from '../utils/maskPii'
 
 export interface AuthRequest extends Request {
   user?: {
@@ -50,7 +51,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
       role: decoded.role,
     }
 
-    logger.info('User authenticated', { userId: req.user.id, email: req.user.email })
+    logger.info('User authenticated', { userId: req.user.id, email: maskEmail(req.user.email) })
     next()
   } catch (error: any) {
     logger.error('JWT verification failed', {

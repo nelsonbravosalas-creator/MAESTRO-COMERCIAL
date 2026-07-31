@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "dev:json": "tsx watch src/server-dev.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
     "start": "node dist/server.js",
     "seed": "tsx src/db/seed.ts",
+    "cleanup:sessions": "tsx src/scripts/cleanupSessions.ts",
     "migrate": "node-pg-migrate -m src/db/migrations",
     "migrate:up": "npm run migrate -- up",
     "migrate:down": "npm run migrate -- down 1",
@@ -32,6 +34,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
@@ -40,10 +43,13 @@
     "@types/pg": "^8.11.3",
     "@types/supertest": "^7.2.0",
     "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.8.0",
+    "globals": "^17.8.0",
     "node-pg-migrate": "^9.0.0",
     "supertest": "^7.2.2",
     "tsx": "^4.7.0",
     "typescript": "^6.0.2",
+    "typescript-eslint": "^8.65.0",
     "vitest": "^4.1.10"
   }
 }

@@ -9,8 +9,8 @@ Aplicación full-stack para gestión integral del ciclo comercial: cotizaciones,
 - **Ejecución**: Registrar avance, consumo de recursos y costos en tiempo real
 - **Facturación**: Generar facturas con números secuenciales, condiciones de pago y vencimiento
 - **Dashboard**: Indicadores de costos, márgenes y estado de proyectos
-- **Reportes**: PDF de cotizaciones/facturas, Excel de análisis de costos
-- **Usuarios**: Sistema de perfiles (admin, manager, user) con autenticación JWT
+- **Reportes**: PDF/DOCX de cotizaciones y facturas
+- **Usuarios**: Sistema de roles (admin, manager, user) con JWT, sesiones revocables y recuperación de contraseña
 
 ## 🏗️ Arquitectura
 
@@ -21,20 +21,32 @@ maestro-comercial/
 │       ├── components/
 │       ├── pages/
 │       ├── stores/
-│       ├── services/
 │       └── types/
-├── backend/          [Node.js + Express + TypeScript + PostgreSQL]
+├── backend/           [Node.js + Express + TypeScript + PostgreSQL]
 │   └── src/
-│       ├── api/
+│       ├── api/            (routers, uno por recurso)
 │       ├── middleware/
-│       ├── db/
-│       └── server.ts
-└── docs/
+│       ├── schemas/        (validación zod)
+│       ├── services/       (mailer, etc.)
+│       ├── db/migrations/  (node-pg-migrate)
+│       └── app.ts          (única definición de la app — ver docs/adr/0001)
+├── api/index.ts       [handler serverless de Vercel]
+└── docs/               documentación técnica, ADRs y runbooks
 ```
 
 ## 🚀 Inicio Rápido
 
+### Con Docker (recomendado)
+
+```bash
+docker compose up -d postgres
+cd backend && npm install && npm run migrate:up
+```
+
+Ver `docs/SETUP_LOCAL.md` para el paso a paso completo.
+
 ### Frontend
+
 ```bash
 cd frontend
 npm install
@@ -43,44 +55,33 @@ npm run build      # Producción
 ```
 
 ### Backend
+
 ```bash
 cd backend
 npm install
-cp .env.example .env
-npm run dev        # Desarrollo
-npm run build      # Compilar TypeScript
-npm start          # Producción
+cp .env.example .env   # completar JWT_SECRET, DATABASE_URL, ALLOWED_ORIGINS
+npm run migrate:up     # crea el esquema (ver docs/MIGRACIONES.md)
+npm run dev             # Desarrollo
+npm run build            # Compilar TypeScript
+npm start                 # Producción
 ```
-
-## 📋 Fases de Implementación
-
-- [x] **FASE 1**: Setup Base - Estructura y bundlers
-- [ ] **FASE 2**: Database & Auth - Schema y JWT
-- [ ] **FASE 3**: Core Modules - CRUD de módulos
-- [ ] **FASE 4**: Dashboard & Costos - KPIs y gráficos
-- [ ] **FASE 5**: Sync Service - Sincronización
-- [ ] **FASE 6**: Error Handling - Logging centralizado
-- [ ] **FASE 7**: Frontend Polish - UI/UX
-- [ ] **FASE 8**: Deployment - Vercel + Neon
 
 ## 📊 Stack Tecnológico
 
 ### Frontend
-- React 19.2
-- TypeScript 6.0
-- Vite 8.0
+
+- React 19 + TypeScript + Vite
 - Zustand (state management)
 - Recharts (gráficos)
-- jsPDF + html2canvas (PDF export)
-- XLSX (Excel export)
+- jsPDF + html2canvas + docx (exportación)
 
 ### Backend
-- Node.js
-- Express 4.18
-- PostgreSQL (Neon)
-- JWT (autenticación)
-- bcrypt (contraseñas)
-- Winston (logging)
+
+- Node.js + Express + TypeScript
+- PostgreSQL (Neon) + node-pg-migrate
+- JWT + bcryptjs + sesiones revocables (refresh token hasheado, rotación)
+- Zod (validación de entradas)
+- Winston (logging) + Sentry opcional
 
 ## 🔑 Creación del primer usuario admin
 
@@ -96,26 +97,31 @@ curl -X POST "$API_URL/api/admin/setup" \
 Si `ADMIN_SETUP_SECRET` no está configurado en el entorno, el endpoint responde `503`
 (deshabilitado por seguridad). Ver `backend/.env.example`.
 
-## 🐛 4 Bugs Corregidos
+Los usuarios ya creados pueden recuperar su contraseña desde la pantalla de login
+(`POST /api/auth/forgot-password`) — requiere tener un proveedor de correo
+configurado, ver `docs/EMAIL_SETUP.md`.
 
-1. **JWT Validation** - Middleware correcto con try-catch
-2. **Sync Concurrency** - Transacciones DB con lock optimista
-3. **Soft-Delete** - WHERE deleted_at IS NULL en todas las queries
-4. **Error Handling** - Middleware centralizado con Winston logger
+## 📚 Documentación
 
-## 📝 Variables de Entorno
-
-Backend (`.env`):
-```
-DATABASE_URL=postgresql://user:pass@db.neon.tech/bravocrm
-JWT_SECRET=your-secret-key
-PORT=3000
-NODE_ENV=development
-```
+| Documento                     | Contenido                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| `docs/SETUP_LOCAL.md`         | Levantar el proyecto localmente paso a paso                                     |
+| `docs/MIGRACIONES.md`         | Cómo funcionan las migraciones de base de datos                                 |
+| `docs/MATRIZ_PERMISOS.md`     | Qué puede hacer cada rol (admin/manager/user)                                   |
+| `docs/INCIDENT_RUNBOOK.md`    | Qué hacer cuando algo se rompe en producción                                    |
+| `docs/DR_RUNBOOK.md`          | Plan de recuperación ante desastres                                             |
+| `docs/EMAIL_SETUP.md`         | Configurar el proveedor de correo (SPF/DKIM/DMARC)                              |
+| `docs/INFRA.md`               | WAF, restricción de red, checklist de infraestructura                           |
+| `docs/CLASIFICACION_DATOS.md` | Qué datos personales se guardan y por qué                                       |
+| `docs/RIESGOS_ACEPTADOS.md`   | Decisiones de riesgo aceptado, documentadas y con fecha de revisión             |
+| `docs/adr/`                   | Decisiones de arquitectura                                                      |
+| `docs/historico/`             | Documentos de fases anteriores del proyecto (auditorías previas, prompts de IA) |
 
 ## 🤝 Contribución
 
-Proyecto en desarrollo activo bajo arquitectura full-stack.
+Los mensajes de commit siguen [Conventional Commits](https://www.conventionalcommits.org/)
+(`feat:`, `fix:`, `chore:`, etc.), validado por commitlint en un hook local y en CI.
+`master` requiere pull request con los checks de `.github/workflows/ci.yml` en verde.
 
 ## 📄 Licencia
 

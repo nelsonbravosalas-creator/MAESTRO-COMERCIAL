@@ -1,6 +1,9 @@
 # PROMPT DE CORRECCIÓN FINAL — CMMS HVAC PRO IA STUDIO
+
 ## Versión 2.0 — Post-auditoría senior con código fuente verificado
+
 ## Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO | Rama: main
+
 ## Archivo central: server.ts (2837 líneas) — ES EL ÚNICO BACKEND
 
 ---
@@ -33,11 +36,13 @@ server.ts  ← EXPRESS MONOLÍTICO — aquí vive TODO el backend
 **TODO se corrige en `server.ts` y en `src/lib/syncEngine.ts`.**
 
 ### ARCHIVO ÚNICO AUTORIZADO PARA BACKEND
+
 ```
 server.ts          ← ÚNICA fuente de verdad del backend
 ```
 
 ### ARCHIVOS AUTORIZADOS PARA FRONTEND
+
 ```
 src/lib/syncEngine.ts     ← corregir URLs de endpoints
 src/db/mockDb.ts          ← verificar aliases de tablas (no reescribir)
@@ -45,6 +50,7 @@ vercel.json               ← reemplazar completamente (ver sección V)
 ```
 
 ### ARCHIVOS PROHIBIDOS — NO TOCAR BAJO NINGUNA CIRCUNSTANCIA
+
 ```
 package.json · tsconfig.json · vite.config.ts · index.html
 src/components/ui/*       ← todos los componentes de UI
@@ -57,9 +63,10 @@ src/pages/*               ← todas las páginas React (solo syncEngine)
 ## SECCIÓN I — DECISIÓN DE ARQUITECTURA DE DATOS
 
 ### Instrucción de Nelson (origen de este prompt):
+
 > "Elimina las tablas de DB que no están vinculadas a ninguna ruta.
->  Unifica las rutas para que los datos en la sincronización queden
->  dirigidos exclusivamente a Clientes. Las otras tablas bórralas."
+> Unifica las rutas para que los datos en la sincronización queden
+> dirigidos exclusivamente a Clientes. Las otras tablas bórralas."
 
 ### Análisis de tablas con y sin ruta activa
 
@@ -111,7 +118,8 @@ activas deben tener `cliente_id` que referencia `clientes.id`. La tabla `clients
 ## SECCIÓN II — CORRECCIÓN C-1: Reescribir `ensureTables()` en server.ts
 
 ### Qué hacer
-Reemplazar la función `ensureTables()` completa (desde la línea `async function ensureTables()` 
+
+Reemplazar la función `ensureTables()` completa (desde la línea `async function ensureTables()`
 hasta su cierre `}`) por la versión limpia que aparece a continuación.
 
 **Regla**: NO toques ningún otro bloque de `server.ts`. Solo reemplaza `ensureTables()`.
@@ -121,8 +129,8 @@ hasta su cierre `}`) por la versión limpia que aparece a continuación.
 ```typescript
 async function ensureTables() {
   try {
-    const sql = getSql();
-    console.log("📦 Inicializando esquema de base de datos...");
+    const sql = getSql()
+    console.log('📦 Inicializando esquema de base de datos...')
 
     // ── PASO 1: Migrar datos de tablas antiguas antes de eliminarlas ──────────
 
@@ -140,8 +148,10 @@ async function ensureTables() {
         FROM clients
         WHERE COALESCE(id, uuid_sync) IS NOT NULL
         ON CONFLICT (id) DO NOTHING
-      `;
-    } catch (e) { /* clients puede no existir aún */ }
+      `
+    } catch (e) {
+      /* clients puede no existir aún */
+    }
 
     // ── PASO 2: Crear tablas canónicas activas ────────────────────────────────
 
@@ -155,7 +165,7 @@ async function ensureTables() {
         created_at  BIGINT,
         deleted_at  BIGINT
       )
-    `;
+    `
 
     // Cliente por defecto para desarrollo
     await sql`
@@ -167,7 +177,7 @@ async function ensureTables() {
         0, 0
       )
       ON CONFLICT (id) DO NOTHING
-    `;
+    `
 
     // Usuarios del sistema
     await sql`
@@ -185,7 +195,7 @@ async function ensureTables() {
         created_at  BIGINT,
         deleted_at  BIGINT
       )
-    `;
+    `
 
     // Activos / Equipos HVAC
     await sql`
@@ -218,7 +228,7 @@ async function ensureTables() {
         created_at          BIGINT,
         deleted_at          BIGINT
       )
-    `;
+    `
 
     // Órdenes de trabajo
     await sql`
@@ -231,7 +241,7 @@ async function ensureTables() {
         created_at  BIGINT,
         deleted_at  BIGINT
       )
-    `;
+    `
 
     // Informes técnicos
     await sql`
@@ -244,7 +254,7 @@ async function ensureTables() {
         created_at  BIGINT,
         deleted_at  BIGINT
       )
-    `;
+    `
 
     // Mantenimiento preventivo
     await sql`
@@ -257,7 +267,7 @@ async function ensureTables() {
         created_at  BIGINT,
         deleted_at  BIGINT
       )
-    `;
+    `
 
     // Inventario de repuestos
     await sql`
@@ -270,7 +280,7 @@ async function ensureTables() {
         created_at  BIGINT,
         deleted_at  BIGINT
       )
-    `;
+    `
 
     // Calendario / eventos
     await sql`
@@ -283,56 +293,102 @@ async function ensureTables() {
         created_at  BIGINT,
         deleted_at  BIGINT
       )
-    `;
+    `
 
     // ── PASO 3: Migraciones de columnas para tablas que ya pueden existir ─────
 
     const addColIfMissing = async (table: string, col: string, type: string) => {
       try {
-        await sql.unsafe(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${col} ${type}`);
-      } catch (e) { /* ignorar "already exists" */ }
-    };
+        await sql.unsafe(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${col} ${type}`)
+      } catch (e) {
+        /* ignorar "already exists" */
+      }
+    }
 
     // Asegurar cliente_id en todas las tablas operacionales
-    for (const table of ['assets', 'work_orders', 'reports', 'preventive_maintenance', 'inventory', 'calendar']) {
-      await addColIfMissing(table, 'cliente_id', 'TEXT');
-      await addColIfMissing(table, 'deleted_at', 'BIGINT');
+    for (const table of [
+      'assets',
+      'work_orders',
+      'reports',
+      'preventive_maintenance',
+      'inventory',
+      'calendar',
+    ]) {
+      await addColIfMissing(table, 'cliente_id', 'TEXT')
+      await addColIfMissing(table, 'deleted_at', 'BIGINT')
     }
-    await addColIfMissing('users', 'cliente_id', 'TEXT');
-    await addColIfMissing('users', 'deleted_at', 'BIGINT');
+    await addColIfMissing('users', 'cliente_id', 'TEXT')
+    await addColIfMissing('users', 'deleted_at', 'BIGINT')
 
     // Rellenar cliente_id vacío con el cliente por defecto
-    for (const table of ['assets', 'work_orders', 'reports', 'preventive_maintenance', 'inventory', 'calendar', 'users']) {
+    for (const table of [
+      'assets',
+      'work_orders',
+      'reports',
+      'preventive_maintenance',
+      'inventory',
+      'calendar',
+      'users',
+    ]) {
       try {
         await sql.unsafe(`
           UPDATE ${table}
           SET cliente_id = 'cliente-default-001'
           WHERE cliente_id IS NULL OR cliente_id = ''
-        `);
-      } catch (e) { /* ignorar si tabla no existe */ }
+        `)
+      } catch (e) {
+        /* ignorar si tabla no existe */
+      }
     }
 
     // ── PASO 4: Índices de rendimiento por cliente ────────────────────────────
 
-    const tryIndex = async (q: string) => { try { await sql.unsafe(q); } catch (e) {} };
+    const tryIndex = async (q: string) => {
+      try {
+        await sql.unsafe(q)
+      } catch (e) {}
+    }
 
-    await tryIndex(`CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_uuid ON clientes (uuid_sync)`);
-    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_assets_cliente ON assets (cliente_id, uuid_sync)`);
-    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_assets_tag ON assets (tag)`);
-    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_wo_cliente ON work_orders (cliente_id, uuid_sync)`);
-    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_reports_cliente ON reports (cliente_id, uuid_sync)`);
-    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_pm_cliente ON preventive_maintenance (cliente_id, uuid_sync)`);
-    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_inv_cliente ON inventory (cliente_id, uuid_sync)`);
-    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_cal_cliente ON calendar (cliente_id, uuid_sync)`);
-    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_users_correo ON users (correo)`);
-    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_users_cliente ON users (cliente_id)`);
+    await tryIndex(`CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_uuid ON clientes (uuid_sync)`)
+    await tryIndex(
+      `CREATE INDEX IF NOT EXISTS idx_assets_cliente ON assets (cliente_id, uuid_sync)`
+    )
+    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_assets_tag ON assets (tag)`)
+    await tryIndex(
+      `CREATE INDEX IF NOT EXISTS idx_wo_cliente ON work_orders (cliente_id, uuid_sync)`
+    )
+    await tryIndex(
+      `CREATE INDEX IF NOT EXISTS idx_reports_cliente ON reports (cliente_id, uuid_sync)`
+    )
+    await tryIndex(
+      `CREATE INDEX IF NOT EXISTS idx_pm_cliente ON preventive_maintenance (cliente_id, uuid_sync)`
+    )
+    await tryIndex(
+      `CREATE INDEX IF NOT EXISTS idx_inv_cliente ON inventory (cliente_id, uuid_sync)`
+    )
+    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_cal_cliente ON calendar (cliente_id, uuid_sync)`)
+    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_users_correo ON users (correo)`)
+    await tryIndex(`CREATE INDEX IF NOT EXISTS idx_users_cliente ON users (cliente_id)`)
 
     // ── PASO 5: Agregar UNIQUE en uuid_sync donde falte ───────────────────────
 
-    const tryUnique = async (q: string) => { try { await sql.unsafe(q); } catch (e) {} };
+    const tryUnique = async (q: string) => {
+      try {
+        await sql.unsafe(q)
+      } catch (e) {}
+    }
 
-    for (const table of ['clientes', 'assets', 'work_orders', 'reports', 'preventive_maintenance', 'inventory', 'calendar', 'users']) {
-      await tryUnique(`ALTER TABLE ${table} ADD CONSTRAINT uq_${table}_uuid UNIQUE (uuid_sync)`);
+    for (const table of [
+      'clientes',
+      'assets',
+      'work_orders',
+      'reports',
+      'preventive_maintenance',
+      'inventory',
+      'calendar',
+      'users',
+    ]) {
+      await tryUnique(`ALTER TABLE ${table} ADD CONSTRAINT uq_${table}_uuid UNIQUE (uuid_sync)`)
     }
 
     // ── PASO 6: Eliminar tablas obsoletas sin ruta activa ─────────────────────
@@ -362,10 +418,10 @@ async function ensureTables() {
       'ordenes_servicio',
       'catalog_asset_types',
       'settings',
-      'events',      // alias de calendar, sin uso
-      'audit_logs',  // solo escritura, sin GET
-      'branches',    // sin ruta activa
-      'clients',     // duplicado de clientes (datos ya migrados en PASO 1)
+      'events', // alias de calendar, sin uso
+      'audit_logs', // solo escritura, sin GET
+      'branches', // sin ruta activa
+      'clients', // duplicado de clientes (datos ya migrados en PASO 1)
       // Tablas legacy renombradas que pueden quedar como fantasmas
       'activos',
       'usuarios',
@@ -373,21 +429,20 @@ async function ensureTables() {
       'tickets',
       'informes',
       'sucursales',
-    ];
+    ]
 
     for (const t of obsoleteTables) {
       try {
-        await sql.unsafe(`DROP TABLE IF EXISTS ${t} CASCADE`);
-        console.log(`🗑️  Tabla obsoleta eliminada: ${t}`);
+        await sql.unsafe(`DROP TABLE IF EXISTS ${t} CASCADE`)
+        console.log(`🗑️  Tabla obsoleta eliminada: ${t}`)
       } catch (e: any) {
-        console.warn(`No se pudo eliminar ${t}: ${e.message}`);
+        console.warn(`No se pudo eliminar ${t}: ${e.message}`)
       }
     }
 
-    console.log("✅ Esquema de base de datos listo — solo tablas con ruta activa conservadas");
-
+    console.log('✅ Esquema de base de datos listo — solo tablas con ruta activa conservadas')
   } catch (error) {
-    console.error("❌ Error inicializando base de datos:", error);
+    console.error('❌ Error inicializando base de datos:', error)
   }
 }
 ```
@@ -397,6 +452,7 @@ async function ensureTables() {
 ## SECCIÓN II-B — CORRECCIÓN DEL MIDDLEWARE requireCliente en server.ts
 
 ### Qué hacer
+
 El middleware `requireCliente` actualmente consulta la tabla `users` buscando `cliente_id`.
 Después de la limpieza de tablas, debe consultar exclusivamente `clientes` como tabla canónica.
 
@@ -410,19 +466,19 @@ El resto del middleware no se toca.
 // DESPUÉS busca solo en 'users' con cliente_id verificado contra 'clientes'
 
 if (userIdHeader) {
-  const uId = String(userIdHeader).trim();
+  const uId = String(userIdHeader).trim()
   const queryUser = await sql`
     SELECT u.uuid_sync, u.cliente_id
     FROM users u
     WHERE u.id = ${uId} OR u.uuid_sync = ${uId}
-  `;
+  `
   if (queryUser.length > 0) {
-    const uClienteId = queryUser[0].cliente_id;
+    const uClienteId = queryUser[0].cliente_id
     if (uClienteId && uClienteId !== clienteId && uClienteId !== 'cliente-default-001') {
       return res.status(403).json({
         success: false,
-        error: `Acceso no autorizado: usuario ${uId} pertenece al cliente ${uClienteId}, no a ${clienteId}.`
-      });
+        error: `Acceso no autorizado: usuario ${uId} pertenece al cliente ${uClienteId}, no a ${clienteId}.`,
+      })
     }
   }
 }
@@ -433,6 +489,7 @@ if (userIdHeader) {
 ## SECCIÓN III — CORRECCIÓN C-2: Unificar ALLOWED_TABLES y TABLE_ALIAS_MAP en server.ts
 
 ### Qué hacer
+
 Encuentra las constantes `ALLOWED_TABLES` y `TABLE_ALIAS_MAP` en server.ts.
 Reemplaza ambas por las versiones canónicas siguientes. NO toques nada más.
 
@@ -441,39 +498,39 @@ Reemplaza ambas por las versiones canónicas siguientes. NO toques nada más.
 // Estas son las ÚNICAS tablas que el sync puede leer y escribir.
 // Todas tienen cliente_id → datos aislados por cliente.
 const ALLOWED_TABLES = [
-  'clientes',               // tabla maestra — acceso especial solo GET
-  'assets',                 // equipos HVAC
-  'work_orders',            // órdenes de trabajo
-  'reports',                // informes técnicos
+  'clientes', // tabla maestra — acceso especial solo GET
+  'assets', // equipos HVAC
+  'work_orders', // órdenes de trabajo
+  'reports', // informes técnicos
   'preventive_maintenance', // planes de mantenimiento preventivo
-  'inventory',              // repuestos e inventario
-  'users',                  // técnicos y usuarios
-  'calendar',               // eventos y agenda
-] as const;
+  'inventory', // repuestos e inventario
+  'users', // técnicos y usuarios
+  'calendar', // eventos y agenda
+] as const
 
 // ─── ALIASES DE NOMBRES (Dexie usa estos nombres en el cliente) ────────────
 // El cliente puede enviar cualquiera de estos nombres en el campo 'table'
 // del payload de sync. El servidor lo resuelve al nombre canónico de Neon.
 const TABLE_ALIAS_MAP: Record<string, string> = {
   // Español → canónico inglés (por compatibilidad con Dexie stores en español)
-  'activos':                'assets',
-  'equipos':                'assets',
-  'ordenes_trabajo':        'work_orders',
-  'ordenes':                'work_orders',
-  'tickets':                'work_orders',
-  'informes':               'reports',
-  'informes_tecnicos':      'reports',
-  'mantenimiento':          'preventive_maintenance',
-  'mantenimientos':         'preventive_maintenance',
-  'planes_pm':              'preventive_maintenance',
-  'inventario':             'inventory',
-  'repuestos':              'inventory',
-  'usuarios':               'users',
-  'tecnicos':               'users',
-  'clientes_lista':         'clientes',
-  'calendario':             'calendar',
-  'eventos':                'calendar',
-};
+  activos: 'assets',
+  equipos: 'assets',
+  ordenes_trabajo: 'work_orders',
+  ordenes: 'work_orders',
+  tickets: 'work_orders',
+  informes: 'reports',
+  informes_tecnicos: 'reports',
+  mantenimiento: 'preventive_maintenance',
+  mantenimientos: 'preventive_maintenance',
+  planes_pm: 'preventive_maintenance',
+  inventario: 'inventory',
+  repuestos: 'inventory',
+  usuarios: 'users',
+  tecnicos: 'users',
+  clientes_lista: 'clientes',
+  calendario: 'calendar',
+  eventos: 'calendar',
+}
 ```
 
 ---
@@ -481,6 +538,7 @@ const TABLE_ALIAS_MAP: Record<string, string> = {
 ## SECCIÓN IV — CORRECCIÓN C-3: Reemplazar switch GET con filtro por cliente_id
 
 ### Qué hacer
+
 Encuentra el handler `app.get(["/api/:table", "/api/sync/:table"], ...)` en server.ts.
 Dentro de ese handler, reemplaza el bloque `switch (table)` completo por el siguiente.
 
@@ -489,25 +547,25 @@ Solo reemplaza el switch interno.
 
 ```typescript
 // Leer cliente_id del query param para filtrar datos por tenant
-const clienteId = req.query.clienteId
-  || req.query.cliente_id
-  || req.headers['x-client-id']
-  || req.headers['x-cliente-id']
-  || 'cliente-default-001';
+const clienteId =
+  req.query.clienteId ||
+  req.query.cliente_id ||
+  req.headers['x-client-id'] ||
+  req.headers['x-cliente-id'] ||
+  'cliente-default-001'
 
-const since = req.query.since ? Number(req.query.since) : 0;
-let rows: any[] = [];
+const since = req.query.since ? Number(req.query.since) : 0
+let rows: any[] = []
 
 switch (table) {
-
   case 'clientes':
     // Solo devuelve el cliente propio del tenant solicitante
     rows = await sql`
       SELECT * FROM clientes
       WHERE id = ${String(clienteId)}
          OR uuid_sync = ${String(clienteId)}
-    `;
-    break;
+    `
+    break
 
   case 'assets':
     rows = await sql`
@@ -517,8 +575,8 @@ switch (table) {
         AND deleted_at IS NULL
       ORDER BY updated_at ASC
       LIMIT 1000
-    `;
-    break;
+    `
+    break
 
   case 'work_orders':
     rows = await sql`
@@ -528,8 +586,8 @@ switch (table) {
         AND deleted_at IS NULL
       ORDER BY updated_at ASC
       LIMIT 1000
-    `;
-    break;
+    `
+    break
 
   case 'reports':
     rows = await sql`
@@ -539,8 +597,8 @@ switch (table) {
         AND deleted_at IS NULL
       ORDER BY updated_at ASC
       LIMIT 1000
-    `;
-    break;
+    `
+    break
 
   case 'preventive_maintenance':
     rows = await sql`
@@ -550,8 +608,8 @@ switch (table) {
         AND deleted_at IS NULL
       ORDER BY updated_at ASC
       LIMIT 1000
-    `;
-    break;
+    `
+    break
 
   case 'inventory':
     rows = await sql`
@@ -561,8 +619,8 @@ switch (table) {
         AND deleted_at IS NULL
       ORDER BY updated_at ASC
       LIMIT 1000
-    `;
-    break;
+    `
+    break
 
   case 'users':
     rows = await sql`
@@ -573,10 +631,10 @@ switch (table) {
         AND deleted_at IS NULL
       ORDER BY updated_at ASC
       LIMIT 500
-    `;
+    `
     // Nunca devolver el campo pin en el GET
-    rows = rows.map(({ pin, ...rest }) => rest);
-    break;
+    rows = rows.map(({ pin, ...rest }) => rest)
+    break
 
   case 'calendar':
     rows = await sql`
@@ -586,11 +644,11 @@ switch (table) {
         AND deleted_at IS NULL
       ORDER BY updated_at ASC
       LIMIT 1000
-    `;
-    break;
+    `
+    break
 
   default:
-    rows = [];
+    rows = []
 }
 ```
 
@@ -599,6 +657,7 @@ switch (table) {
 ## SECCIÓN V — CORRECCIÓN C-4: Reemplazar POST /api/sync para respetar cliente_id
 
 ### Qué hacer
+
 Encuentra el handler `app.post("/api/sync", ...)` en server.ts.
 Dentro del handler, justo después de que se extrae la tabla del body y se resuelve con
 `resolveTable()`, agrega la inyección de `cliente_id` en el payload antes del UPSERT.
@@ -608,18 +667,19 @@ No reescribas el handler completo. Agrega SOLO este bloque después de la resolu
 ```typescript
 // ── Inyectar cliente_id en todo registro que entra por sync ──────────────
 // Garantiza que ningún dato se guarde sin propietario de tenant.
-const clienteIdSync = req.body.clienteId
-  || req.body.cliente_id
-  || req.headers['x-client-id']
-  || req.headers['x-cliente-id']
-  || 'cliente-default-001';
+const clienteIdSync =
+  req.body.clienteId ||
+  req.body.cliente_id ||
+  req.headers['x-client-id'] ||
+  req.headers['x-cliente-id'] ||
+  'cliente-default-001'
 
 // Si el payload tiene un campo 'data' (JSONB), inyectar también ahí
 if (req.body.data && typeof req.body.data === 'object') {
-  req.body.data.cliente_id = req.body.data.cliente_id || clienteIdSync;
+  req.body.data.cliente_id = req.body.data.cliente_id || clienteIdSync
 }
 // Inyectar en el nivel raíz del payload
-req.body.cliente_id = req.body.cliente_id || clienteIdSync;
+req.body.cliente_id = req.body.cliente_id || clienteIdSync
 ```
 
 ---
@@ -627,6 +687,7 @@ req.body.cliente_id = req.body.cliente_id || clienteIdSync;
 ## SECCIÓN VI — CORRECCIÓN C-5: Corregir modelo Gemini en /api/ocr
 
 ### Qué hacer
+
 Encuentra en server.ts el handler `app.post("/api/ocr", ...)`.
 Dentro de ese handler, busca y reemplaza SOLO la línea del nombre del modelo.
 
@@ -643,24 +704,26 @@ model: 'gemini-2.0-flash',
 ## SECCIÓN VII — CORRECCIÓN C-6: Corregir validación de firma en validateWorkOrderPayload
 
 ### Qué hacer
+
 Encuentra la función `validateWorkOrderPayload` en server.ts (~línea 65).
 Dentro de esa función, reemplaza SOLO la línea de detección de `signature`:
 
 ```typescript
 // ANTES (no detecta firmas guardadas por Dexie/EditorInforme):
-const signature = target.firma
-  || target.firma_conformidad_base64
-  || (target.payload && target.payload.firma_conformidad_base64);
+const signature =
+  target.firma ||
+  target.firma_conformidad_base64 ||
+  (target.payload && target.payload.firma_conformidad_base64)
 
 // DESPUÉS (detecta todas las rutas donde Dexie puede guardar la firma):
 const signature =
-  target.firma
-  || target.firma_conformidad_base64
-  || (target.firmas && (target.firmas.tecnico || target.firmas.cliente))
-  || (target.signatures && target.signatures.technician)
-  || (target.payload && target.payload.firma_conformidad_base64)
-  || (target.data && target.data.firma_conformidad_base64)
-  || (target.data && target.data.firmas && target.data.firmas.tecnico);
+  target.firma ||
+  target.firma_conformidad_base64 ||
+  (target.firmas && (target.firmas.tecnico || target.firmas.cliente)) ||
+  (target.signatures && target.signatures.technician) ||
+  (target.payload && target.payload.firma_conformidad_base64) ||
+  (target.data && target.data.firma_conformidad_base64) ||
+  (target.data && target.data.firmas && target.data.firmas.tecnico)
 ```
 
 ---
@@ -668,6 +731,7 @@ const signature =
 ## SECCIÓN VIII — CORRECCIÓN C-7: Reemplazar vercel.json completo
 
 ### Qué hacer
+
 Reemplaza el contenido completo del archivo `vercel.json` por lo siguiente.
 
 Las rutas antiguas apuntaban a funciones serverless que no existen (`/api/work-orders/[id]/complete`).
@@ -695,6 +759,7 @@ Con solo el catch-all, Express maneja todas las rutas correctamente.
 ## SECCIÓN IX — CORRECCIÓN C-8: Corregir syncEngine.ts
 
 ### Qué hacer
+
 Abre `src/lib/syncEngine.ts`. Verifica y corrige SOLO los siguientes puntos.
 NO reescribas la lógica de sync. Solo corrige URLs y nombres de tabla.
 
@@ -737,16 +802,16 @@ use los nombres del `TABLE_ALIAS_MAP` actualizado. Ejemplo correcto:
 
 ```typescript
 const DEXIE_TO_NEON: Record<string, string> = {
-  'activos':         'assets',
-  'equipos':         'assets',
-  'ordenes_trabajo': 'work_orders',
-  'informes':        'reports',
-  'mantenimientos':  'preventive_maintenance',
-  'inventario':      'inventory',
-  'usuarios':        'users',
-  'calendario':      'calendar',
-  'clientes':        'clientes',
-};
+  activos: 'assets',
+  equipos: 'assets',
+  ordenes_trabajo: 'work_orders',
+  informes: 'reports',
+  mantenimientos: 'preventive_maintenance',
+  inventario: 'inventory',
+  usuarios: 'users',
+  calendario: 'calendar',
+  clientes: 'clientes',
+}
 ```
 
 Si ya existe un mapa similar con nombres correctos, NO lo reemplaces.
@@ -833,6 +898,6 @@ PENDIENTES MANUALES:
 
 ---
 
-*Prompt v2.0 — generado con lectura directa de server.ts (2837 líneas), vercel.json (24 líneas), package.json (64 líneas)*
-*Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO — rama main — Junio 2026*
-*Decisión de arquitectura Nelson: sync unificado hacia tabla canónica `clientes` | tablas sin ruta eliminadas*
+_Prompt v2.0 — generado con lectura directa de server.ts (2837 líneas), vercel.json (24 líneas), package.json (64 líneas)_
+_Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO — rama main — Junio 2026_
+_Decisión de arquitectura Nelson: sync unificado hacia tabla canónica `clientes` | tablas sin ruta eliminadas_

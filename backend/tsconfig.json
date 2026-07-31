@@ -17,6 +17,6 @@
     "noUnusedParameters": false,
     "noImplicitReturns": false
   },
-  "include": ["src/server-dev.ts"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

@@ -36,6 +36,10 @@ jobs:
 
       - run: npx eslint . --max-warnings 100
         if: matrix.workspace == 'frontend'
+      # Casi todos los warnings de backend vienen de server-dev.ts (modo JSON,
+      # deliberadamente no tipado estrictamente) — no de app.ts/routers reales.
+      - run: npx eslint . --max-warnings 280
+        if: matrix.workspace == 'backend'
 
       - run: npm run test:coverage
 
@@ -69,6 +73,31 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  commitlint:
+    # A-10, AC-10.2: valida Conventional Commits en cada commit del PR (no solo
+    # en el hook local, que un contribuidor puede saltarse con --no-verify).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+        if: github.event_name == 'pull_request'
+
+  # NOTA: no hay job de `format:check` en CI todavía a propósito. El repo no
+  # está formateado con Prettier de punta a punta (104 archivos pre-existentes
+  # quedarían "sucios"), y correr `prettier --write .` sobre todo junto con
+  # los cambios de seguridad de este mismo PR mezclaría un diff de formato
+  # masivo con cambios de lógica — mala idea para revisar. El pre-commit hook
+  # (lint-staged) ya formatea todo archivo nuevo que se toque; un
+  # `npm run format` de una sola vez sobre el repo completo es trabajo de
+  # seguimiento, en su propio commit dedicado.
 
   integration:
     runs-on: ubuntu-latest

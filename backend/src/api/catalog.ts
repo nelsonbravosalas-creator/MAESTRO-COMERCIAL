@@ -2,6 +2,9 @@ import { Router } from 'express'
 import { Pool } from 'pg'
 import { authMiddleware, roleMiddleware } from '../middleware/auth'
 import { logger } from '../utils/logger'
+import { validate } from '../middleware/validate'
+import { uuidParams } from '../schemas/common'
+import { catalogItemSchema } from '../schemas/catalog'
 
 const CATEGORIES = ['mo', 'log', 'mat', 'rep', 'ins']
 
@@ -55,36 +58,39 @@ export const createCatalogRouter = (pool: Pool) => {
     }
   })
 
-  router.post('/', roleMiddleware('admin', 'manager'), async (req, res) => {
-    try {
-      const { category_id, description, unit_name, unit_price, sort_order } = req.body
-      if (!CATEGORIES.includes(category_id) || !description || !unit_name) {
-        return res.status(400).json({ error: 'category_id, description and unit_name are required' })
-      }
+  router.post(
+    '/',
+    roleMiddleware('admin', 'manager'),
+    validate({ body: catalogItemSchema }),
+    async (req, res) => {
+      try {
+        const { category_id, description, unit_name, unit_price, sort_order } = req.body
 
-      const result = await pool.query(
-        `INSERT INTO catalog_items (category_id, description, unit_name, unit_price, sort_order)
+        const result = await pool.query(
+          `INSERT INTO catalog_items (category_id, description, unit_name, unit_price, sort_order)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [category_id, description, unit_name, Number(unit_price) || 0, Number(sort_order) || 0]
-      )
+          [category_id, description, unit_name, Number(unit_price) || 0, Number(sort_order) || 0]
+        )
 
-      return res.status(201).json(result.rows[0])
-    } catch (error: any) {
-      logger.error('Create catalog item error', { error: error.message })
-      return res.status(500).json({ error: 'Failed to create catalog item' })
-    }
-  })
-
-  router.put('/:id', roleMiddleware('admin', 'manager'), async (req, res) => {
-    try {
-      const { category_id, description, unit_name, unit_price, sort_order } = req.body
-      if (!CATEGORIES.includes(category_id) || !description || !unit_name) {
-        return res.status(400).json({ error: 'category_id, description and unit_name are required' })
+        return res.status(201).json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Create catalog item error', { error: error.message })
+        return res.status(500).json({ error: 'Failed to create catalog item' })
       }
+    }
+  )
 
-      const result = await pool.query(
-        `UPDATE catalog_items
+  router.put(
+    '/:id',
+    roleMiddleware('admin', 'manager'),
+    validate({ params: uuidParams('id'), body: catalogItemSchema }),
+    async (req, res) => {
+      try {
+        const { category_id, description, unit_name, unit_price, sort_order } = req.body
+
+        const result = await pool.query(
+          `UPDATE catalog_items
             SET category_id = $1,
                 description = $2,
                 unit_name = $3,
@@ -93,35 +99,50 @@ export const createCatalogRouter = (pool: Pool) => {
                 updated_at = NOW()
           WHERE id = $6
           RETURNING *`,
-        [category_id, description, unit_name, Number(unit_price) || 0, Number(sort_order) || 0, req.params.id]
-      )
+          [
+            category_id,
+            description,
+            unit_name,
+            Number(unit_price) || 0,
+            Number(sort_order) || 0,
+            req.params.id,
+          ]
+        )
 
-      if (result.rows.length === 0) return res.status(404).json({ error: 'Catalog item not found' })
-      return res.json(result.rows[0])
-    } catch (error: any) {
-      logger.error('Update catalog item error', { error: error.message, id: req.params.id })
-      return res.status(500).json({ error: 'Failed to update catalog item' })
+        if (result.rows.length === 0)
+          return res.status(404).json({ error: 'Catalog item not found' })
+        return res.json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Update catalog item error', { error: error.message, id: req.params.id })
+        return res.status(500).json({ error: 'Failed to update catalog item' })
+      }
     }
-  })
+  )
 
-  router.delete('/:id', roleMiddleware('admin'), async (req, res) => {
-    try {
-      const result = await pool.query(
-        `UPDATE catalog_items
+  router.delete(
+    '/:id',
+    roleMiddleware('admin'),
+    validate({ params: uuidParams('id') }),
+    async (req, res) => {
+      try {
+        const result = await pool.query(
+          `UPDATE catalog_items
             SET is_active = false,
                 updated_at = NOW()
           WHERE id = $1
           RETURNING id`,
-        [req.params.id]
-      )
+          [req.params.id]
+        )
 
-      if (result.rows.length === 0) return res.status(404).json({ error: 'Catalog item not found' })
-      return res.json({ message: 'Catalog item deactivated' })
-    } catch (error: any) {
-      logger.error('Delete catalog item error', { error: error.message, id: req.params.id })
-      return res.status(500).json({ error: 'Failed to delete catalog item' })
+        if (result.rows.length === 0)
+          return res.status(404).json({ error: 'Catalog item not found' })
+        return res.json({ message: 'Catalog item deactivated' })
+      } catch (error: any) {
+        logger.error('Delete catalog item error', { error: error.message, id: req.params.id })
+        return res.status(500).json({ error: 'Failed to delete catalog item' })
+      }
     }
-  })
+  )
 
   return router
 }

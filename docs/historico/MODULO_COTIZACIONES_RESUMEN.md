@@ -9,9 +9,11 @@
 ## 🎯 Qué Se Desarrolló
 
 ### 1. **Componente Quotations.tsx** (409 líneas)
+
 Página completa para gestión de cotizaciones con:
 
 #### Funcionalidades
+
 - ✅ **Listar cotizaciones** con estado, cliente y total
 - ✅ **Crear nueva cotización** con formulario modal
 - ✅ **Gestión dinámica de items:**
@@ -31,6 +33,7 @@ Página completa para gestión de cotizaciones con:
 - ✅ **Integración API:** GET/POST /api/quotations
 
 #### Tecnología
+
 - React 19 con TypeScript
 - Hooks: useState, useEffect
 - Fetch API con JWT Bearer token
@@ -39,9 +42,11 @@ Página completa para gestión de cotizaciones con:
 ---
 
 ### 2. **Componente Login.tsx** (79 líneas)
+
 Página de autenticación completa con:
 
 #### Funcionalidades
+
 - ✅ Formulario de login
 - ✅ Validación de credenciales
 - ✅ Botones rápidos para usuarios de prueba:
@@ -52,6 +57,7 @@ Página de autenticación completa con:
 - ✅ Persistencia en localStorage
 
 #### Integración
+
 - POST /api/auth/login
 - JWT token storage
 - User info storage
@@ -59,9 +65,11 @@ Página de autenticación completa con:
 ---
 
 ### 3. **Componente Dashboard.tsx** (80 líneas)
+
 Panel principal con:
 
 #### Componentes
+
 - ✅ CostIndicator (KPI indicator - ya existente)
 - ✅ Acciones sugeridas
 - ✅ Módulos disponibles
@@ -74,12 +82,14 @@ Panel principal con:
 ### 4. **Estilos CSS Completos**
 
 #### Login.css (260 líneas)
+
 - Formulario centrado
 - Botones de prueba rápida
 - Gradientes y animaciones
 - Responsive para móvil
 
 #### Quotations.css (540 líneas)
+
 - **Grid layout** para listado de cotizaciones
 - **Form section** con tabla de items
 - **Cálculo visual** de totales
@@ -93,6 +103,7 @@ Panel principal con:
 - **Transiciones** suaves (0.3s)
 
 #### Dashboard.css (300 líneas)
+
 - Feature grid (6 items)
 - Phases tracker con progreso
 - Cards con hover effects
@@ -101,10 +112,12 @@ Panel principal con:
 ---
 
 ### 5. **App.tsx Refactorizado**
+
 **Antes:** Página única con botón de health check  
 **Después:** Aplicación full con:
 
 #### Funcionalidades
+
 - ✅ Sistema de autenticación
   - Login requerido
   - JWT token management
@@ -122,6 +135,7 @@ Panel principal con:
 - ✅ Estado autenticado
 
 #### Routing
+
 - Protected routes (login required)
 - Tab-based navigation
 - Page state management
@@ -130,12 +144,12 @@ Panel principal con:
 
 ## 📊 Estadísticas
 
-| Métrica | Cantidad |
-|---------|----------|
-| **Componentes React** | 5 (Login, Quotations, Dashboard, CostIndicator, App) |
-| **Líneas de código** | ~500 (sin CSS) |
-| **Líneas CSS** | ~1100 |
-| **Commits** | 2 |
+| Métrica                  | Cantidad                                                            |
+| ------------------------ | ------------------------------------------------------------------- |
+| **Componentes React**    | 5 (Login, Quotations, Dashboard, CostIndicator, App)                |
+| **Líneas de código**     | ~500 (sin CSS)                                                      |
+| **Líneas CSS**           | ~1100                                                               |
+| **Commits**              | 2                                                                   |
 | **API endpoints usados** | 4 (/auth/login, /quotations GET, /quotations POST, /dashboard/kpis) |
 
 ---
@@ -143,6 +157,7 @@ Panel principal con:
 ## 🎨 Diseño Visual
 
 ### Tema
+
 - Dark theme consistente
 - Colores primarios: Azul (#2563eb)
 - Colores secundarios: Rojo, Verde, Naranja, Gris
@@ -150,11 +165,13 @@ Panel principal con:
 - Espaciado: Grid-based (0.5rem = 8px)
 
 ### Responsividad
+
 - ✅ Desktop (1920px) - Grid multi-columna
 - ✅ Tablet (768px) - Grid 2 columnas
 - ✅ Móvil (375px) - Single columna
 
 ### Animaciones
+
 - Hover effects (translateY -2px/4px)
 - Transiciones suaves (0.2s/0.3s)
 - Border color changes
@@ -196,6 +213,7 @@ GET /api/dashboard/kpis
 ## 🧪 Cómo Probar
 
 ### 1. Ejecutar Backend + Frontend
+
 ```bash
 # En proyecto raíz
 double-click run-dev.bat
@@ -205,11 +223,13 @@ cd frontend && npm run dev
 ```
 
 ### 2. Acceder
+
 ```
 http://localhost:5173
 ```
 
 ### 3. Login
+
 ```
 Admin:
   Email: admin@local.test
@@ -221,6 +241,7 @@ Manager:
 ```
 
 ### 4. Flujo de Prueba Cotizaciones
+
 1. **Dashboard** → Ver indicadores de costos
 2. **Cotizaciones** → Crear nueva cotización
 3. Seleccionar cliente (si no existe, crear primero - button "Nuevo cliente")
@@ -254,6 +275,7 @@ frontend/
 ## ✨ Características Destacadas
 
 ### UX/UI
+
 - **Cálculos en tiempo real:** Cambiar cantidad/precio actualiza totales al instante
 - **Modal elegante:** Detalles de cotización en overlay con cerrar fácil
 - **Status badges:** Visual clear de estado con colores
@@ -261,6 +283,7 @@ frontend/
 - **Formulario sticky:** Items siempre visibles al scroll
 
 ### Validaciones
+
 - ✅ Email requerido en login
 - ✅ Contraseña requerida
 - ✅ Cliente requerido en cotización
@@ -268,6 +291,7 @@ frontend/
 - ✅ Descripción de item requerida
 
 ### Performance
+
 - ✅ Lazy loading de clients
 - ✅ Cálculos optimizados (reduce)
 - ✅ No re-renders innecesarios

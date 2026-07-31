@@ -15,7 +15,8 @@ export const loginLimiterOptions: Partial<Options> = {
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: Request) => `${req.ip}:${String((req.body as any)?.email ?? '').toLowerCase()}`,
+  keyGenerator: (req: Request) =>
+    `${req.ip}:${String((req.body as any)?.email ?? '').toLowerCase()}`,
   message: { error: 'Too many requests', message: 'Demasiados intentos. Reintente en 15 minutos.' },
 }
 
@@ -26,6 +27,21 @@ export const adminSetupLimiterOptions: Partial<Options> = {
   legacyHeaders: false,
 }
 
+// A-04, AC-4.8: 3 solicitudes de reset por hora por correo.
+export const forgotPasswordLimiterOptions: Partial<Options> = {
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) =>
+    `${req.ip}:${String((req.body as any)?.email ?? '').toLowerCase()}`,
+  message: {
+    error: 'Too many requests',
+    message: 'Demasiadas solicitudes. Reintente en una hora.',
+  },
+}
+
 export const apiLimiter = () => rateLimit(apiLimiterOptions)
 export const loginLimiter = () => rateLimit(loginLimiterOptions)
 export const adminSetupLimiter = () => rateLimit(adminSetupLimiterOptions)
+export const forgotPasswordLimiter = () => rateLimit(forgotPasswordLimiterOptions)

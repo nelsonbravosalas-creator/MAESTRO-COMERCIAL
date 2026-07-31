@@ -2,6 +2,15 @@ import { Router } from 'express'
 import { Pool, PoolClient } from 'pg'
 import { logger } from '../utils/logger'
 import { authMiddleware, AuthRequest, roleMiddleware } from '../middleware/auth'
+import { validate } from '../middleware/validate'
+import { uuidParams, paginationQuerySchema } from '../schemas/common'
+import {
+  quotationCreateSchema,
+  quotationUpdateSchema,
+  quotationStatusSchema,
+  quotationDuplicateSchema,
+} from '../schemas/quotations'
+import { decodeCursor, buildPage } from '../utils/pagination'
 
 const VALID_STATUSES = ['Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada']
 const VALID_OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
@@ -29,7 +38,7 @@ const normalizeOperState = (state: string | undefined | null) =>
   state && VALID_OPER_STATES.includes(state) ? state : null
 
 const paramString = (value: string | string[] | undefined) =>
-  Array.isArray(value) ? value[0] : value ?? ''
+  Array.isArray(value) ? value[0] : (value ?? '')
 
 const quotationSelect = `
   SELECT q.*, c.name AS client_name, cc.name AS contact_name
@@ -73,9 +82,16 @@ const fullQuotation = async (db: Pool | PoolClient, quotationId: string) => {
   if (quotation.rows.length === 0) return null
 
   const [categories, lineItems, terms, totals] = await Promise.all([
-    db.query('SELECT * FROM quotation_categories WHERE quotation_id = $1 ORDER BY sort_order', [quotationId]),
-    db.query('SELECT * FROM quotation_line_items WHERE quotation_id = $1 ORDER BY sort_order, created_at', [quotationId]),
-    db.query('SELECT * FROM quotation_terms WHERE quotation_id = $1 ORDER BY sort_order', [quotationId]),
+    db.query('SELECT * FROM quotation_categories WHERE quotation_id = $1 ORDER BY sort_order', [
+      quotationId,
+    ]),
+    db.query(
+      'SELECT * FROM quotation_line_items WHERE quotation_id = $1 ORDER BY sort_order, created_at',
+      [quotationId]
+    ),
+    db.query('SELECT * FROM quotation_terms WHERE quotation_id = $1 ORDER BY sort_order', [
+      quotationId,
+    ]),
     totalsFor(db, quotationId, Number(quotation.rows[0].iva_pct) || 19),
   ])
 
@@ -158,7 +174,9 @@ const normalizeText = (value: string) =>
     .trim()
 
 const normalizeRutDigits = (value: string) =>
-  String(value ?? '').replace(/[^0-9kK]/g, '').toUpperCase()
+  String(value ?? '')
+    .replace(/[^0-9kK]/g, '')
+    .toUpperCase()
 
 const normalizeRut = (value: string) => {
   const raw = normalizeRutDigits(value)
@@ -199,7 +217,8 @@ const validateImportPayload = (body: any) => {
       status: 422,
       payload: {
         error: 'Correlativo invalido',
-        message: 'El correlativo debe cumplir el formato SYM-000-MM-YYYY. Ejemplo: SYM-006-07-2026.',
+        message:
+          'El correlativo debe cumplir el formato SYM-000-MM-YYYY. Ejemplo: SYM-006-07-2026.',
       },
     }
   }
@@ -207,10 +226,19 @@ const validateImportPayload = (body: any) => {
     return { status: 422, payload: { error: 'cliente.nombre y cliente.rut son requeridos' } }
   }
   if (!isValidRut(body.cliente.rut)) {
-    return { status: 422, payload: { error: 'RUT invalido', message: 'El RUT del cliente no tiene digito verificador valido.' } }
+    return {
+      status: 422,
+      payload: {
+        error: 'RUT invalido',
+        message: 'El RUT del cliente no tiene digito verificador valido.',
+      },
+    }
   }
   if (!Array.isArray(body.lineas) || body.lineas.length === 0) {
     return { status: 422, payload: { error: 'Debe incluir al menos una linea' } }
+  }
+  if (body.lineas.length > 500) {
+    return { status: 400, payload: { error: 'Maximo 500 lineas por importacion' } }
   }
   for (const [idx, line] of body.lineas.entries()) {
     const categoryId = line?.category_id
@@ -232,7 +260,10 @@ const validateImportPayload = (body: any) => {
   }
   for (const category of body.categorias ?? []) {
     if (!CATEGORY_IDS.includes(category?.category_id)) {
-      return { status: 422, payload: { error: `categorias.category_id invalido: ${category?.category_id}` } }
+      return {
+        status: 422,
+        payload: { error: `categorias.category_id invalido: ${category?.category_id}` },
+      }
     }
   }
   for (const termType of Object.keys(body.terminos ?? {})) {
@@ -250,10 +281,9 @@ const suggestNextCorrelative = async (db: Pool | PoolClient, correlative: string
   const match = correlative.match(/^SYM-\d{3}-(\d{2})-(\d{4})$/)
   if (!match) return null
   const [, month, year] = match
-  const result = await db.query(
-    'SELECT correlative FROM quotations WHERE correlative LIKE $1',
-    [`SYM-%-${month}-${year}`]
-  )
+  const result = await db.query('SELECT correlative FROM quotations WHERE correlative LIKE $1', [
+    `SYM-%-${month}-${year}`,
+  ])
   const used = new Set(
     result.rows
       .map((row: any) => String(row.correlative).match(/^SYM-(\d{3})-\d{2}-\d{4}$/)?.[1])
@@ -308,10 +338,11 @@ const findCatalogMatch = async (db: PoolClient, categoryId: string, description:
   if (exact.length === 1) return { catalogItemId: exact[0].id, motivo: null as string | null }
   if (exact.length > 1) return { catalogItemId: null, motivo: 'ambiguo' }
 
-  const contained = candidates.filter(c =>
-    c.normalized && (normalized.includes(c.normalized) || c.normalized.includes(normalized))
+  const contained = candidates.filter(
+    c => c.normalized && (normalized.includes(c.normalized) || c.normalized.includes(normalized))
   )
-  if (contained.length === 1) return { catalogItemId: contained[0].id, motivo: null as string | null }
+  if (contained.length === 1)
+    return { catalogItemId: contained[0].id, motivo: null as string | null }
   if (contained.length > 1) return { catalogItemId: null, motivo: 'ambiguo' }
   return { catalogItemId: null, motivo: 'sin_match' }
 }
@@ -369,13 +400,13 @@ const upsertImportClient = async (db: PoolClient, body: any, userId: string | nu
   if (contact && (contactName || contactEmail)) {
     const contactResult = contactEmail
       ? await db.query(
-          'SELECT * FROM client_contacts WHERE client_id = $1 AND lower(COALESCE(email, \'\')) = lower($2) LIMIT 1',
+          "SELECT * FROM client_contacts WHERE client_id = $1 AND lower(COALESCE(email, '')) = lower($2) LIMIT 1",
           [clientRow.id, contactEmail]
         )
-      : await db.query(
-          'SELECT * FROM client_contacts WHERE client_id = $1 AND name = $2 LIMIT 1',
-          [clientRow.id, contactName]
-        )
+      : await db.query('SELECT * FROM client_contacts WHERE client_id = $1 AND name = $2 LIMIT 1', [
+          clientRow.id,
+          contactName,
+        ])
 
     if (contactResult.rows[0]) {
       const updated = await db.query(
@@ -387,11 +418,20 @@ const upsertImportClient = async (db: PoolClient, body: any, userId: string | nu
                 updated_at = NOW()
           WHERE id = $5
           RETURNING id`,
-        [contactName, contact?.cargo || null, contactEmail || null, contact?.telefono || null, contactResult.rows[0].id]
+        [
+          contactName,
+          contact?.cargo || null,
+          contactEmail || null,
+          contact?.telefono || null,
+          contactResult.rows[0].id,
+        ]
       )
       contactId = updated.rows[0].id
     } else {
-      const hasPrimary = await db.query('SELECT 1 FROM client_contacts WHERE client_id = $1 AND is_primary = true LIMIT 1', [clientRow.id])
+      const hasPrimary = await db.query(
+        'SELECT 1 FROM client_contacts WHERE client_id = $1 AND is_primary = true LIMIT 1',
+        [clientRow.id]
+      )
       const inserted = await db.query(
         `INSERT INTO client_contacts (client_id, name, cargo, email, phone, is_primary)
          VALUES ($1, $2, $3, $4, $5, $6)
@@ -416,8 +456,15 @@ export const createQuotationsRouter = (pool: Pool) => {
   const router = Router()
   router.use(authMiddleware)
 
-  router.get('/', async (_req: AuthRequest, res) => {
+  // A-11: paginación keyset por (created_at, id) DESC. `GET /api/quotations`
+  // ya no trae la tabla completa en cada visita al listado — ver
+  // docs/RIESGOS_ACEPTADOS.md para el resto de los listados (clients,
+  // projects, invoices), que por ahora solo tienen un tope duro de filas.
+  router.get('/', validate({ query: paginationQuerySchema }), async (req: AuthRequest, res) => {
     try {
+      const { limit, cursor } = req.query as unknown as { limit: number; cursor?: string }
+      const decoded = decodeCursor(cursor)
+
       const result = await pool.query(
         `SELECT q.*,
                 c.name AS client_name,
@@ -430,9 +477,12 @@ export const createQuotationsRouter = (pool: Pool) => {
            LEFT JOIN client_contacts cc ON cc.id = q.contact_id
           LEFT JOIN v_quotation_totals vt ON vt.quotation_id = q.id
           WHERE q.deleted_at IS NULL
-          ORDER BY q.created_at DESC`
+            AND ($2::timestamptz IS NULL OR (q.created_at, q.id) < ($2::timestamptz, $3::uuid))
+          ORDER BY q.created_at DESC, q.id DESC
+          LIMIT $1`,
+        [limit + 1, decoded?.created_at ?? null, decoded?.id ?? null]
       )
-      return res.json(result.rows)
+      return res.json(buildPage(result.rows, limit))
     } catch (error: any) {
       logger.error('Get quotations error', { error: error.message })
       return res.status(500).json({ error: 'Failed to fetch quotations' })
@@ -446,7 +496,9 @@ export const createQuotationsRouter = (pool: Pool) => {
     const db = await pool.connect()
     try {
       const body = req.body
-      const duplicate = await db.query('SELECT id FROM quotations WHERE correlative = $1 LIMIT 1', [body.correlative])
+      const duplicate = await db.query('SELECT id FROM quotations WHERE correlative = $1 LIMIT 1', [
+        body.correlative,
+      ])
       if (duplicate.rows.length > 0) {
         const suggested = await suggestNextCorrelative(db, body.correlative)
         return res.status(409).json({
@@ -464,7 +516,9 @@ export const createQuotationsRouter = (pool: Pool) => {
       try {
         uf = await resolveUf(body)
       } catch (error: any) {
-        const err = new Error('No se pudo obtener UF automatica; reintente o envie uf_manual') as any
+        const err = new Error(
+          'No se pudo obtener UF automatica; reintente o envie uf_manual'
+        ) as any
         err.status = 502
         err.cause = error
         throw err
@@ -493,7 +547,8 @@ export const createQuotationsRouter = (pool: Pool) => {
 
       const categoryInput = new Map<string, any>()
       for (const category of body.categorias ?? []) {
-        if (CATEGORY_IDS.includes(category?.category_id)) categoryInput.set(category.category_id, category)
+        if (CATEGORY_IDS.includes(category?.category_id))
+          categoryInput.set(category.category_id, category)
       }
       for (const line of body.lineas) {
         if (!categoryInput.has(line.category_id)) {
@@ -586,15 +641,19 @@ export const createQuotationsRouter = (pool: Pool) => {
         })
       }
       if (error.code === '23505') {
-        return res.status(409).json({ error: 'Correlativo ya existe', message: 'Correlativo ya existe' })
+        return res
+          .status(409)
+          .json({ error: 'Correlativo ya existe', message: 'Correlativo ya existe' })
       }
-      return res.status(500).json({ error: 'Failed to import quotation', message: 'No se pudo importar la cotizacion' })
+      return res
+        .status(500)
+        .json({ error: 'Failed to import quotation', message: 'No se pudo importar la cotizacion' })
     } finally {
       db.release()
     }
   })
 
-  router.get('/:id', async (req: AuthRequest, res) => {
+  router.get('/:id', validate({ params: uuidParams('id') }), async (req: AuthRequest, res) => {
     const quotationId = paramString(req.params.id)
     try {
       const quotation = await fullQuotation(pool, quotationId)
@@ -606,12 +665,10 @@ export const createQuotationsRouter = (pool: Pool) => {
     }
   })
 
-  router.post('/', async (req: AuthRequest, res) => {
+  router.post('/', validate({ body: quotationCreateSchema }), async (req: AuthRequest, res) => {
     const db = await pool.connect()
     try {
-      const body = req.body
-      if (!body.client_id) return res.status(400).json({ error: 'client_id is required' })
-      if (!body.correlative) return res.status(400).json({ error: 'correlative is required' })
+      const body = req.body as any
 
       await db.query('BEGIN')
       const result = await db.query(
@@ -645,29 +702,32 @@ export const createQuotationsRouter = (pool: Pool) => {
     } catch (error: any) {
       await db.query('ROLLBACK')
       logger.error('Create quotation error', { error: error.message, userId: req.user?.id })
-      if (error.code === '23505') return res.status(409).json({ error: 'Quotation correlative already exists' })
+      if (error.code === '23505')
+        return res.status(409).json({ error: 'Quotation correlative already exists' })
       return res.status(500).json({ error: 'Failed to create quotation' })
     } finally {
       db.release()
     }
   })
 
-  router.put('/:id', async (req: AuthRequest, res) => {
-    const db = await pool.connect()
-    const quotationId = paramString(req.params.id)
-    try {
-      const body = req.body
-      if (!body.client_id) return res.status(400).json({ error: 'client_id is required' })
+  router.put(
+    '/:id',
+    validate({ params: uuidParams('id'), body: quotationUpdateSchema }),
+    async (req: AuthRequest, res) => {
+      const db = await pool.connect()
+      const quotationId = paramString(req.params.id)
+      try {
+        const body = req.body as any
 
-      const expectedVersion = Number(body.version) || 1
+        const expectedVersion = Number(body.version) || 1
 
-      await db.query('BEGIN')
-      // El WHERE version = $14 es el chequeo de concurrencia optimista: si otro
-      // usuario guardó esta cotización entre que la cargamos y la guardamos,
-      // el número de filas afectadas es 0 y lo tratamos como conflicto (409),
-      // no como "no encontrado".
-      const result = await db.query(
-        `UPDATE quotations
+        await db.query('BEGIN')
+        // El WHERE version = $14 es el chequeo de concurrencia optimista: si otro
+        // usuario guardó esta cotización entre que la cargamos y la guardamos,
+        // el número de filas afectadas es 0 y lo tratamos como conflicto (409),
+        // no como "no encontrado".
+        const result = await db.query(
+          `UPDATE quotations
             SET correlative = $1,
                 client_id = $2,
                 contact_id = $3,
@@ -686,54 +746,57 @@ export const createQuotationsRouter = (pool: Pool) => {
             AND deleted_at IS NULL
             AND version = $14
           RETURNING *`,
-        [
-          body.correlative,
-          body.client_id,
-          body.contact_id || null,
-          body.enduser || null,
-          body.ref || null,
-          body.date || new Date().toISOString().slice(0, 10),
-          body.valid_until || null,
-          normalizeStatus(body.status),
-          normalizeOperState(body.oper_state),
-          Number(body.uf_value) || 0,
-          Number(body.iva_pct) || 19,
-          body.notes || null,
-          quotationId,
-          expectedVersion,
-        ]
-      )
-
-      if (result.rows.length === 0) {
-        const existing = await db.query(
-          'SELECT version FROM quotations WHERE id = $1 AND deleted_at IS NULL',
-          [quotationId]
+          [
+            body.correlative,
+            body.client_id,
+            body.contact_id || null,
+            body.enduser || null,
+            body.ref || null,
+            body.date || new Date().toISOString().slice(0, 10),
+            body.valid_until || null,
+            normalizeStatus(body.status),
+            normalizeOperState(body.oper_state),
+            Number(body.uf_value) || 0,
+            Number(body.iva_pct) || 19,
+            body.notes || null,
+            quotationId,
+            expectedVersion,
+          ]
         )
-        await db.query('ROLLBACK')
 
-        if (existing.rows.length === 0) {
-          return res.status(404).json({ error: 'Quotation not found' })
+        if (result.rows.length === 0) {
+          const existing = await db.query(
+            'SELECT version FROM quotations WHERE id = $1 AND deleted_at IS NULL',
+            [quotationId]
+          )
+          await db.query('ROLLBACK')
+
+          if (existing.rows.length === 0) {
+            return res.status(404).json({ error: 'Quotation not found' })
+          }
+          return res.status(409).json({
+            error: 'Version conflict',
+            message:
+              'Esta cotización fue modificada por otro usuario. Recarga los datos antes de guardar.',
+            current_version: existing.rows[0].version,
+          })
         }
-        return res.status(409).json({
-          error: 'Version conflict',
-          message: 'Esta cotización fue modificada por otro usuario. Recarga los datos antes de guardar.',
-          current_version: existing.rows[0].version,
-        })
+
+        await replaceChildren(db, quotationId, body)
+        await db.query('COMMIT')
+
+        return res.json(await fullQuotation(pool, quotationId))
+      } catch (error: any) {
+        await db.query('ROLLBACK')
+        logger.error('Update quotation error', { error: error.message, quotationId })
+        if (error.code === '23505')
+          return res.status(409).json({ error: 'Quotation correlative already exists' })
+        return res.status(500).json({ error: 'Failed to update quotation' })
+      } finally {
+        db.release()
       }
-
-      await replaceChildren(db, quotationId, body)
-      await db.query('COMMIT')
-
-      return res.json(await fullQuotation(pool, quotationId))
-    } catch (error: any) {
-      await db.query('ROLLBACK')
-      logger.error('Update quotation error', { error: error.message, quotationId })
-      if (error.code === '23505') return res.status(409).json({ error: 'Quotation correlative already exists' })
-      return res.status(500).json({ error: 'Failed to update quotation' })
-    } finally {
-      db.release()
     }
-  })
+  )
 
   const updateStatus = async (req: AuthRequest, res: any) => {
     const quotationId = paramString(req.params.id)
@@ -771,7 +834,13 @@ export const createQuotationsRouter = (pool: Pool) => {
               await pool.query(
                 `INSERT INTO projects (quotation_id, client_id, name, status, budget, progress_pct, created_by)
                  VALUES ($1, $2, $3, 'planning', $4, 0, $5)`,
-                [quotationId, client_id, `Proyecto ${correlative} — ${client_name ?? ''}`, Number(totals.venta_neta) || 0, null]
+                [
+                  quotationId,
+                  client_id,
+                  `Proyecto ${correlative} — ${client_name ?? ''}`,
+                  Number(totals.venta_neta) || 0,
+                  null,
+                ]
               )
             }
           }
@@ -788,73 +857,83 @@ export const createQuotationsRouter = (pool: Pool) => {
     }
   }
 
-  router.patch('/:id/status', roleMiddleware('admin', 'manager'), updateStatus)
-  router.put('/:id/status', roleMiddleware('admin', 'manager'), updateStatus)
+  const statusValidation = validate({ params: uuidParams('id'), body: quotationStatusSchema })
+  router.patch('/:id/status', roleMiddleware('admin', 'manager'), statusValidation, updateStatus)
+  router.put('/:id/status', roleMiddleware('admin', 'manager'), statusValidation, updateStatus)
 
-  router.post('/:id/duplicate', async (req: AuthRequest, res) => {
-    const db = await pool.connect()
-    const quotationId = paramString(req.params.id)
-    try {
-      const source = await fullQuotation(pool, quotationId)
-      if (!source) return res.status(404).json({ error: 'Quotation not found' })
-      if (!req.body.correlative) return res.status(400).json({ error: 'correlative is required' })
+  router.post(
+    '/:id/duplicate',
+    validate({ params: uuidParams('id'), body: quotationDuplicateSchema }),
+    async (req: AuthRequest, res) => {
+      const db = await pool.connect()
+      const quotationId = paramString(req.params.id)
+      try {
+        const source = await fullQuotation(pool, quotationId)
+        if (!source) return res.status(404).json({ error: 'Quotation not found' })
 
-      await db.query('BEGIN')
-      const inserted = await db.query(
-        `INSERT INTO quotations
+        await db.query('BEGIN')
+        const inserted = await db.query(
+          `INSERT INTO quotations
           (correlative, client_id, contact_id, enduser, ref, date, valid_until,
            status, oper_state, uf_value, iva_pct, notes, version, created_by)
          VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING *`,
-        [
-          req.body.correlative,
-          source.client_id,
-          source.contact_id,
-          source.enduser,
-          source.ref,
-          source.valid_until,
-          'Borrador',
-          source.oper_state,
-          source.uf_value,
-          source.iva_pct,
-          source.notes,
-          Number(source.version || 1) + 1,
-          req.user?.id ?? null,
-        ]
-      )
+          [
+            req.body.correlative,
+            source.client_id,
+            source.contact_id,
+            source.enduser,
+            source.ref,
+            source.valid_until,
+            'Borrador',
+            source.oper_state,
+            source.uf_value,
+            source.iva_pct,
+            source.notes,
+            Number(source.version || 1) + 1,
+            req.user?.id ?? null,
+          ]
+        )
 
-      await replaceChildren(db, inserted.rows[0].id, source)
-      await db.query('COMMIT')
+        await replaceChildren(db, inserted.rows[0].id, source)
+        await db.query('COMMIT')
 
-      return res.status(201).json(await fullQuotation(pool, inserted.rows[0].id))
-    } catch (error: any) {
-      await db.query('ROLLBACK')
-      logger.error('Duplicate quotation error', { error: error.message, quotationId })
-      if (error.code === '23505') return res.status(409).json({ error: 'Quotation correlative already exists' })
-      return res.status(500).json({ error: 'Failed to duplicate quotation' })
-    } finally {
-      db.release()
+        return res.status(201).json(await fullQuotation(pool, inserted.rows[0].id))
+      } catch (error: any) {
+        await db.query('ROLLBACK')
+        logger.error('Duplicate quotation error', { error: error.message, quotationId })
+        if (error.code === '23505')
+          return res.status(409).json({ error: 'Quotation correlative already exists' })
+        return res.status(500).json({ error: 'Failed to duplicate quotation' })
+      } finally {
+        db.release()
+      }
     }
-  })
+  )
 
-  router.delete('/:id', roleMiddleware('admin'), async (req: AuthRequest, res) => {
-    try {
-      const result = await pool.query(
-        `UPDATE quotations
+  router.delete(
+    '/:id',
+    roleMiddleware('admin'),
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      try {
+        const result = await pool.query(
+          `UPDATE quotations
             SET deleted_at = NOW()
           WHERE id = $1
             AND deleted_at IS NULL
           RETURNING id`,
-        [req.params.id]
-      )
+          [req.params.id]
+        )
 
-      if (result.rows.length === 0) return res.status(404).json({ error: 'Quotation not found' })
-      return res.json({ message: 'Quotation deleted successfully' })
-    } catch (error: any) {
-      logger.error('Delete quotation error', { error: error.message, quotationId: req.params.id })
-      return res.status(500).json({ error: 'Failed to delete quotation' })
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Quotation not found' })
+        return res.json({ message: 'Quotation deleted successfully' })
+      } catch (error: any) {
+        logger.error('Delete quotation error', { error: error.message, quotationId: req.params.id })
+        return res.status(500).json({ error: 'Failed to delete quotation' })
+      }
     }
-  })
+  )
 
   return router
 }

@@ -6,6 +6,9 @@ import { createClientsRouter } from '../clients'
 
 const JWT_SECRET = 'test-secret-test-secret-test-secret'
 
+const CLIENT_ID = '11111111-1111-4111-8111-111111111111'
+const MISSING_ID = '99999999-9999-4999-8999-999999999999'
+
 interface FakeState {
   clients: Record<string, { id: string; deleted: boolean }>
   quotationsByClient: Record<string, number>
@@ -52,7 +55,10 @@ function buildApp(state: FakeState) {
 }
 
 function authHeader() {
-  const token = jwt.sign({ id: 'u1', email: 'test@test.com', name: 'Test', role: 'admin' }, JWT_SECRET)
+  const token = jwt.sign(
+    { id: 'u1', email: 'test@test.com', name: 'Test', role: 'admin' },
+    JWT_SECRET
+  )
   return `Bearer ${token}`
 }
 
@@ -63,10 +69,12 @@ describe('DELETE /api/clients/:id — protección server-side contra cotizacione
 
   it('rechaza con 409 si el cliente tiene cotizaciones asociadas', async () => {
     const app = buildApp({
-      clients: { c1: { id: 'c1', deleted: false } },
-      quotationsByClient: { c1: 2 },
+      clients: { [CLIENT_ID]: { id: CLIENT_ID, deleted: false } },
+      quotationsByClient: { [CLIENT_ID]: 2 },
     })
-    const res = await request(app).delete('/api/clients/c1').set('Authorization', authHeader())
+    const res = await request(app)
+      .delete(`/api/clients/${CLIENT_ID}`)
+      .set('Authorization', authHeader())
 
     expect(res.status).toBe(409)
     expect(res.body.message).toMatch(/cotizaciones asociadas/i)
@@ -74,24 +82,40 @@ describe('DELETE /api/clients/:id — protección server-side contra cotizacione
 
   it('elimina (soft-delete) si no tiene cotizaciones asociadas', async () => {
     const app = buildApp({
-      clients: { c1: { id: 'c1', deleted: false } },
+      clients: { [CLIENT_ID]: { id: CLIENT_ID, deleted: false } },
       quotationsByClient: {},
     })
-    const res = await request(app).delete('/api/clients/c1').set('Authorization', authHeader())
+    const res = await request(app)
+      .delete(`/api/clients/${CLIENT_ID}`)
+      .set('Authorization', authHeader())
 
     expect(res.status).toBe(200)
   })
 
   it('devuelve 404 si el cliente no existe', async () => {
     const app = buildApp({ clients: {}, quotationsByClient: {} })
-    const res = await request(app).delete('/api/clients/no-existe').set('Authorization', authHeader())
+    const res = await request(app)
+      .delete(`/api/clients/${MISSING_ID}`)
+      .set('Authorization', authHeader())
 
     expect(res.status).toBe(404)
   })
 
+  it('devuelve 400 si el id no es un UUID válido', async () => {
+    const app = buildApp({ clients: {}, quotationsByClient: {} })
+    const res = await request(app)
+      .delete('/api/clients/no-es-un-uuid')
+      .set('Authorization', authHeader())
+
+    expect(res.status).toBe(400)
+  })
+
   it('rechaza la petición sin token de autenticación', async () => {
-    const app = buildApp({ clients: { c1: { id: 'c1', deleted: false } }, quotationsByClient: {} })
-    const res = await request(app).delete('/api/clients/c1')
+    const app = buildApp({
+      clients: { [CLIENT_ID]: { id: CLIENT_ID, deleted: false } },
+      quotationsByClient: {},
+    })
+    const res = await request(app).delete(`/api/clients/${CLIENT_ID}`)
 
     expect(res.status).toBe(401)
   })

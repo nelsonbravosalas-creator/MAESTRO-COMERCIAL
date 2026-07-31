@@ -3,15 +3,20 @@
 // Mapea backend ↔ tipos UI del store
 // ============================================================
 import type {
-  CatalogItemUI, CatalogsUI, CategoryId,
-  MasterClient, MasterQuotation, CostCategory, CostItem,
+  CatalogItemUI,
+  CatalogsUI,
+  CategoryId,
+  MasterClient,
+  MasterQuotation,
+  CostCategory,
+  CostItem,
 } from '../types'
 
 // ── Base URL ──────────────────────────────────────────────────
 const BASE = import.meta.env.VITE_API_URL ?? ''
 
 // ── Token helpers ─────────────────────────────────────────────
-const getToken  = () => localStorage.getItem('authToken') ?? ''
+const getToken = () => localStorage.getItem('authToken') ?? ''
 const clearAuth = () => {
   localStorage.removeItem('authToken')
   localStorage.removeItem('refreshToken')
@@ -79,11 +84,37 @@ async function tryRefresh(): Promise<boolean> {
   }
 }
 
-const get    = <T>(path: string)                => req<T>('GET',    path)
-const post   = <T>(path: string, body: unknown) => req<T>('POST',   path, body)
-const put    = <T>(path: string, body: unknown) => req<T>('PUT',    path, body)
-const patch  = <T>(path: string, body: unknown) => req<T>('PATCH',  path, body)
-const del    = <T>(path: string)                => req<T>('DELETE', path)
+const get = <T>(path: string) => req<T>('GET', path)
+const post = <T>(path: string, body: unknown) => req<T>('POST', path, body)
+const put = <T>(path: string, body: unknown) => req<T>('PUT', path, body)
+const patch = <T>(path: string, body: unknown) => req<T>('PATCH', path, body)
+const del = <T>(path: string) => req<T>('DELETE', path)
+
+interface CursorPage<T> {
+  data: T[]
+  next_cursor: string | null
+  has_more: boolean
+}
+
+// A-11: el backend pagina por cursor (máx. 200 filas por página) en vez de
+// devolver la tabla completa en una sola consulta. La UI actual sigue
+// trabajando con la lista completa en memoria (ordena/filtra en el cliente),
+// así que acá se recorren las páginas y se concatenan — sin eso, una cuenta
+// con más de 200 cotizaciones dejaría de ver el resto en silencio.
+// Tope de seguridad en 20 páginas (4000 filas): más que eso, lo que hace
+// falta es una UI con paginación real, no seguir subiendo este número.
+async function getAllPages<T>(basePath: string, limit = 200): Promise<T[]> {
+  const items: T[] = []
+  let cursor: string | undefined
+  for (let page = 0; page < 20; page++) {
+    const qs = new URLSearchParams({ limit: String(limit), ...(cursor ? { cursor } : {}) })
+    const res = await get<CursorPage<T>>(`${basePath}?${qs.toString()}`)
+    items.push(...res.data)
+    if (!res.has_more || !res.next_cursor) break
+    cursor = res.next_cursor
+  }
+  return items
+}
 
 // ── Mapeos backend ↔ UI ───────────────────────────────────────
 
@@ -95,25 +126,25 @@ function fromCatalogItemUI(catId: CategoryId, i: CatalogItemUI, sortOrder = 0) {
   return {
     category_id: catId,
     description: i.desc,
-    unit_name:   i.unidad,
-    unit_price:  i.price,
-    sort_order:  sortOrder,
+    unit_name: i.unidad,
+    unit_price: i.price,
+    sort_order: sortOrder,
   }
 }
 
 function toMasterClient(c: any): MasterClient {
   const primary = (c.contacts ?? []).find((ct: any) => ct.is_primary) ?? c.contacts?.[0] ?? {}
   return {
-    id:         c.id,
-    name:       c.name        ?? '',
-    rut:        c.rut         ?? '',
-    activity:   c.activity    ?? '',
-    address:    c.address     ?? '',
-    city:       c.city        ?? '',
-    contact:    primary.name  ?? '',
-    cargo:      primary.cargo ?? '',
-    email:      primary.email ?? '',
-    phone:      primary.phone ?? '',
+    id: c.id,
+    name: c.name ?? '',
+    rut: c.rut ?? '',
+    activity: c.activity ?? '',
+    address: c.address ?? '',
+    city: c.city ?? '',
+    contact: primary.name ?? '',
+    cargo: primary.cargo ?? '',
+    email: primary.email ?? '',
+    phone: primary.phone ?? '',
     created_at: c.created_at,
     updated_at: c.updated_at,
   }
@@ -131,11 +162,11 @@ function toMasterQuotation(q: any): MasterQuotation {
   const catIds: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
 
   const defaultCatMeta: Record<CategoryId, { label: string; color: string }> = {
-    mo:  { label: 'Mano de Obra Especializada',     color: '#1e293b' },
-    log: { label: 'Logística y Operación',          color: '#475569' },
-    mat: { label: 'Provisión de Materiales',        color: '#1e3a8a' },
+    mo: { label: 'Mano de Obra Especializada', color: '#1e293b' },
+    log: { label: 'Logística y Operación', color: '#475569' },
+    mat: { label: 'Provisión de Materiales', color: '#1e3a8a' },
     rep: { label: 'Suministro Equipos o Repuestos', color: '#312e81' },
-    ins: { label: 'Insumos Industriales y Gases',   color: '#164e63' },
+    ins: { label: 'Insumos Industriales y Gases', color: '#164e63' },
   }
 
   const defaultMargins: Record<string, number> = { mo: 35, log: 30, mat: 30, rep: 30, ins: 30 }
@@ -143,14 +174,14 @@ function toMasterQuotation(q: any): MasterQuotation {
   const categories: CostCategory[] = catIds.map(cid => {
     const qc = catMap[cid]
     return {
-      id:          cid,
-      label:       qc?.label       ?? defaultCatMeta[cid].label,
-      margin:      qc?.margin_pct  ?? defaultMargins[cid] ?? 30,
-      color:       qc?.color       ?? defaultCatMeta[cid].color,
+      id: cid,
+      label: qc?.label ?? defaultCatMeta[cid].label,
+      margin: qc?.margin_pct ?? defaultMargins[cid] ?? 30,
+      color: qc?.color ?? defaultCatMeta[cid].color,
       showDetails: false,
-      showValues:  false,
-      note:        qc?.note        ?? '',
-      collapsed:   cid !== 'mo',
+      showValues: false,
+      note: qc?.note ?? '',
+      collapsed: cid !== 'mo',
     }
   })
 
@@ -160,99 +191,99 @@ function toMasterQuotation(q: any): MasterQuotation {
     const cid = li.category_id as CategoryId
     if (!items[cid]) items[cid] = []
     items[cid].push({
-      id:    li.id,
-      desc:  li.description,
+      id: li.id,
+      desc: li.description,
       unidad: li.unit_name,
-      cant:  li.quantity,
-      unit:  li.unit_price,
-      days:  li.days,
+      cant: li.quantity,
+      unit: li.unit_price,
+      days: li.days,
     })
   }
 
   // Reconstruir scope / exclusions / commercial desde quotation_terms
-  const scope:      string[] = []
+  const scope: string[] = []
   const exclusions: string[] = []
   const commercial: string[] = []
   for (const t of (q.terms ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order)) {
-    if (t.term_type === 'scope')      scope.push(t.content)
-    if (t.term_type === 'exclusion')  exclusions.push(t.content)
+    if (t.term_type === 'scope') scope.push(t.content)
+    if (t.term_type === 'exclusion') exclusions.push(t.content)
     if (t.term_type === 'commercial') commercial.push(t.content)
   }
 
   return {
-    id:          q.id,
+    id: q.id,
     correlative: q.correlative,
-    client_id:   q.client_id,
+    client_id: q.client_id,
     client_name: q.client_name ?? '',
-    contact_id:  q.contact_id ?? null,
-    contact:     q.contact_name ?? '',
-    enduser:     q.enduser ?? '',
-    ref:         q.ref ?? '',
-    date:        (q.date ?? '').slice(0, 10),
+    contact_id: q.contact_id ?? null,
+    contact: q.contact_name ?? '',
+    enduser: q.enduser ?? '',
+    ref: q.ref ?? '',
+    date: (q.date ?? '').slice(0, 10),
     valid_until: q.valid_until ?? null,
-    status:      q.status,
-    operState:   q.oper_state ?? null,
-    uf:          q.uf_value,
-    iva:         q.iva_pct,
-    notes:       q.notes ?? null,
-    version:     q.version ?? 1,
+    status: q.status,
+    operState: q.oper_state ?? null,
+    uf: q.uf_value,
+    iva: q.iva_pct,
+    notes: q.notes ?? null,
+    version: q.version ?? 1,
     categories,
     items,
     scope,
     exclusions,
     commercial,
-    total:       quotationVentaNeta(q),
-    created_at:  q.created_at,
-    updated_at:  q.updated_at,
+    total: quotationVentaNeta(q),
+    created_at: q.created_at,
+    updated_at: q.updated_at,
   }
 }
 
 function fromMasterQuotation(q: MasterQuotation) {
   const categories = q.categories.map((c, idx) => ({
     category_id: c.id,
-    label:       c.label,
-    margin_pct:  c.margin,
-    color:       c.color,
-    note:        c.note,
-    sort_order:  idx,
+    label: c.label,
+    margin_pct: c.margin,
+    color: c.color,
+    note: c.note,
+    sort_order: idx,
   }))
 
   const line_items: any[] = []
   for (const cid of Object.keys(q.items) as CategoryId[]) {
     q.items[cid].forEach((item, idx) => {
       line_items.push({
-        id:          item.id,
+        id: item.id,
         category_id: cid,
         description: item.desc,
-        unit_name:   item.unidad,
-        quantity:    item.cant,
-        days:        item.days ?? 1,
-        unit_price:  item.unit,
-        sort_order:  idx,
+        unit_name: item.unidad,
+        quantity: item.cant,
+        days: item.days ?? 1,
+        unit_price: item.unit,
+        sort_order: idx,
       })
     })
   }
 
   const terms: any[] = [
-    ...q.scope.map((c, i)      => ({ term_type: 'scope',      content: c, sort_order: i })),
-    ...q.exclusions.map((c, i) => ({ term_type: 'exclusion',  content: c, sort_order: i })),
+    ...q.scope.map((c, i) => ({ term_type: 'scope', content: c, sort_order: i })),
+    ...q.exclusions.map((c, i) => ({ term_type: 'exclusion', content: c, sort_order: i })),
     ...q.commercial.map((c, i) => ({ term_type: 'commercial', content: c, sort_order: i })),
   ]
 
   return {
-    correlative:  q.correlative,
-    client_id:    q.client_id,
-    contact_id:   q.contact_id ?? null,
-    enduser:      q.enduser,
-    ref:          q.ref,
-    date:         q.date,
-    valid_until:  q.valid_until || null,
-    status:       q.status,
-    oper_state:   q.operState?.trim() ? q.operState : null,
-    uf_value:     q.uf,
-    iva_pct:      q.iva,
-    notes:        q.notes || null,
-    version:      q.version || 1,
+    correlative: q.correlative,
+    client_id: q.client_id,
+    contact_id: q.contact_id ?? null,
+    enduser: q.enduser,
+    ref: q.ref,
+    date: q.date,
+    valid_until: q.valid_until || null,
+    status: q.status,
+    oper_state: q.operState?.trim() ? q.operState : null,
+    uf_value: q.uf,
+    iva_pct: q.iva,
+    notes: q.notes || null,
+    version: q.version || 1,
     categories,
     line_items,
     terms,
@@ -276,17 +307,30 @@ export interface ImportQuotationResult {
 // ── API pública ───────────────────────────────────────────────
 
 export const api = {
-
   // ── Auth ────────────────────────────────────────────────────
   login: async (email: string, password: string) => {
     const data: any = await post('/api/auth/login', { email, password })
-    localStorage.setItem('authToken',    data.token)
+    localStorage.setItem('authToken', data.token)
     localStorage.setItem('refreshToken', data.refresh_token)
-    localStorage.setItem('user',         JSON.stringify(data.user))
+    localStorage.setItem('user', JSON.stringify(data.user))
     return data
   },
 
   me: () => get<any>('/api/auth/me'),
+
+  logout: async () => {
+    const rt = localStorage.getItem('refreshToken')
+    if (rt) {
+      // Best-effort: si falla (red caída, etc.) igual se limpia la sesión local.
+      await post('/api/auth/logout', { refresh_token: rt }).catch(() => {})
+    }
+    clearAuth()
+  },
+
+  logoutAll: async () => {
+    await post('/api/auth/logout-all', {}).catch(() => {})
+    clearAuth()
+  },
 
   // ── Config ──────────────────────────────────────────────────
   getConfig: () => get<Record<string, string>>('/api/config'),
@@ -321,17 +365,21 @@ export const api = {
 
   createClient: async (c: MasterClient): Promise<MasterClient> => {
     const raw: any = await post('/api/clients', {
-      name:     c.name,
-      rut:      c.rut      || null,
+      name: c.name,
+      rut: c.rut || null,
       activity: c.activity || null,
-      address:  c.address  || null,
-      city:     c.city     || null,
-      contacts: c.contact ? [{
-        name:  c.contact,
-        cargo: c.cargo || null,
-        email: c.email || null,
-        phone: c.phone || null,
-      }] : [],
+      address: c.address || null,
+      city: c.city || null,
+      contacts: c.contact
+        ? [
+            {
+              name: c.contact,
+              cargo: c.cargo || null,
+              email: c.email || null,
+              phone: c.phone || null,
+            },
+          ]
+        : [],
     })
     return toMasterClient(raw)
   },
@@ -339,25 +387,29 @@ export const api = {
   updateClient: async (c: MasterClient): Promise<MasterClient> => {
     // Actualizar datos del cliente
     await put(`/api/clients/${c.id}`, {
-      name:     c.name,
-      rut:      c.rut      || null,
+      name: c.name,
+      rut: c.rut || null,
       activity: c.activity || null,
-      address:  c.address  || null,
-      city:     c.city     || null,
+      address: c.address || null,
+      city: c.city || null,
     })
     // Actualizar contacto principal si existe
     const contacts: any[] = await get(`/api/clients/${c.id}/contacts`)
     const primary = contacts.find((ct: any) => ct.is_primary) ?? contacts[0]
     if (primary) {
       await put(`/api/clients/${c.id}/contacts/${primary.id}`, {
-        name:  c.contact || primary.name,
-        cargo: c.cargo   || null,
-        email: c.email   || null,
-        phone: c.phone   || null,
+        name: c.contact || primary.name,
+        cargo: c.cargo || null,
+        email: c.email || null,
+        phone: c.phone || null,
       })
     } else if (c.contact) {
       await post(`/api/clients/${c.id}/contacts`, {
-        name: c.contact, cargo: c.cargo, email: c.email, phone: c.phone, is_primary: true,
+        name: c.contact,
+        cargo: c.cargo,
+        email: c.email,
+        phone: c.phone,
+        is_primary: true,
       })
     }
     // Re-fetch para obtener el estado real guardado en el backend
@@ -369,15 +421,17 @@ export const api = {
 
   // ── Cotizaciones ────────────────────────────────────────────
   getQuotations: async (): Promise<MasterQuotation[]> => {
-    const raw: any[] = await get('/api/quotations')
+    const raw: any[] = await getAllPages('/api/quotations')
     // Backend SQL devuelve venta_neta plano; el backend JSON-dev devuelve totals.
     // Conservamos ambos formatos para que la columna NETO CLP no vuelva a $0.
-    return raw.map(q => toMasterQuotation({
-      ...q,
-      line_items: [],
-      terms:      [],
-      totals:     q.totals ?? { venta_neta: q.venta_neta ?? 0 },
-    }))
+    return raw.map(q =>
+      toMasterQuotation({
+        ...q,
+        line_items: [],
+        terms: [],
+        totals: q.totals ?? { venta_neta: q.venta_neta ?? 0 },
+      })
+    )
   },
 
   getQuotation: async (id: string): Promise<MasterQuotation> => {
@@ -419,15 +473,22 @@ export const api = {
   createProject: (data: any) => post<any>('/api/projects', data),
   updateProject: (id: string, data: any) => put<any>(`/api/projects/${id}`, data),
   deleteProject: (id: string) => del<any>(`/api/projects/${id}`),
-  addProjectCost: (projectId: string, cost: any) => post<any>(`/api/projects/${projectId}/costs`, cost),
-  updateProjectCost: (projectId: string, costId: string, cost: any) => put<any>(`/api/projects/${projectId}/costs/${costId}`, cost),
-  deleteProjectCost: (projectId: string, costId: string) => del<any>(`/api/projects/${projectId}/costs/${costId}`),
-  assignUser: (projectId: string, userId: string) => post<any>(`/api/projects/${projectId}/assignments`, { user_id: userId }),
-  removeAssignment: (projectId: string, userId: string) => del<any>(`/api/projects/${projectId}/assignments/${userId}`),
+  addProjectCost: (projectId: string, cost: any) =>
+    post<any>(`/api/projects/${projectId}/costs`, cost),
+  updateProjectCost: (projectId: string, costId: string, cost: any) =>
+    put<any>(`/api/projects/${projectId}/costs/${costId}`, cost),
+  deleteProjectCost: (projectId: string, costId: string) =>
+    del<any>(`/api/projects/${projectId}/costs/${costId}`),
+  assignUser: (projectId: string, userId: string) =>
+    post<any>(`/api/projects/${projectId}/assignments`, { user_id: userId }),
+  removeAssignment: (projectId: string, userId: string) =>
+    del<any>(`/api/projects/${projectId}/assignments/${userId}`),
   getTasks: (projectId: string) => get<any[]>(`/api/projects/${projectId}/tasks`),
   createTask: (projectId: string, data: any) => post<any>(`/api/projects/${projectId}/tasks`, data),
-  updateTask: (projectId: string, taskId: string, data: any) => put<any>(`/api/projects/${projectId}/tasks/${taskId}`, data),
-  deleteTask: (projectId: string, taskId: string) => del<any>(`/api/projects/${projectId}/tasks/${taskId}`),
+  updateTask: (projectId: string, taskId: string, data: any) =>
+    put<any>(`/api/projects/${projectId}/tasks/${taskId}`, data),
+  deleteTask: (projectId: string, taskId: string) =>
+    del<any>(`/api/projects/${projectId}/tasks/${taskId}`),
 
   // ── Dashboard ───────────────────────────────────────────────
   getKPIs: () => get<any>('/api/dashboard/kpis'),

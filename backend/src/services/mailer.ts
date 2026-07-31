@@ -1,0 +1,87 @@
+import { logger } from '../utils/logger'
+
+export interface SendEmailInput {
+  to: string
+  subject: string
+  html: string
+  text?: string
+}
+
+export interface SendEmailResult {
+  ok: boolean
+  providerId?: string
+  error?: string
+}
+
+export interface Mailer {
+  send(input: SendEmailInput): Promise<SendEmailResult>
+}
+
+// A-03: implementación real. Requiere RESEND_API_KEY (o cambiar de proveedor)
+// y el dominio verificado con SPF/DKIM/DMARC — ver docs/EMAIL_SETUP.md.
+// Un fallo de envío NUNCA debe tumbar el request que lo originó (AC-3.6):
+// por eso send() atrapa sus propios errores y devuelve { ok: false }.
+class ResendMailer implements Mailer {
+  constructor(
+    private apiKey: string,
+    private from: string
+  ) {}
+
+  async send(input: SendEmailInput): Promise<SendEmailResult> {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: this.from,
+          to: input.to,
+          subject: input.subject,
+          html: input.html,
+          text: input.text,
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.text().catch(() => '')
+        logger.error('Mailer: proveedor respondió error', { status: res.status, body })
+        return { ok: false, error: `provider_${res.status}` }
+      }
+      const data: any = await res.json()
+      return { ok: true, providerId: data?.id }
+    } catch (error: any) {
+      logger.error('Mailer: fallo de red al enviar', { error: error.message })
+      return { ok: false, error: error.message }
+    }
+  }
+}
+
+// A-03, AC-3.5: implementación falsa — no envía nada de verdad. Se usa en
+// desarrollo/tests o cuando no hay proveedor de correo configurado, para que
+// el resto del flujo (forgot-password, notificaciones) siga siendo probable
+// sin depender de una cuenta de Resend real.
+class NoopMailer implements Mailer {
+  async send(input: SendEmailInput): Promise<SendEmailResult> {
+    logger.warn('Mailer: NoopMailer activo (sin proveedor configurado) — correo NO enviado', {
+      to: input.to,
+      subject: input.subject,
+    })
+    return { ok: true, providerId: 'noop' }
+  }
+}
+
+let mailer: Mailer | null = null
+
+export function getMailer(): Mailer {
+  if (mailer) return mailer
+  const apiKey = process.env.RESEND_API_KEY
+  const from = process.env.MAIL_FROM
+  mailer = apiKey && from ? new ResendMailer(apiKey, from) : new NoopMailer()
+  return mailer
+}
+
+// Para tests: reemplazar por un mailer de prueba y luego restaurar.
+export function setMailer(m: Mailer) {
+  mailer = m
+}

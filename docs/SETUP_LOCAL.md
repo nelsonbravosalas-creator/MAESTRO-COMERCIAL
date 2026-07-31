@@ -13,6 +13,7 @@ Antes de iniciar, asegúrate de tener instalado:
 - **Git** - [Descargar](https://git-scm.com)
 
 Verifica instalación:
+
 ```bash
 docker --version      # Docker version...
 node --version        # v18.x.x o superior
@@ -54,6 +55,7 @@ docker-compose up -d
 ```
 
 Verifica que PostgreSQL esté corriendo:
+
 ```bash
 docker-compose ps
 ```
@@ -81,6 +83,7 @@ npm run dev
 ```
 
 Esperado:
+
 ```
 🚀 Server is running at http://localhost:3000
 Connected to PostgreSQL database
@@ -95,6 +98,7 @@ npm run dev
 ```
 
 Esperado:
+
 ```
 VITE v8.0.16 ready in 2068 ms
 ➜ Local: http://localhost:5173
@@ -106,12 +110,12 @@ VITE v8.0.16 ready in 2068 ms
 
 Una vez que todo está corriendo:
 
-| Servicio | URL | Credenciales |
-|----------|-----|--------------|
-| **Frontend** | http://localhost:5173 | Ver abajo ↓ |
-| **Backend API** | http://localhost:3000 | JWT Bearer Token |
-| **PgAdmin** | http://localhost:5050 | admin / admin |
-| **Base de Datos** | localhost:5432 | bravocrm_user / bravocrm_password |
+| Servicio          | URL                   | Credenciales                      |
+| ----------------- | --------------------- | --------------------------------- |
+| **Frontend**      | http://localhost:5173 | Ver abajo ↓                       |
+| **Backend API**   | http://localhost:3000 | JWT Bearer Token                  |
+| **PgAdmin**       | http://localhost:5050 | admin / admin                     |
+| **Base de Datos** | localhost:5432        | bravocrm_user / bravocrm_password |
 
 ### 👤 Usuarios de Prueba
 
@@ -159,9 +163,11 @@ Flujo típico:
 ## 🛑 Detener Servicios
 
 ### Opción 1: Ejecutable .bat
+
 Doble-click en `stop-bravocrm.bat`
 
 ### Opción 2: Terminal
+
 ```bash
 cd "C:\Users\The Pirata\Documents\Google Drive\APPS\MAESTRO COMERCIAL"
 docker-compose down
@@ -172,24 +178,28 @@ docker-compose down
 ## 📝 Logs y Debugging
 
 ### Ver logs del Backend
+
 ```bash
 cd backend
 npm run dev  # Logs en tiempo real
 ```
 
 ### Ver logs de Docker
+
 ```bash
 docker-compose logs -f postgres
 docker-compose logs -f pgadmin
 ```
 
 ### Ver logs en archivos
+
 ```bash
 backend/logs/error.log      # Errores
 backend/logs/combined.log   # Todo
 ```
 
 ### Acceder a terminal PostgreSQL
+
 ```bash
 docker exec -it bravocrm_db psql -U bravocrm_user -d bravocrm
 ```
@@ -199,10 +209,13 @@ docker exec -it bravocrm_db psql -U bravocrm_user -d bravocrm
 ## 🔧 Troubleshooting
 
 ### "Docker no está instalado"
+
 **Solución:** Instala Docker Desktop desde https://www.docker.com/products/docker-desktop
 
 ### "Port 5432 already in use"
-**Solución:** 
+
+**Solución:**
+
 ```bash
 docker-compose down
 docker ps -a
@@ -211,10 +224,13 @@ docker-compose up -d   # Reinicia
 ```
 
 ### "Connection refused to localhost:5432"
+
 **Espera 10-15 segundos** a que PostgreSQL esté listo después de `docker-compose up -d`
 
 ### "Cannot find module tsx"
+
 **Solución:**
+
 ```bash
 cd backend
 npm install tsx --save-dev
@@ -222,10 +238,13 @@ npm run dev
 ```
 
 ### "ECONNREFUSED localhost:3000"
+
 **Significa:** Backend no está corriendo. Inicia con `npm run dev` en carpeta `backend`
 
 ### Base de datos vacía
+
 **Solución:** Ejecuta seed script
+
 ```bash
 cd backend
 npm run seed

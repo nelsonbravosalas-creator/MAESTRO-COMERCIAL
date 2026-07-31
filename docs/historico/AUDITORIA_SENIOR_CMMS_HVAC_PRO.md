@@ -1,6 +1,9 @@
 # PROMPT DE AUDITORÍA SENIOR — CMMS HVAC PRO IA STUDIO
+
 ## Rol: Auditor Senior de Software y Base de Datos
+
 ## Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO
+
 ## Fecha auditoría: Junio 2026
 
 ---
@@ -109,23 +112,33 @@ El servidor tiene un mapa de alias EN EL CÓDIGO que el front PUEDE usar:
 ```typescript
 // Esto existe en server.ts y ES FUNCIONAL:
 const TABLE_ALIAS_MAP: Record<string, string> = {
-  'activos':      'assets',
-  'usuarios':     'users',
-  'mantenimientos': 'preventive_maintenance',
-  'tickets':      'work_orders',
-  'informes':     'reports',
-  'eventos':      'events',
-  'clientes':     'clients',
-  'sucursales':   'branches',
-  'inventario':   'inventory'
-};
+  activos: 'assets',
+  usuarios: 'users',
+  mantenimientos: 'preventive_maintenance',
+  tickets: 'work_orders',
+  informes: 'reports',
+  eventos: 'events',
+  clientes: 'clients',
+  sucursales: 'branches',
+  inventario: 'inventory',
+}
 
 // TABLAS PERMITIDAS para GET/POST sync:
 const ALLOWED_TABLES = [
-  'assets', 'users', 'preventive_maintenance', 'work_orders',
-  'reports', 'events', 'clients', 'branches',
-  'catalog_asset_types', 'settings', 'ordenes_servicio', 'audit_logs', 'inventory'
-];
+  'assets',
+  'users',
+  'preventive_maintenance',
+  'work_orders',
+  'reports',
+  'events',
+  'clients',
+  'branches',
+  'catalog_asset_types',
+  'settings',
+  'ordenes_servicio',
+  'audit_logs',
+  'inventory',
+]
 ```
 
 **⚠️ INCONSISTENCIA**: Las tablas `cmms_*` NO están en `ALLOWED_TABLES`.
@@ -154,10 +167,10 @@ En `ensureTables()` existe esta secuencia contradictoria:
 ```typescript
 // LÍNEA ~550: agrega FK hacia cmms_clientes (tabla normalizada)
 await sql`ALTER TABLE assets ADD CONSTRAINT fk_assets_cliente
-  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT`;
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT`
 
 // LÍNEA ~620: intenta agregar FK hacia clients (tabla JSON-blob) — CONFLICTO
-await sql`ALTER TABLE assets ADD COLUMN IF NOT EXISTS cliente_id TEXT REFERENCES clients(id)`;
+await sql`ALTER TABLE assets ADD COLUMN IF NOT EXISTS cliente_id TEXT REFERENCES clients(id)`
 ```
 
 `assets.cliente_id` tiene FK a `clientes` (tabla normalizada) Y el código intenta agregar FK
@@ -169,14 +182,30 @@ a `clients` (tabla JSON-blob). Ambas tablas son diferentes. En Neon esto falla s
 En `ensureTables()` al inicio:
 
 ```typescript
-try { await sql`ALTER TABLE IF EXISTS activos RENAME TO assets`; } catch (e) {}
-try { await sql`ALTER TABLE IF EXISTS usuarios RENAME TO users`; } catch (e) {}
-try { await sql`ALTER TABLE IF EXISTS mantenimientos RENAME TO preventive_maintenance`; } catch (e) {}
-try { await sql`ALTER TABLE IF EXISTS tickets RENAME TO work_orders`; } catch (e) {}
-try { await sql`ALTER TABLE IF EXISTS informes RENAME TO reports`; } catch (e) {}
-try { await sql`ALTER TABLE IF EXISTS eventos RENAME TO events`; } catch (e) {}
-try { await sql`ALTER TABLE IF EXISTS clientes RENAME TO clients`; } catch (e) {}
-try { await sql`ALTER TABLE IF EXISTS sucursales RENAME TO branches`; } catch (e) {}
+try {
+  await sql`ALTER TABLE IF EXISTS activos RENAME TO assets`
+} catch (e) {}
+try {
+  await sql`ALTER TABLE IF EXISTS usuarios RENAME TO users`
+} catch (e) {}
+try {
+  await sql`ALTER TABLE IF EXISTS mantenimientos RENAME TO preventive_maintenance`
+} catch (e) {}
+try {
+  await sql`ALTER TABLE IF EXISTS tickets RENAME TO work_orders`
+} catch (e) {}
+try {
+  await sql`ALTER TABLE IF EXISTS informes RENAME TO reports`
+} catch (e) {}
+try {
+  await sql`ALTER TABLE IF EXISTS eventos RENAME TO events`
+} catch (e) {}
+try {
+  await sql`ALTER TABLE IF EXISTS clientes RENAME TO clients`
+} catch (e) {}
+try {
+  await sql`ALTER TABLE IF EXISTS sucursales RENAME TO branches`
+} catch (e) {}
 ```
 
 **⚠️ PROBLEMA**: Luego de renombrar, el código crea `clientes` y `sucursales` de nuevo como
@@ -187,6 +216,7 @@ Los datos de clientes están en `clients` (JSON-blob) pero las FK de integridad 
 ### HALLAZGO #6 — VALIDACIÓN DE CIERRE DE OT SIN MAPEO EN SYNC
 
 La función `validateWorkOrderPayload` en server.ts valida que para cerrar una OT se requiere:
+
 - `firma_conformidad_base64` → campo dentro del JSONB `data`
 - `checklist` / `checklists` / `checklist_items` → también dentro de `data`
 
@@ -195,6 +225,7 @@ pero el validador del servidor busca `firma_conformidad_base64` directamente, el
 siempre fallará con el error de validación aunque el técnico haya firmado.
 
 **Mapping verificado en TECHNICAL_DOCUMENTATION.md**:
+
 ```
 data.firmas.tecnico         ← así lo guarda Dexie/EditorInforme
 data.firma_conformidad_base64  ← así lo busca validateWorkOrderPayload en server.ts
@@ -234,12 +265,16 @@ el servidor rechaza con "Invalid table".
 ya que la FK canónica debe apuntar a `clientes` (tabla normalizada con datos reales).
 
 Busca y elimina SOLO esta línea dentro del bloque de columnas operacionales (~línea 620):
+
 ```typescript
 // ELIMINAR esta línea:
-try { await sql`ALTER TABLE assets ADD COLUMN IF NOT EXISTS cliente_id TEXT REFERENCES clients(id)`; } catch (e) {}
+try {
+  await sql`ALTER TABLE assets ADD COLUMN IF NOT EXISTS cliente_id TEXT REFERENCES clients(id)`
+} catch (e) {}
 ```
 
 Reemplazarla por:
+
 ```typescript
 // No agregar FK aquí — ya existe fk_assets_cliente hacia clientes definida arriba
 // La FK hacia clients (JSON-blob) es incorrecta y genera conflicto
@@ -255,15 +290,19 @@ Encuentra la función `validateWorkOrderPayload`. Reemplaza el bloque de detecci
 
 ```typescript
 // ANTES (reemplazar estas líneas):
-const signature = target.firma || target.firma_conformidad_base64 || (target.payload && target.payload.firma_conformidad_base64);
+const signature =
+  target.firma ||
+  target.firma_conformidad_base64 ||
+  (target.payload && target.payload.firma_conformidad_base64)
 
 // DESPUÉS (busca en todas las rutas posibles según TECHNICAL_DOCUMENTATION.md):
-const signature = target.firma
-  || target.firma_conformidad_base64
-  || (target.firmas && (target.firmas.tecnico || target.firmas.cliente))
-  || (target.payload && target.payload.firma_conformidad_base64)
-  || (target.data && target.data.firma_conformidad_base64)
-  || (target.data && target.data.firmas && target.data.firmas.tecnico);
+const signature =
+  target.firma ||
+  target.firma_conformidad_base64 ||
+  (target.firmas && (target.firmas.tecnico || target.firmas.cliente)) ||
+  (target.payload && target.payload.firma_conformidad_base64) ||
+  (target.data && target.data.firma_conformidad_base64) ||
+  (target.data && target.data.firmas && target.data.firmas.tecnico)
 ```
 
 ### CORRECCIÓN C-3: server.ts — Modelo Gemini inexistente (~LÍNEA 780 aprox)
@@ -288,35 +327,53 @@ normalizada sin datos sincronizados.
 **Acción**: Agregar aliases en `TABLE_ALIAS_MAP` y entradas en `ALLOWED_TABLES`.
 
 Encuentra la constante `ALLOWED_TABLES` (array). Agrega al final del array:
+
 ```typescript
 const ALLOWED_TABLES = [
-  'assets', 'users', 'preventive_maintenance', 'work_orders',
-  'reports', 'events', 'clients', 'branches',
-  'catalog_asset_types', 'settings', 'ordenes_servicio', 'audit_logs', 'inventory',
+  'assets',
+  'users',
+  'preventive_maintenance',
+  'work_orders',
+  'reports',
+  'events',
+  'clients',
+  'branches',
+  'catalog_asset_types',
+  'settings',
+  'ordenes_servicio',
+  'audit_logs',
+  'inventory',
   // AUDITORIA C-4: agregar acceso a familia normalizada cmms_*
-  'cmms_equipos', 'cmms_tickets', 'cmms_mantenimientos', 'cmms_informes_mantenimiento',
-  'cmms_clientes', 'cmms_users', 'cmms_ot_eventos', 'cmms_ot_comentarios'
-];
+  'cmms_equipos',
+  'cmms_tickets',
+  'cmms_mantenimientos',
+  'cmms_informes_mantenimiento',
+  'cmms_clientes',
+  'cmms_users',
+  'cmms_ot_eventos',
+  'cmms_ot_comentarios',
+]
 ```
 
 Encuentra `TABLE_ALIAS_MAP`. Agrega al final del objeto:
+
 ```typescript
 const TABLE_ALIAS_MAP: Record<string, string> = {
-  'activos':        'assets',
-  'usuarios':       'users',
-  'mantenimientos': 'preventive_maintenance',
-  'tickets':        'work_orders',
-  'informes':       'reports',
-  'eventos':        'events',
-  'clientes_json':  'clients',
-  'sucursales_json':'branches',
-  'inventario':     'inventory',
+  activos: 'assets',
+  usuarios: 'users',
+  mantenimientos: 'preventive_maintenance',
+  tickets: 'work_orders',
+  informes: 'reports',
+  eventos: 'events',
+  clientes_json: 'clients',
+  sucursales_json: 'branches',
+  inventario: 'inventory',
   // AUDITORIA C-4: aliases hacia familia normalizada
-  'equipos':        'cmms_equipos',
-  'ordenes':        'cmms_tickets',
-  'planes_pm':      'cmms_mantenimientos',
-  'informes_mant':  'cmms_informes_mantenimiento',
-};
+  equipos: 'cmms_equipos',
+  ordenes: 'cmms_tickets',
+  planes_pm: 'cmms_mantenimientos',
+  informes_mant: 'cmms_informes_mantenimiento',
+}
 ```
 
 ### CORRECCIÓN C-5: server.ts — Agregar handler GET para cmms_equipos y cmms_tickets en switch
@@ -361,17 +418,19 @@ case 'cmms_ot_comentarios':
 **Archivo**: `src/lib/syncEngine.ts`
 **Problema**: El sync engine probablemente llama a `/api/sync/push` y `/api/sync/pull`
 que NO existen en server.ts. El servidor expone:
-- PULL: `GET /api/:table` o `GET /api/sync/:table`  (el table como segmento de ruta)
-- PUSH: `POST /api/sync`                             (payload con `table` en el body)
+
+- PULL: `GET /api/:table` o `GET /api/sync/:table` (el table como segmento de ruta)
+- PUSH: `POST /api/sync` (payload con `table` en el body)
 
 **Acción**: Abre `src/lib/syncEngine.ts` y verifica CADA llamada fetch hacia la API de sync.
 
 Si encuentras llamadas tipo `fetch('/api/sync/push', ...)` → cambiar a `fetch('/api/sync', ...)`
 Si encuentras llamadas tipo `fetch('/api/sync/pull', ...)` → cambiar a `fetch('/api/sync/' + tableName, ...)`
 Si encuentras llamadas tipo `fetch('/api/sync/status', ...)` → este endpoint no existe; reemplazar
-  por `fetch('/api/health', ...)` para verificar conectividad.
+por `fetch('/api/health', ...)` para verificar conectividad.
 
 Después verifica el payload del POST. Debe tener esta estructura para ser aceptado por server.ts:
+
 ```typescript
 // Estructura CORRECTA del payload para POST /api/sync:
 {
@@ -404,6 +463,7 @@ NO reescribir el mock. Solo agregar la resolución de aliases si no existe.
 ### MANUAL-1: Neon Console — IP Allowlist
 
 Hasta que esto esté resuelto, el sync siempre fallará desde Vercel serverless:
+
 ```
 1. Ir a https://console.neon.tech
 2. Proyecto CMMS HVAC PRO → Settings → Connection Security
@@ -415,6 +475,7 @@ Hasta que esto esté resuelto, el sync siempre fallará desde Vercel serverless:
 ### MANUAL-2: Variable GEMINI_API_KEY
 
 El servidor falla silenciosamente si no está definida. Verificar en:
+
 - Vercel Dashboard → Project → Settings → Environment Variables
 - Que exista `GEMINI_API_KEY` con valor válido para producción Y preview
 
@@ -423,10 +484,12 @@ El servidor falla silenciosamente si no está definida. Verificar en:
 Esta es una decisión de arquitectura que requiere tu confirmación, Nelson:
 
 **Situación actual**:
+
 - `clients` (JSON-blob, EN): creada por el código legacy, puede tener datos reales
 - `clientes` (normalizada, ES): creada nueva vacía, tiene FK activas
 
 **Opciones** (elegir una antes de ejecutar C-1):
+
 - Opción A: Migrar datos de `clients` a `clientes` y usar `clientes` como canónica
 - Opción B: Hacer que `clientes` sea la vista/alias de `clients` para las FK
 - Opción C: Mantener ambas y sincronizar via trigger (mayor complejidad)
@@ -505,6 +568,7 @@ Hallazgos adicionales encontrados durante la corrección:
 ## CONTEXTO ADICIONAL PARA IA STUDIO
 
 ### Stack real verificado en código fuente:
+
 - **Backend**: Express.js monolítico en `server.ts` (2837 líneas), NO funciones serverless
 - **Puerto local**: 3000
 - **ORM**: `@neondatabase/serverless` con tagged template literals
@@ -517,20 +581,21 @@ Hallazgos adicionales encontrados durante la corrección:
 - **Multi-tenant**: cliente_id en cada registro, middleware `requireCliente` en rutas protegidas
 
 ### Tablas de datos de aplicación (donde van los datos de pantalla):
-| Pantalla/Módulo       | Tabla principal Neon    | Columnas clave datos operacionales           |
-|-----------------------|-------------------------|----------------------------------------------|
-| Activos/Equipos HVAC  | `assets`                | tag, nombre, tipo, marca, modelo, estado, cliente_id |
-| Órdenes de Trabajo    | `work_orders`           | uuid_sync, id, data (JSONB con toda la OT)   |
-| Informes técnicos     | `reports`               | uuid_sync, id, data (JSONB con informe completo) |
-| Mantenimiento PM      | `preventive_maintenance`| uuid_sync, id, data (JSONB con plan PM)      |
-| Inventario repuestos  | `inventory`             | uuid_sync, id, data (JSONB)                  |
-| Usuarios              | `users`                 | uuid_sync, id, nombre, correo, perfil, pin   |
-| Calendario            | `calendar`              | uuid_sync, id, cliente_id, data (JSONB)      |
-| Equipos (normalizado) | `cmms_equipos`          | tag PK, nombre, cliente_id, deleted_at       |
-| Tickets (normalizado) | `cmms_tickets`          | id PK, cliente_id, tag, asignado_user_id     |
+
+| Pantalla/Módulo       | Tabla principal Neon     | Columnas clave datos operacionales                   |
+| --------------------- | ------------------------ | ---------------------------------------------------- |
+| Activos/Equipos HVAC  | `assets`                 | tag, nombre, tipo, marca, modelo, estado, cliente_id |
+| Órdenes de Trabajo    | `work_orders`            | uuid_sync, id, data (JSONB con toda la OT)           |
+| Informes técnicos     | `reports`                | uuid_sync, id, data (JSONB con informe completo)     |
+| Mantenimiento PM      | `preventive_maintenance` | uuid_sync, id, data (JSONB con plan PM)              |
+| Inventario repuestos  | `inventory`              | uuid_sync, id, data (JSONB)                          |
+| Usuarios              | `users`                  | uuid_sync, id, nombre, correo, perfil, pin           |
+| Calendario            | `calendar`               | uuid_sync, id, cliente_id, data (JSONB)              |
+| Equipos (normalizado) | `cmms_equipos`           | tag PK, nombre, cliente_id, deleted_at               |
+| Tickets (normalizado) | `cmms_tickets`           | id PK, cliente_id, tag, asignado_user_id             |
 
 ---
 
-*Auditoría generada con lectura directa del código fuente real.*
-*server.ts: 2837 líneas | TECHNICAL_DOCUMENTATION.md: 111 líneas | ARCHITECTURE.md: 59 líneas*
-*Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO — rama main — Junio 2026*
+_Auditoría generada con lectura directa del código fuente real._
+_server.ts: 2837 líneas | TECHNICAL_DOCUMENTATION.md: 111 líneas | ARCHITECTURE.md: 59 líneas_
+_Repositorio: nelsonbravosalas-creator/CMMS-HVAC-PRO--IA-STUDIO — rama main — Junio 2026_

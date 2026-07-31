@@ -60,7 +60,10 @@
   border-radius: 0.5rem;
   color: var(--text);
   font-size: 1rem;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
 }
 
 .form-group input::placeholder {
@@ -99,7 +102,10 @@
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
   box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
 }
 
@@ -154,7 +160,11 @@
   color: var(--text);
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    opacity 0.18s ease;
   text-align: center;
 }
 
@@ -192,6 +202,23 @@
   border-color: var(--warning);
   background: rgba(245, 158, 11, 0.1);
   color: var(--warning);
+}
+
+.btn-link {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: center;
+}
+
+.btn-link:hover {
+  color: var(--primary);
 }
 
 /* INFO */

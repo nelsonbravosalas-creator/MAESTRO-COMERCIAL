@@ -2,6 +2,9 @@ import { Router } from 'express'
 import { Pool } from 'pg'
 import { logger } from '../utils/logger'
 import { authMiddleware, AuthRequest, roleMiddleware } from '../middleware/auth'
+import { validate } from '../middleware/validate'
+import { uuidParams, capLimitQuerySchema } from '../schemas/common'
+import { invoiceCreateSchema, invoiceStatusSchema } from '../schemas/invoices'
 
 const VALID_STATUS = ['draft', 'issued', 'paid', 'cancelled']
 const VALID_PAYMENT = ['cash', 'credit', 'partial']
@@ -10,14 +13,18 @@ export const createInvoicesRouter = (pool: Pool) => {
   const router = Router()
   router.use(authMiddleware)
 
-  router.get('/', async (_req: AuthRequest, res) => {
+  // A-11: tope duro de filas (paginación real pendiente, ver docs/RIESGOS_ACEPTADOS.md).
+  router.get('/', validate({ query: capLimitQuerySchema }), async (req: AuthRequest, res) => {
     try {
+      const { limit } = req.query as unknown as { limit: number }
       const result = await pool.query(
         `SELECT i.*, c.name AS client_name
            FROM invoices i
            LEFT JOIN clients c ON c.id = i.client_id
           WHERE i.deleted_at IS NULL
-          ORDER BY i.date DESC, i.created_at DESC`
+          ORDER BY i.date DESC, i.created_at DESC
+          LIMIT $1`,
+        [limit]
       )
       return res.json(result.rows)
     } catch (error: any) {
@@ -26,7 +33,7 @@ export const createInvoicesRouter = (pool: Pool) => {
     }
   })
 
-  router.get('/:id', async (req: AuthRequest, res) => {
+  router.get('/:id', validate({ params: uuidParams('id') }), async (req: AuthRequest, res) => {
     try {
       const invoice = await pool.query(
         `SELECT i.*, c.name AS client_name
@@ -54,11 +61,10 @@ export const createInvoicesRouter = (pool: Pool) => {
     }
   })
 
-  router.post('/', async (req: AuthRequest, res) => {
+  router.post('/', validate({ body: invoiceCreateSchema }), async (req: AuthRequest, res) => {
     const db = await pool.connect()
     try {
       const { project_id, client_id, number, date, payment_cond, due_date, items } = req.body
-      if (!client_id) return res.status(400).json({ error: 'client_id is required' })
 
       let netAmount = 0
       const lineItems = Array.isArray(items) ? items : []
@@ -115,7 +121,8 @@ export const createInvoicesRouter = (pool: Pool) => {
     } catch (error: any) {
       await db.query('ROLLBACK')
       logger.error('Create invoice error', { error: error.message, userId: req.user?.id })
-      if (error.code === '23505') return res.status(409).json({ error: 'Invoice number already exists' })
+      if (error.code === '23505')
+        return res.status(409).json({ error: 'Invoice number already exists' })
       return res.status(500).json({ error: 'Failed to create invoice' })
     } finally {
       db.release()
@@ -125,7 +132,6 @@ export const createInvoicesRouter = (pool: Pool) => {
   const updateStatus = async (req: AuthRequest, res: any) => {
     try {
       const { status, is_factored } = req.body
-      if (!VALID_STATUS.includes(status)) return res.status(400).json({ error: 'Invalid status' })
 
       const result = await pool.query(
         `UPDATE invoices
@@ -141,32 +147,41 @@ export const createInvoicesRouter = (pool: Pool) => {
       if (result.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
       return res.json(result.rows[0])
     } catch (error: any) {
-      logger.error('Update invoice status error', { error: error.message, invoiceId: req.params.id })
+      logger.error('Update invoice status error', {
+        error: error.message,
+        invoiceId: req.params.id,
+      })
       return res.status(500).json({ error: 'Failed to update invoice status' })
     }
   }
 
-  router.patch('/:id/status', roleMiddleware('admin', 'manager'), updateStatus)
-  router.put('/:id/status', roleMiddleware('admin', 'manager'), updateStatus)
+  const statusValidation = validate({ params: uuidParams('id'), body: invoiceStatusSchema })
+  router.patch('/:id/status', roleMiddleware('admin', 'manager'), statusValidation, updateStatus)
+  router.put('/:id/status', roleMiddleware('admin', 'manager'), statusValidation, updateStatus)
 
-  router.delete('/:id', roleMiddleware('admin'), async (req: AuthRequest, res) => {
-    try {
-      const result = await pool.query(
-        `UPDATE invoices
+  router.delete(
+    '/:id',
+    roleMiddleware('admin'),
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      try {
+        const result = await pool.query(
+          `UPDATE invoices
             SET deleted_at = NOW()
           WHERE id = $1
             AND deleted_at IS NULL
           RETURNING id`,
-        [req.params.id]
-      )
+          [req.params.id]
+        )
 
-      if (result.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
-      return res.json({ message: 'Invoice deleted successfully' })
-    } catch (error: any) {
-      logger.error('Delete invoice error', { error: error.message, invoiceId: req.params.id })
-      return res.status(500).json({ error: 'Failed to delete invoice' })
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
+        return res.json({ message: 'Invoice deleted successfully' })
+      } catch (error: any) {
+        logger.error('Delete invoice error', { error: error.message, invoiceId: req.params.id })
+        return res.status(500).json({ error: 'Failed to delete invoice' })
+      }
     }
-  })
+  )
 
   return router
 }

@@ -16,6 +16,8 @@ CREATE TYPE payment_cond     AS ENUM ('cash', 'credit', 'partial');
 CREATE TYPE cost_category_id AS ENUM ('mo', 'log', 'mat', 'rep', 'ins');
 CREATE TYPE term_type        AS ENUM ('scope', 'exclusion', 'commercial');
 CREATE TYPE audit_action     AS ENUM ('INSERT', 'UPDATE', 'DELETE');
+CREATE TYPE quotation_kind   AS ENUM ('project', 'maintenance');
+CREATE TYPE mtc_frequency    AS ENUM ('mensual', 'trimestral', 'semestral', 'anual');
 
 -- ── Función trigger updated_at (reutilizable) ─────────────────
 CREATE OR REPLACE FUNCTION fn_set_updated_at()
@@ -178,12 +180,25 @@ CREATE TABLE quotations (
   updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   deleted_at  TIMESTAMPTZ,
   created_by  UUID         REFERENCES users(id) ON DELETE SET NULL,
+  -- Mantención (kind='maintenance'): contratos de servicio recurrente, aparte
+  -- de las cotizaciones de proyecto puntual. Columnas nullable porque no
+  -- aplican a kind='project'.
+  kind                 quotation_kind NOT NULL DEFAULT 'project',
+  equipment_count      INTEGER,
+  equipment_description TEXT,
+  frequency            mtc_frequency,
+  visits_per_year      SMALLINT,
+  contract_start_date  DATE,
+  show_uf_equivalent   BOOLEAN NOT NULL DEFAULT false,
+  show_usd_equivalent  BOOLEAN NOT NULL DEFAULT false,
+  usd_value            NUMERIC(10,2),
   CONSTRAINT uq_quotations_correlative UNIQUE (correlative)
 );
 
 CREATE INDEX ix_quotations_client_id ON quotations (client_id) WHERE deleted_at IS NULL;
 CREATE INDEX ix_quotations_status    ON quotations (status)    WHERE deleted_at IS NULL;
 CREATE INDEX ix_quotations_date      ON quotations (date DESC) WHERE deleted_at IS NULL;
+CREATE INDEX ix_quotations_kind      ON quotations (kind)      WHERE deleted_at IS NULL;
 
 CREATE TRIGGER trg_quotations_updated_at
   BEFORE UPDATE ON quotations FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();

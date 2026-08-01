@@ -1,8 +1,17 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import {
-  CategoryId, CatalogItemUI, CatalogsUI, CostCategory, CostItem,
-  MasterClient, MasterQuotation, QuoteStatus, OperState,
+  CategoryId,
+  CatalogItemUI,
+  CatalogsUI,
+  CostCategory,
+  CostItem,
+  MasterClient,
+  MasterQuotation,
+  QuoteStatus,
+  OperState,
+  QuotationKind,
+  MtcFrequency,
 } from '../types'
 import api, { ApiError } from '../api/api'
 import type { ImportQuotationResult } from '../api/api'
@@ -11,59 +20,104 @@ import type { ImportQuotationResult } from '../api/api'
 
 export const DEFAULT_CATALOGS: CatalogsUI = {
   mo: [
-    { desc: 'Supervisor',                     unidad: 'Hora', price: 120000 },
-    { desc: 'Técnico Especializado HVAC',     unidad: 'Hora', price: 150000 },
-    { desc: 'Técnico Electricista',           unidad: 'Hora', price: 130000 },
-    { desc: 'Ayudante Técnico HVAC',          unidad: 'Hora', price: 80000  },
-    { desc: 'Prevencionista',                 unidad: 'Hora', price: 90000  },
+    { desc: 'Supervisor', unidad: 'Hora', price: 120000 },
+    { desc: 'Técnico Especializado HVAC', unidad: 'Hora', price: 150000 },
+    { desc: 'Técnico Electricista', unidad: 'Hora', price: 130000 },
+    { desc: 'Ayudante Técnico HVAC', unidad: 'Hora', price: 80000 },
+    { desc: 'Prevencionista', unidad: 'Hora', price: 90000 },
   ],
   log: [
-    { desc: 'Cálculo de Distancias',          unidad: 'km',  price: 990    },
-    { desc: 'Flete Herramientas STGO-Faena',  unidad: 'Gl',  price: 250000 },
-    { desc: 'Viáticos Faena Local',           unidad: 'Un',  price: 45000  },
-    { desc: 'Alimentación',                   unidad: 'Un',  price: 15000  },
-    { desc: 'Arriendo Vehículo',              unidad: 'Día', price: 45000  },
-    { desc: 'Pasaje Aéreo',                   unidad: 'Un',  price: 120000 },
+    { desc: 'Cálculo de Distancias', unidad: 'km', price: 990 },
+    { desc: 'Flete Herramientas STGO-Faena', unidad: 'Gl', price: 250000 },
+    { desc: 'Viáticos Faena Local', unidad: 'Un', price: 45000 },
+    { desc: 'Alimentación', unidad: 'Un', price: 15000 },
+    { desc: 'Arriendo Vehículo', unidad: 'Día', price: 45000 },
+    { desc: 'Pasaje Aéreo', unidad: 'Un', price: 120000 },
   ],
   mat: [
-    { desc: 'Cañería Cobre Tira K 1"',        unidad: 'Tir', price: 49100  },
-    { desc: 'Cañería Cobre Tira K 3/4"',      unidad: 'Tir', price: 33800  },
-    { desc: 'Cañería Cobre Tira K 1/2"',      unidad: 'Tir', price: 28500  },
-    { desc: 'Cañería Cobre Tira L 3/8"',      unidad: 'Tir', price: 7500   },
-    { desc: 'Copla Cobre 1"',                 unidad: 'Uni', price: 700    },
-    { desc: 'Copla Cobre 3/4"',               unidad: 'Uni', price: 330    },
+    { desc: 'Cañería Cobre Tira K 1"', unidad: 'Tir', price: 49100 },
+    { desc: 'Cañería Cobre Tira K 3/4"', unidad: 'Tir', price: 33800 },
+    { desc: 'Cañería Cobre Tira K 1/2"', unidad: 'Tir', price: 28500 },
+    { desc: 'Cañería Cobre Tira L 3/8"', unidad: 'Tir', price: 7500 },
+    { desc: 'Copla Cobre 1"', unidad: 'Uni', price: 700 },
+    { desc: 'Copla Cobre 3/4"', unidad: 'Uni', price: 330 },
   ],
   rep: [
-    { desc: 'Compressor ZR 16 M3 E TWD 561',  unidad: 'Uni', price: 1977397 },
-    { desc: 'Bomba de Condensado Orange',      unidad: 'Uni', price: 159500  },
-    { desc: 'Filtro Deshidratador Vertiv',     unidad: 'Uni', price: 85400   },
-    { desc: 'Contactor Trifásico 180A 220VAC', unidad: 'Un',  price: 440000  },
+    { desc: 'Compressor ZR 16 M3 E TWD 561', unidad: 'Uni', price: 1977397 },
+    { desc: 'Bomba de Condensado Orange', unidad: 'Uni', price: 159500 },
+    { desc: 'Filtro Deshidratador Vertiv', unidad: 'Uni', price: 85400 },
+    { desc: 'Contactor Trifásico 180A 220VAC', unidad: 'Un', price: 440000 },
   ],
   ins: [
-    { desc: 'Soldadura de Plata al 15%',       unidad: 'Kg',  price: 7500   },
-    { desc: 'Nitrógeno N2',                    unidad: 'Rec', price: 35000  },
-    { desc: 'Refrigerante R-410a',             unidad: 'Kg',  price: 120000 },
-    { desc: 'Refrigerante R-134a',             unidad: 'Kg',  price: 115000 },
-    { desc: 'Pintura de Seguridad',            unidad: 'Gl',  price: 25000  },
-    { desc: 'Canalización EMT Galvanizada',    unidad: 'Tir', price: 12500  },
-    { desc: 'Aislación Térmica Armaflex',      unidad: 'Tir', price: 8500   },
+    { desc: 'Soldadura de Plata al 15%', unidad: 'Kg', price: 7500 },
+    { desc: 'Nitrógeno N2', unidad: 'Rec', price: 35000 },
+    { desc: 'Refrigerante R-410a', unidad: 'Kg', price: 120000 },
+    { desc: 'Refrigerante R-134a', unidad: 'Kg', price: 115000 },
+    { desc: 'Pintura de Seguridad', unidad: 'Gl', price: 25000 },
+    { desc: 'Canalización EMT Galvanizada', unidad: 'Tir', price: 12500 },
+    { desc: 'Aislación Térmica Armaflex', unidad: 'Tir', price: 8500 },
   ],
 }
 
 const DEFAULT_CATEGORIES: CostCategory[] = [
-  { id: 'mo',  label: 'Mano de Obra Especializada',     margin: 35, color: '#1e293b', showDetails: false, showValues: false, note: '', collapsed: false },
-  { id: 'log', label: 'Logística y Operación',          margin: 30, color: '#475569', showDetails: false, showValues: false, note: '', collapsed: true  },
-  { id: 'mat', label: 'Provisión de Materiales',        margin: 30, color: '#1e3a8a', showDetails: false, showValues: false, note: '', collapsed: true  },
-  { id: 'rep', label: 'Suministro Equipos o Repuestos', margin: 30, color: '#312e81', showDetails: false, showValues: false, note: '', collapsed: true  },
-  { id: 'ins', label: 'Insumos Industriales y Gases',   margin: 30, color: '#164e63', showDetails: false, showValues: false, note: '', collapsed: true  },
+  {
+    id: 'mo',
+    label: 'Mano de Obra Especializada',
+    margin: 35,
+    color: '#1e293b',
+    showDetails: false,
+    showValues: false,
+    note: '',
+    collapsed: false,
+  },
+  {
+    id: 'log',
+    label: 'Logística y Operación',
+    margin: 30,
+    color: '#475569',
+    showDetails: false,
+    showValues: false,
+    note: '',
+    collapsed: true,
+  },
+  {
+    id: 'mat',
+    label: 'Provisión de Materiales',
+    margin: 30,
+    color: '#1e3a8a',
+    showDetails: false,
+    showValues: false,
+    note: '',
+    collapsed: true,
+  },
+  {
+    id: 'rep',
+    label: 'Suministro Equipos o Repuestos',
+    margin: 30,
+    color: '#312e81',
+    showDetails: false,
+    showValues: false,
+    note: '',
+    collapsed: true,
+  },
+  {
+    id: 'ins',
+    label: 'Insumos Industriales y Gases',
+    margin: 30,
+    color: '#164e63',
+    showDetails: false,
+    showValues: false,
+    note: '',
+    collapsed: true,
+  },
 ]
 
 const DEFAULT_ITEMS: Record<CategoryId, CostItem[]> = {
-  mo:  [{ id: 'i1', desc: '', unidad: 'Persona', cant: 0, unit: 0, days: 1 }],
-  log: [{ id: 'i2', desc: '', unidad: 'Gl',      cant: 0, unit: 0 }],
-  mat: [{ id: 'i3', desc: '', unidad: 'Und',     cant: 0, unit: 0 }],
-  rep: [{ id: 'i4', desc: '', unidad: 'Uni',     cant: 0, unit: 0 }],
-  ins: [{ id: 'i5', desc: '', unidad: 'Kg',      cant: 0, unit: 0 }],
+  mo: [{ id: 'i1', desc: '', unidad: 'Persona', cant: 0, unit: 0, days: 1 }],
+  log: [{ id: 'i2', desc: '', unidad: 'Gl', cant: 0, unit: 0 }],
+  mat: [{ id: 'i3', desc: '', unidad: 'Und', cant: 0, unit: 0 }],
+  rep: [{ id: 'i4', desc: '', unidad: 'Uni', cant: 0, unit: 0 }],
+  ins: [{ id: 'i5', desc: '', unidad: 'Kg', cant: 0, unit: 0 }],
 }
 
 const DEFAULT_SCOPE = [
@@ -74,7 +128,9 @@ const DEFAULT_SCOPE = [
 ]
 
 const DEFAULT_EXCLUSIONS = [
-  'Obras civiles.', 'Demoliciones.', 'Aumento de potencia eléctrica.',
+  'Obras civiles.',
+  'Demoliciones.',
+  'Aumento de potencia eléctrica.',
   'Suministro de repuestos no indicados expresamente.',
   'Puesta en marcha de otros equipos no indicados.',
   'Instalación de faena (contenedores, bodega, oficinas, SSHH).',
@@ -93,13 +149,55 @@ const DEFAULT_COMMERCIAL = [
   'Facturación en pesos chilenos (CLP).',
 ]
 
+// Defaults para cotizaciones de mantención (kind='maintenance') — contratos
+// de servicio recurrente, distintos de los de proyecto puntual de arriba.
+export const DEFAULT_SCOPE_MAINTENANCE = [
+  'Mantención preventiva periódica de los equipos indicados, según recomendaciones del fabricante.',
+  'Revisión de parámetros de operación (presiones, temperaturas, consumo eléctrico).',
+  'Limpieza de filtros, serpentines y componentes según corresponda a cada visita.',
+  'Informe técnico de cada visita con hallazgos y recomendaciones.',
+]
+
+export const DEFAULT_EXCLUSIONS_MAINTENANCE = [
+  'Repuestos y materiales de reemplazo no incluidos; se cotizan por separado según necesidad.',
+  'Trabajos correctivos fuera del alcance preventivo (se cotizan aparte).',
+  'Obras civiles y trabajos eléctricos ajenos al equipo mantenido.',
+  'Visitas adicionales a las pactadas por frecuencia contratada.',
+  'Trabajos en días no hábiles (sábados, domingos, festivos), salvo acuerdo previo.',
+]
+
+export const DEFAULT_COMMERCIAL_MAINTENANCE = [
+  'Vigencia indefinida con renovación automática, salvo aviso de término de cualquiera de las partes.',
+  'Facturación en pesos chilenos (CLP).',
+  'Forma de pago: facturación mensual contra visita realizada.',
+]
+
+// N° de visitas/año derivado de la frecuencia — de solo lectura en la UI.
+export const VISITS_PER_YEAR: Record<MtcFrequency, number> = {
+  mensual: 12,
+  trimestral: 4,
+  semestral: 2,
+  anual: 1,
+}
+
+export const FREQUENCY_LABELS: Record<MtcFrequency, string> = {
+  mensual: 'Mensual',
+  trimestral: 'Trimestral',
+  semestral: 'Semestral',
+  anual: 'Anual',
+}
+
 // ── Calculation helpers ────────────────────────────────────────
 
-export function calcCat(catId: CategoryId, categories: CostCategory[], items: Record<CategoryId, CostItem[]>) {
-  const cat    = categories.find(c => c.id === catId)!
-  const costo  = (items[catId] || []).reduce((a, i) => a + i.cant * (i.days ?? 1) * i.unit, 0)
+export function calcCat(
+  catId: CategoryId,
+  categories: CostCategory[],
+  items: Record<CategoryId, CostItem[]>
+) {
+  const cat = categories.find(c => c.id === catId)!
+  const costo = (items[catId] || []).reduce((a, i) => a + i.cant * (i.days ?? 1) * i.unit, 0)
   const margin = Math.max(0, Math.min(99.9, cat.margin))
-  const venta  = margin === 100 ? costo : costo / (1 - margin / 100)
+  const venta = margin === 100 ? costo : costo / (1 - margin / 100)
   return { costo, venta, beneficio: venta - costo, margin }
 }
 
@@ -107,13 +205,21 @@ export function calcTotals(q: MasterQuotation) {
   return q.categories.reduce(
     (acc, cat) => {
       const r = calcCat(cat.id, q.categories, q.items)
-      return { costo: acc.costo + r.costo, venta: acc.venta + r.venta, beneficio: acc.beneficio + r.beneficio }
+      return {
+        costo: acc.costo + r.costo,
+        venta: acc.venta + r.venta,
+        beneficio: acc.beneficio + r.beneficio,
+      }
     },
     { costo: 0, venta: 0, beneficio: 0 }
   )
 }
 
-export const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+export const fmtCLP = new Intl.NumberFormat('es-CL', {
+  style: 'currency',
+  currency: 'CLP',
+  maximumFractionDigits: 0,
+})
 
 // Para UF/porcentajes: sin ceros de relleno (22 -> "22", no "22,00") y con
 // coma decimal chilena — a diferencia de toFixed(2), que siempre fuerza 2
@@ -121,14 +227,31 @@ export const fmtCLP = new Intl.NumberFormat('es-CL', { style: 'currency', curren
 export const fmtDecimal = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 })
 
 export function generateCorrelative(quotations: MasterQuotation[]): string {
-  const now  = new Date()
-  const mm   = String(now.getMonth() + 1).padStart(2, '0')
+  const now = new Date()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
   const yyyy = String(now.getFullYear())
   const yearNums = quotations
-    .map(q => { const m = q.correlative.match(/SYM-(\d+)-/); return m ? parseInt(m[1]) : 0 })
+    .map(q => {
+      const m = q.correlative.match(/SYM-(\d+)-/)
+      return m ? parseInt(m[1]) : 0
+    })
     .filter(n => !isNaN(n))
   const next = (yearNums.length > 0 ? Math.max(...yearNums) : 0) + 1
   return `SYM-${String(next).padStart(3, '0')}-${mm}-${yyyy}`
+}
+
+// Correlativo de cotizaciones de mantención: prefijo propio MTC-XXX-YYYY, sin
+// mes — son contratos de vigencia indefinida, no ligados a un mes puntual.
+export function generateMtcCorrelative(quotations: MasterQuotation[]): string {
+  const yyyy = String(new Date().getFullYear())
+  const nums = quotations
+    .map(q => {
+      const m = q.correlative.match(/MTC-(\d+)-/)
+      return m ? parseInt(m[1]) : 0
+    })
+    .filter(n => !isNaN(n))
+  const next = (nums.length > 0 ? Math.max(...nums) : 0) + 1
+  return `MTC-${String(next).padStart(3, '0')}-${yyyy}`
 }
 
 // Correlativos de "nueva versión" reusan el mismo N° y agregan un sufijo
@@ -139,7 +262,10 @@ export function baseCorrelative(correlative: string): string {
   return correlative.replace(VERSION_SUFFIX_RE, '')
 }
 
-export function generateVersionCorrelative(quotations: MasterQuotation[], sourceCorrelative: string): string {
+export function generateVersionCorrelative(
+  quotations: MasterQuotation[],
+  sourceCorrelative: string
+): string {
   const base = baseCorrelative(sourceCorrelative)
   const maxVersion = quotations.reduce((max, q) => {
     if (baseCorrelative(q.correlative) !== base) return max
@@ -153,76 +279,78 @@ export function generateVersionCorrelative(quotations: MasterQuotation[], source
 
 interface MaestroState {
   // config
-  uf:         number
-  iva:        number
-  catalogs:   CatalogsUI
-  apiReady:   boolean
+  uf: number
+  iva: number
+  usd: number
+  catalogs: CatalogsUI
+  apiReady: boolean
 
   // data
-  clients:    MasterClient[]
+  clients: MasterClient[]
   quotations: MasterQuotation[]
 
   // active session
-  activeId:  string | null
+  activeId: string | null
   activeTab: 'base' | 'costeo' | 'coti'
-  unsaved:   boolean
+  unsaved: boolean
 
   // ── API sync
-  loadData:     () => Promise<void>
+  loadData: () => Promise<void>
   forceSyncAll: () => Promise<{ pushed: number; pulled: number; errors: number }>
   reloadActive: () => Promise<void>
 
   // ── Config
-  setUF:  (uf: number)  => void
+  setUF: (uf: number) => void
   setIVA: (iva: number) => void
+  setUSD: (usd: number) => void
 
   // ── Clients
   upsertClient: (c: MasterClient) => Promise<void>
-  deleteClient: (id: string)      => Promise<void>
+  deleteClient: (id: string) => Promise<void>
 
   // ── Quotation list
-  newDraft:          ()                              => void
-  loadQuote:         (id: string)                    => void
-  duplicateQuote:    (id: string)                    => Promise<void>
-  createVersion:     (id: string)                    => Promise<void>
-  deleteQuote:       (id: string)                    => Promise<void>
-  setStatus:         (id: string, s: QuoteStatus)    => Promise<void>
-  setOperState:      (id: string, s: OperState)      => Promise<void>
-  importQuotations:  (qs: MasterQuotation[])         => void
-  importQuotation:   (payload: unknown)              => Promise<ImportQuotationResult>
+  newDraft: (kind?: QuotationKind) => void
+  loadQuote: (id: string) => void
+  duplicateQuote: (id: string) => Promise<void>
+  createVersion: (id: string) => Promise<void>
+  deleteQuote: (id: string) => Promise<void>
+  setStatus: (id: string, s: QuoteStatus) => Promise<void>
+  setOperState: (id: string, s: OperState) => Promise<void>
+  importQuotations: (qs: MasterQuotation[]) => void
+  importQuotation: (payload: unknown) => Promise<ImportQuotationResult>
 
   // ── Active quotation
   patchActive: (fields: Partial<MasterQuotation>) => void
-  saveActive:  ()                                 => Promise<void>
+  saveActive: () => Promise<void>
 
   // Items
-  addItem:     (catId: CategoryId)                                    => void
-  removeItem:  (catId: CategoryId, idx: number)                       => void
-  patchItem:   (catId: CategoryId, idx: number, field: string, value: any) => void
-  adjustCant:  (catId: CategoryId, idx: number, delta: number)        => void
-  adjustDays:  (catId: CategoryId, idx: number, delta: number)        => void
+  addItem: (catId: CategoryId) => void
+  removeItem: (catId: CategoryId, idx: number) => void
+  patchItem: (catId: CategoryId, idx: number, field: string, value: any) => void
+  adjustCant: (catId: CategoryId, idx: number, delta: number) => void
+  adjustDays: (catId: CategoryId, idx: number, delta: number) => void
 
   // Category
-  setCatMargin: (catId: CategoryId, margin: number)                             => void
-  toggleCat:    (catId: CategoryId, field: 'collapsed' | 'showDetails' | 'showValues') => void
-  setCatLabel:  (catId: CategoryId, label: string)                              => void
+  setCatMargin: (catId: CategoryId, margin: number) => void
+  toggleCat: (catId: CategoryId, field: 'collapsed' | 'showDetails' | 'showValues') => void
+  setCatLabel: (catId: CategoryId, label: string) => void
 
   // Lists
-  addListItem:    (key: 'scope' | 'exclusions' | 'commercial')                    => void
-  insertListItemAfter: (key: 'scope' | 'exclusions' | 'commercial', idx: number)   => void
-  removeListItem: (key: 'scope' | 'exclusions' | 'commercial', idx: number)       => void
-  patchListItem:  (key: 'scope' | 'exclusions' | 'commercial', idx: number, value: string) => void
+  addListItem: (key: 'scope' | 'exclusions' | 'commercial') => void
+  insertListItemAfter: (key: 'scope' | 'exclusions' | 'commercial', idx: number) => void
+  removeListItem: (key: 'scope' | 'exclusions' | 'commercial', idx: number) => void
+  patchListItem: (key: 'scope' | 'exclusions' | 'commercial', idx: number, value: string) => void
 
   // Catalogs
-  catalogDirty:      boolean
+  catalogDirty: boolean
   upsertCatalogItem: (catId: CategoryId, idx: number, field: string, value: any) => void
-  addCatalogItem:    (catId: CategoryId, item: CatalogItemUI)                     => void
-  deleteCatalogItem: (catId: CategoryId, idx: number)                             => void
-  saveCatalogs:      () => Promise<void>
+  addCatalogItem: (catId: CategoryId, item: CatalogItemUI) => void
+  deleteCatalogItem: (catId: CategoryId, idx: number) => void
+  saveCatalogs: () => Promise<void>
 
   // UI
-  setTab:     (t: 'base' | 'costeo' | 'coti') => void
-  markSaved:  ()                               => void
+  setTab: (t: 'base' | 'costeo' | 'coti') => void
+  markSaved: () => void
 }
 
 // Lógica compartida entre "Duplicar" (correlativo nuevo) y "Nueva versión"
@@ -268,10 +396,14 @@ async function createQuotationWithRetry(
       const isCorrelativeConflict = err instanceof ApiError && err.status === 409
       if (!isCorrelativeConflict || attempt >= 2) throw err
       const fresh = await api.getQuotations().catch(() => [] as MasterQuotation[])
-      const freshCorr = generateCorrelative(fresh.filter(x => !x.id.startsWith('q-')))
+      const nextCorrelative =
+        payload.kind === 'maintenance' ? generateMtcCorrelative : generateCorrelative
+      const freshCorr = nextCorrelative(fresh.filter(x => !x.id.startsWith('q-')))
       payload = { ...payload, correlative: freshCorr }
       set(s => ({
-        quotations: s.quotations.map(x => x.id === activeId ? { ...x, correlative: freshCorr } : x),
+        quotations: s.quotations.map(x =>
+          x.id === activeId ? { ...x, correlative: freshCorr } : x
+        ),
       }))
     }
   }
@@ -282,15 +414,16 @@ async function createQuotationWithRetry(
 export const useMaestro = create<MaestroState>()(
   persist(
     (set, get) => ({
-      uf:           39500,
-      iva:          19,
-      catalogs:     DEFAULT_CATALOGS,
-      apiReady:     false,
-      clients:      [],
-      quotations:   [],
-      activeId:     null,
-      activeTab:    'base',
-      unsaved:      false,
+      uf: 39500,
+      iva: 19,
+      usd: 950,
+      catalogs: DEFAULT_CATALOGS,
+      apiReady: false,
+      clients: [],
+      quotations: [],
+      activeId: null,
+      activeTab: 'base',
+      unsaved: false,
       catalogDirty: false,
 
       // ── API: hidrata el store desde el backend ────────────────
@@ -309,12 +442,15 @@ export const useMaestro = create<MaestroState>()(
               const localQ = s.quotations.find(lq => lq.id === serverQ.id)
               if (localQ) {
                 const hasLocalItems = Object.values(localQ.items).some(arr => arr.length > 0)
-                const hasLocalTerms = localQ.scope.length > 0 || localQ.exclusions.length > 0 || localQ.commercial.length > 0
+                const hasLocalTerms =
+                  localQ.scope.length > 0 ||
+                  localQ.exclusions.length > 0 ||
+                  localQ.commercial.length > 0
                 if (hasLocalItems || hasLocalTerms) {
                   return {
                     ...serverQ,
-                    items:      localQ.items,
-                    scope:      localQ.scope,
+                    items: localQ.items,
+                    scope: localQ.scope,
                     exclusions: localQ.exclusions,
                     commercial: localQ.commercial,
                   }
@@ -325,12 +461,13 @@ export const useMaestro = create<MaestroState>()(
             // Preservar borradores locales (q-*) aún no persistidos en el servidor
             const localDrafts = s.quotations.filter(lq => lq.id.startsWith('q-'))
             return {
-              catalogs:   catalogsFromAPI,
+              catalogs: catalogsFromAPI,
               clients,
               quotations: [...mergedQuotations, ...localDrafts],
-              uf:         Number(config.uf_value) || s.uf,
-              iva:        Number(config.iva_pct)  || s.iva,
-              apiReady:   true,
+              uf: Number(config.uf_value) || s.uf,
+              iva: Number(config.iva_pct) || s.iva,
+              usd: Number(config.dolar_value) || s.usd,
+              apiReady: true,
             }
           })
         } catch (err) {
@@ -340,15 +477,31 @@ export const useMaestro = create<MaestroState>()(
       },
 
       forceSyncAll: async () => {
-        let pushed = 0, errors = 0
+        let pushed = 0,
+          errors = 0
         try {
-          if (get().catalogDirty) { await get().saveCatalogs(); pushed++ }
-        } catch { errors++ }
+          if (get().catalogDirty) {
+            await get().saveCatalogs()
+            pushed++
+          }
+        } catch {
+          errors++
+        }
         try {
-          if (get().unsaved) { await get().saveActive(); pushed++ }
-        } catch { errors++ }
+          if (get().unsaved) {
+            await get().saveActive()
+            pushed++
+          }
+        } catch {
+          errors++
+        }
         let pulled = 0
-        try { await get().loadData(); pulled = 1 } catch { errors++ }
+        try {
+          await get().loadData()
+          pulled = 1
+        } catch {
+          errors++
+        }
         return { pushed, pulled, errors }
       },
 
@@ -358,14 +511,16 @@ export const useMaestro = create<MaestroState>()(
         const { activeId } = get()
         if (!activeId || activeId.startsWith('q-')) return
         const fresh = await api.getQuotation(activeId)
-        set(s => s.activeId === activeId
-          ? { quotations: s.quotations.map(x => x.id === activeId ? fresh : x), unsaved: false }
-          : { quotations: s.quotations.map(x => x.id === activeId ? fresh : x) }
+        set(s =>
+          s.activeId === activeId
+            ? { quotations: s.quotations.map(x => (x.id === activeId ? fresh : x)), unsaved: false }
+            : { quotations: s.quotations.map(x => (x.id === activeId ? fresh : x)) }
         )
       },
 
-      setUF:  (uf)  => set({ uf }),
-      setIVA: (iva) => set({ iva }),
+      setUF: uf => set({ uf }),
+      setIVA: iva => set({ iva }),
+      setUSD: usd => set({ usd }),
 
       // ── Clients ───────────────────────────────────────────────
       // No hay fallback "solo local": un cliente que no llegó al backend
@@ -373,112 +528,159 @@ export const useMaestro = create<MaestroState>()(
       // cotización que lo use después fallaría al guardar con un error
       // críptico. Mejor propagar el error para que la UI lo muestre y el
       // usuario pueda corregirlo (p.ej. RUT duplicado) antes de seguir.
-      upsertClient: async (c) => {
-        const saved = c.id && !c.id.startsWith('cl-')
-          ? await api.updateClient(c)
-          : await api.createClient(c)
+      upsertClient: async c => {
+        const saved =
+          c.id && !c.id.startsWith('cl-') ? await api.updateClient(c) : await api.createClient(c)
         set(s => ({
           clients: s.clients.some(x => x.id === saved.id)
-            ? s.clients.map(x => x.id === saved.id ? saved : x)
+            ? s.clients.map(x => (x.id === saved.id ? saved : x))
             : [...s.clients, saved],
         }))
       },
 
-      deleteClient: async (id) => {
+      deleteClient: async id => {
         await api.deleteClient(id)
         set(s => ({ clients: s.clients.filter(c => c.id !== id) }))
       },
 
       // ── Quotation list ────────────────────────────────────────
-      newDraft: () => {
-        const { quotations, uf, iva } = get()
+      newDraft: (kind = 'project') => {
+        const { quotations, uf, iva, usd } = get()
         const today = new Date().toISOString().slice(0, 10)
+        const isMtc = kind === 'maintenance'
         const draft: MasterQuotation = {
-          id:          `q-${Date.now()}`,
-          correlative: generateCorrelative(quotations),
-          client_id:   '', client_name: '', contact_id: null, contact: '',
-          enduser:     '', ref:          '', date: today,
+          id: `q-${Date.now()}`,
+          correlative: isMtc ? generateMtcCorrelative(quotations) : generateCorrelative(quotations),
+          client_id: '',
+          client_name: '',
+          contact_id: null,
+          contact: '',
+          enduser: '',
+          ref: '',
+          date: today,
           valid_until: null,
-          status:      'Borrador', operState: 'Pendiente de ejecución',
-          uf, iva,
-          notes:   null,
+          status: 'Borrador',
+          operState: 'Pendiente de ejecución',
+          uf,
+          iva,
+          notes: null,
           version: 1,
           categories: DEFAULT_CATEGORIES.map(c => ({ ...c })),
           items: {
-            mo:  DEFAULT_ITEMS.mo.map(i  => ({ ...i, id: `mo-${Date.now()}`  })),
+            mo: DEFAULT_ITEMS.mo.map(i => ({ ...i, id: `mo-${Date.now()}` })),
             log: DEFAULT_ITEMS.log.map(i => ({ ...i, id: `log-${Date.now()}` })),
             mat: DEFAULT_ITEMS.mat.map(i => ({ ...i, id: `mat-${Date.now()}` })),
             rep: DEFAULT_ITEMS.rep.map(i => ({ ...i, id: `rep-${Date.now()}` })),
             ins: DEFAULT_ITEMS.ins.map(i => ({ ...i, id: `ins-${Date.now()}` })),
           },
-          scope:       [...DEFAULT_SCOPE],
-          exclusions:  [...DEFAULT_EXCLUSIONS],
-          commercial:  [...DEFAULT_COMMERCIAL],
-          total:       0, created_at: today, updated_at: today,
+          scope: isMtc ? [...DEFAULT_SCOPE_MAINTENANCE] : [...DEFAULT_SCOPE],
+          exclusions: isMtc ? [...DEFAULT_EXCLUSIONS_MAINTENANCE] : [...DEFAULT_EXCLUSIONS],
+          commercial: isMtc ? [...DEFAULT_COMMERCIAL_MAINTENANCE] : [...DEFAULT_COMMERCIAL],
+          total: 0,
+          created_at: today,
+          updated_at: today,
+          kind,
+          equipment_count: null,
+          equipment_description: isMtc ? '' : null,
+          frequency: null,
+          visits_per_year: null,
+          contract_start_date: isMtc ? today : null,
+          usd,
+          show_uf_equivalent: false,
+          show_usd_equivalent: false,
         }
-        set(s => ({ quotations: [...s.quotations, draft], activeId: draft.id, activeTab: 'base', unsaved: true }))
+        set(s => ({
+          quotations: [...s.quotations, draft],
+          activeId: draft.id,
+          activeTab: 'base',
+          unsaved: true,
+        }))
       },
 
-      loadQuote: (id) => {
+      loadQuote: id => {
         set({ activeId: id, activeTab: 'base', unsaved: false })
         // Si la cotización tiene items vacíos (vino del listado liviano), hidratar desde API
         const current = get().quotations.find(q => q.id === id)
         const hasItems = current && Object.values(current.items).some(arr => arr.length > 0)
         if (!hasItems && !id.startsWith('q-')) {
-          api.getQuotation(id).then(full => {
-            set(s => ({
-              quotations: s.quotations.map(q => q.id === id ? full : q),
-            }))
-          }).catch(() => {})
+          api
+            .getQuotation(id)
+            .then(full => {
+              set(s => ({
+                quotations: s.quotations.map(q => (q.id === id ? full : q)),
+              }))
+            })
+            .catch(() => {})
         }
       },
 
-      duplicateQuote: async (id) => {
+      duplicateQuote: async id => {
         const { quotations } = get()
         const src = quotations.find(q => q.id === id)
         if (!src) return
-        const newCorr = generateCorrelative(quotations)
-        await cloneQuoteWithCorrelative(set, src, newCorr, fresh => generateCorrelative(fresh))
+        const nextCorrelative =
+          src.kind === 'maintenance' ? generateMtcCorrelative : generateCorrelative
+        const newCorr = nextCorrelative(quotations)
+        await cloneQuoteWithCorrelative(set, src, newCorr, fresh => nextCorrelative(fresh))
       },
 
       // Copia la cotización manteniendo el mismo N° pero con sufijo -V{n},
       // para reestudiar (p.ej. el margen) sin generar un correlativo nuevo.
-      createVersion: async (id) => {
+      createVersion: async id => {
         const { quotations } = get()
         const src = quotations.find(q => q.id === id)
         if (!src) return
         const newCorr = generateVersionCorrelative(quotations, src.correlative)
-        await cloneQuoteWithCorrelative(set, src, newCorr, fresh => generateVersionCorrelative(fresh, src.correlative))
+        await cloneQuoteWithCorrelative(set, src, newCorr, fresh =>
+          generateVersionCorrelative(fresh, src.correlative)
+        )
       },
 
-      deleteQuote: async (id) => {
+      deleteQuote: async id => {
         set(s => ({
           quotations: s.quotations.filter(q => q.id !== id),
-          activeId:   s.activeId === id ? null : s.activeId,
+          activeId: s.activeId === id ? null : s.activeId,
         }))
-        try { await api.deleteQuotation(id) } catch { /* offline */ }
+        try {
+          await api.deleteQuotation(id)
+        } catch {
+          /* offline */
+        }
       },
 
       setStatus: async (id, status) => {
-        set(s => ({ quotations: s.quotations.map(q => q.id === id ? { ...q, status } : q) }))
-        try { await api.setQuotationStatus(id, status) } catch { /* offline */ }
+        set(s => ({ quotations: s.quotations.map(q => (q.id === id ? { ...q, status } : q)) }))
+        try {
+          await api.setQuotationStatus(id, status)
+        } catch {
+          /* offline */
+        }
       },
 
       setOperState: async (id, operState) => {
-        set(s => ({ quotations: s.quotations.map(q => q.id === id ? { ...q, operState } : q) }))
-        try { await api.setQuotationStatus(id, get().quotations.find(q => q.id === id)?.status ?? 'Borrador', operState) } catch { /* offline */ }
+        set(s => ({ quotations: s.quotations.map(q => (q.id === id ? { ...q, operState } : q)) }))
+        try {
+          await api.setQuotationStatus(
+            id,
+            get().quotations.find(q => q.id === id)?.status ?? 'Borrador',
+            operState
+          )
+        } catch {
+          /* offline */
+        }
       },
 
-      importQuotations: (qs) => set(s => ({
-        quotations: [...s.quotations, ...qs.filter(q => !s.quotations.some(e => e.id === q.id))],
-      })),
+      importQuotations: qs =>
+        set(s => ({
+          quotations: [...s.quotations, ...qs.filter(q => !s.quotations.some(e => e.id === q.id))],
+        })),
 
       // ── Active quotation mutations ────────────────────────────
-      importQuotation: async (payload) => {
+      importQuotation: async payload => {
         const result = await api.importQuotation(payload)
         set(s => ({
           quotations: s.quotations.some(q => q.id === result.quotation.id)
-            ? s.quotations.map(q => q.id === result.quotation.id ? result.quotation : q)
+            ? s.quotations.map(q => (q.id === result.quotation.id ? result.quotation : q))
             : [result.quotation, ...s.quotations],
           activeId: result.quotation.id,
           activeTab: 'base',
@@ -488,15 +690,18 @@ export const useMaestro = create<MaestroState>()(
         return result
       },
 
-      patchActive: (fields) => set(s => {
-        if (!s.activeId) return {}
-        return {
-          quotations: s.quotations.map(q =>
-            q.id === s.activeId ? { ...q, ...fields, updated_at: new Date().toISOString().slice(0, 10) } : q
-          ),
-          unsaved: true,
-        }
-      }),
+      patchActive: fields =>
+        set(s => {
+          if (!s.activeId) return {}
+          return {
+            quotations: s.quotations.map(q =>
+              q.id === s.activeId
+                ? { ...q, ...fields, updated_at: new Date().toISOString().slice(0, 10) }
+                : q
+            ),
+            unsaved: true,
+          }
+        }),
 
       saveActive: async () => {
         const { activeId, quotations } = get()
@@ -506,69 +711,96 @@ export const useMaestro = create<MaestroState>()(
         if (!q.client_id) {
           throw new Error('Selecciona un cliente antes de guardar la cotización')
         }
-        const totals  = calcTotals(q)
-        const updated = { ...q, total: totals.venta, updated_at: new Date().toISOString().slice(0, 10) }
+        const totals = calcTotals(q)
+        const updated = {
+          ...q,
+          total: totals.venta,
+          updated_at: new Date().toISOString().slice(0, 10),
+        }
         // Guarda el cálculo local de inmediato, pero "unsaved"/"activeId" solo
         // se tocan tras confirmar éxito, y solo si el usuario sigue en esta
         // misma cotización — si mientras tanto abrió otra, un guardado tardío
         // de esta no debe pisar el estado de la que está viendo ahora.
         set(s => ({
-          quotations: s.quotations.map(x => x.id === activeId ? updated : x),
+          quotations: s.quotations.map(x => (x.id === activeId ? updated : x)),
         }))
         const isLocal = activeId.startsWith('q-')
         if (isLocal) {
           const saved = await createQuotationWithRetry(set, activeId, updated)
-          set(s => s.activeId === activeId
-            ? { quotations: s.quotations.map(x => x.id === activeId ? saved : x), activeId: saved.id, unsaved: false }
-            : { quotations: s.quotations.map(x => x.id === activeId ? saved : x) }
+          set(s =>
+            s.activeId === activeId
+              ? {
+                  quotations: s.quotations.map(x => (x.id === activeId ? saved : x)),
+                  activeId: saved.id,
+                  unsaved: false,
+                }
+              : { quotations: s.quotations.map(x => (x.id === activeId ? saved : x)) }
           )
         } else {
           const saved = await api.updateQuotation(updated)
-          set(s => s.activeId === activeId
-            ? { quotations: s.quotations.map(x => x.id === activeId ? saved : x), unsaved: false }
-            : { quotations: s.quotations.map(x => x.id === activeId ? saved : x) }
+          set(s =>
+            s.activeId === activeId
+              ? {
+                  quotations: s.quotations.map(x => (x.id === activeId ? saved : x)),
+                  unsaved: false,
+                }
+              : { quotations: s.quotations.map(x => (x.id === activeId ? saved : x)) }
           )
         }
       },
 
       // Items
-      addItem: (catId) => set(s => {
-        if (!s.activeId) return {}
-        const newItem: CostItem = { id: `${catId}-${Date.now()}`, desc: '', unidad: 'Und', cant: 0, unit: 0, days: 1 }
-        return {
-          quotations: s.quotations.map(q =>
-            q.id !== s.activeId ? q
-              : { ...q, items: { ...q.items, [catId]: [...(q.items[catId] || []), newItem] } }
-          ),
-          unsaved: true,
-        }
-      }),
+      addItem: catId =>
+        set(s => {
+          if (!s.activeId) return {}
+          const newItem: CostItem = {
+            id: `${catId}-${Date.now()}`,
+            desc: '',
+            unidad: 'Und',
+            cant: 0,
+            unit: 0,
+            days: 1,
+          }
+          return {
+            quotations: s.quotations.map(q =>
+              q.id !== s.activeId
+                ? q
+                : { ...q, items: { ...q.items, [catId]: [...(q.items[catId] || []), newItem] } }
+            ),
+            unsaved: true,
+          }
+        }),
 
-      removeItem: (catId, idx) => set(s => {
-        if (!s.activeId) return {}
-        return {
-          quotations: s.quotations.map(q => {
-            if (q.id !== s.activeId) return q
-            const list = [...(q.items[catId] || [])]
-            list.splice(idx, 1)
-            return { ...q, items: { ...q.items, [catId]: list } }
-          }),
-          unsaved: true,
-        }
-      }),
+      removeItem: (catId, idx) =>
+        set(s => {
+          if (!s.activeId) return {}
+          return {
+            quotations: s.quotations.map(q => {
+              if (q.id !== s.activeId) return q
+              const list = [...(q.items[catId] || [])]
+              list.splice(idx, 1)
+              return { ...q, items: { ...q.items, [catId]: list } }
+            }),
+            unsaved: true,
+          }
+        }),
 
-      patchItem: (catId, idx, field, value) => set(s => {
-        if (!s.activeId) return {}
-        return {
-          quotations: s.quotations.map(q => {
-            if (q.id !== s.activeId) return q
-            const list = [...(q.items[catId] || [])]
-            list[idx] = { ...list[idx], [field]: ['cant', 'unit', 'days'].includes(field) ? (parseFloat(value) || 0) : value }
-            return { ...q, items: { ...q.items, [catId]: list } }
-          }),
-          unsaved: true,
-        }
-      }),
+      patchItem: (catId, idx, field, value) =>
+        set(s => {
+          if (!s.activeId) return {}
+          return {
+            quotations: s.quotations.map(q => {
+              if (q.id !== s.activeId) return q
+              const list = [...(q.items[catId] || [])]
+              list[idx] = {
+                ...list[idx],
+                [field]: ['cant', 'unit', 'days'].includes(field) ? parseFloat(value) || 0 : value,
+              }
+              return { ...q, items: { ...q.items, [catId]: list } }
+            }),
+            unsaved: true,
+          }
+        }),
 
       adjustCant: (catId, idx, delta) => {
         const q = get().quotations.find(x => x.id === get().activeId)
@@ -585,94 +817,114 @@ export const useMaestro = create<MaestroState>()(
       },
 
       // Category
-      setCatMargin: (catId, margin) => set(s => {
-        if (!s.activeId) return {}
-        return {
-          quotations: s.quotations.map(q =>
-            q.id !== s.activeId ? q
-              : { ...q, categories: q.categories.map(c => c.id === catId ? { ...c, margin } : c) }
-          ),
-          unsaved: true,
-        }
-      }),
+      setCatMargin: (catId, margin) =>
+        set(s => {
+          if (!s.activeId) return {}
+          return {
+            quotations: s.quotations.map(q =>
+              q.id !== s.activeId
+                ? q
+                : {
+                    ...q,
+                    categories: q.categories.map(c => (c.id === catId ? { ...c, margin } : c)),
+                  }
+            ),
+            unsaved: true,
+          }
+        }),
 
-      toggleCat: (catId, field) => set(s => {
-        if (!s.activeId) return {}
-        return {
-          quotations: s.quotations.map(q =>
-            q.id !== s.activeId ? q
-              : { ...q, categories: q.categories.map(c => c.id === catId ? { ...c, [field]: !c[field] } : c) }
-          ),
-        }
-      }),
+      toggleCat: (catId, field) =>
+        set(s => {
+          if (!s.activeId) return {}
+          return {
+            quotations: s.quotations.map(q =>
+              q.id !== s.activeId
+                ? q
+                : {
+                    ...q,
+                    categories: q.categories.map(c =>
+                      c.id === catId ? { ...c, [field]: !c[field] } : c
+                    ),
+                  }
+            ),
+          }
+        }),
 
-      setCatLabel: (catId, label) => set(s => {
-        if (!s.activeId) return {}
-        return {
-          quotations: s.quotations.map(q =>
-            q.id !== s.activeId ? q
-              : { ...q, categories: q.categories.map(c => c.id === catId ? { ...c, label } : c) }
-          ),
-          unsaved: true,
-        }
-      }),
+      setCatLabel: (catId, label) =>
+        set(s => {
+          if (!s.activeId) return {}
+          return {
+            quotations: s.quotations.map(q =>
+              q.id !== s.activeId
+                ? q
+                : {
+                    ...q,
+                    categories: q.categories.map(c => (c.id === catId ? { ...c, label } : c)),
+                  }
+            ),
+            unsaved: true,
+          }
+        }),
 
       // Lists
-      addListItem: (key) => set(s => {
-        if (!s.activeId) return {}
-        return {
-          quotations: s.quotations.map(q =>
-            q.id !== s.activeId ? q
-              : { ...q, [key]: [...(q[key] as string[]), '...'] }
-          ),
-          unsaved: true,
-        }
-      }),
+      addListItem: key =>
+        set(s => {
+          if (!s.activeId) return {}
+          return {
+            quotations: s.quotations.map(q =>
+              q.id !== s.activeId ? q : { ...q, [key]: [...(q[key] as string[]), '...'] }
+            ),
+            unsaved: true,
+          }
+        }),
 
-      insertListItemAfter: (key, idx) => set(s => {
-        if (!s.activeId) return {}
-        return {
-          quotations: s.quotations.map(q => {
-            if (q.id !== s.activeId) return q
-            const arr = [...(q[key] as string[])]
-            arr.splice(idx + 1, 0, '')
-            return { ...q, [key]: arr }
-          }),
-          unsaved: true,
-        }
-      }),
+      insertListItemAfter: (key, idx) =>
+        set(s => {
+          if (!s.activeId) return {}
+          return {
+            quotations: s.quotations.map(q => {
+              if (q.id !== s.activeId) return q
+              const arr = [...(q[key] as string[])]
+              arr.splice(idx + 1, 0, '')
+              return { ...q, [key]: arr }
+            }),
+            unsaved: true,
+          }
+        }),
 
-      removeListItem: (key, idx) => set(s => {
-        if (!s.activeId) return {}
-        return {
-          quotations: s.quotations.map(q => {
-            if (q.id !== s.activeId) return q
-            const arr = [...(q[key] as string[])]
-            arr.splice(idx, 1)
-            return { ...q, [key]: arr }
-          }),
-          unsaved: true,
-        }
-      }),
+      removeListItem: (key, idx) =>
+        set(s => {
+          if (!s.activeId) return {}
+          return {
+            quotations: s.quotations.map(q => {
+              if (q.id !== s.activeId) return q
+              const arr = [...(q[key] as string[])]
+              arr.splice(idx, 1)
+              return { ...q, [key]: arr }
+            }),
+            unsaved: true,
+          }
+        }),
 
-      patchListItem: (key, idx, value) => set(s => {
-        if (!s.activeId) return {}
-        return {
-          quotations: s.quotations.map(q => {
-            if (q.id !== s.activeId) return q
-            const arr = [...(q[key] as string[])]
-            arr[idx] = value
-            return { ...q, [key]: arr }
-          }),
-          unsaved: true,
-        }
-      }),
+      patchListItem: (key, idx, value) =>
+        set(s => {
+          if (!s.activeId) return {}
+          return {
+            quotations: s.quotations.map(q => {
+              if (q.id !== s.activeId) return q
+              const arr = [...(q[key] as string[])]
+              arr[idx] = value
+              return { ...q, [key]: arr }
+            }),
+            unsaved: true,
+          }
+        }),
 
       // Catalogs — sincroniza con API en background
       upsertCatalogItem: (catId, idx, field, value) => {
         set(s => {
           const list = [...s.catalogs[catId]]
-          list[idx] = { ...list[idx], [field]: field === 'price' ? (parseFloat(value) || 0) : value }
+          list[idx] = { ...list[idx], [field]: field === 'price' ? parseFloat(value) || 0 : value }
           return { catalogs: { ...s.catalogs, [catId]: list }, catalogDirty: true }
         })
       },
@@ -680,7 +932,10 @@ export const useMaestro = create<MaestroState>()(
       addCatalogItem: (catId, item) => {
         const tempId = `tmp-${Date.now()}`
         const newItem: CatalogItemUI = { ...item, id: tempId }
-        set(s => ({ catalogs: { ...s.catalogs, [catId]: [...s.catalogs[catId], newItem] }, catalogDirty: true }))
+        set(s => ({
+          catalogs: { ...s.catalogs, [catId]: [...s.catalogs[catId], newItem] },
+          catalogDirty: true,
+        }))
       },
 
       deleteCatalogItem: (catId, idx) => {
@@ -707,7 +962,7 @@ export const useMaestro = create<MaestroState>()(
               set(s => ({
                 catalogs: {
                   ...s.catalogs,
-                  [catId]: s.catalogs[catId].map(i => i.id === tempId ? saved : i),
+                  [catId]: s.catalogs[catId].map(i => (i.id === tempId ? saved : i)),
                 },
               }))
             } else {
@@ -719,18 +974,19 @@ export const useMaestro = create<MaestroState>()(
       },
 
       // UI
-      setTab:    (t) => set({ activeTab: t }),
-      markSaved: ()  => set({ unsaved: false }),
+      setTab: t => set({ activeTab: t }),
+      markSaved: () => set({ unsaved: false }),
     }),
     {
       name: 'maestro-comercial-v2',
-      partialize: (s) => ({
-        uf:         s.uf,
-        iva:        s.iva,
-        catalogs:   s.catalogs,
-        clients:    s.clients,
+      partialize: s => ({
+        uf: s.uf,
+        iva: s.iva,
+        usd: s.usd,
+        catalogs: s.catalogs,
+        clients: s.clients,
         quotations: s.quotations,
-        activeId:   s.activeId,
+        activeId: s.activeId,
       }),
     }
   )

@@ -7,6 +7,7 @@
 -- ── Configuración global ──────────────────────────────────────
 INSERT INTO app_config (key, value) VALUES
   ('uf_value',    '39500'),
+  ('dolar_value', '950'),
   ('iva_pct',     '19'),
   ('correlative_prefix', 'SYM'),
   ('company_name', 'NBYB Ingeniería HVAC'),

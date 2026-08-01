@@ -1,38 +1,56 @@
-import { calcTotals, fmtCLP } from '../stores/maestro-store'
+import {
+  calcTotals,
+  fmtCLP,
+  fmtDecimal,
+  VISITS_PER_YEAR,
+  FREQUENCY_LABELS,
+} from '../stores/maestro-store'
 import type { MasterClient, MasterQuotation } from '../types'
 import { buildQuotationValuationRows } from './quotationRows'
 
 const fmtDateLong = (d: string) =>
-  new Date(d + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
+  new Date(d + 'T12:00:00').toLocaleDateString('es-CL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 
 const esc = (s: string) =>
-  String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 
 export function downloadHtml(params: {
-  q:               MasterQuotation
-  client:          MasterClient | undefined
+  q: MasterQuotation
+  client: MasterClient | undefined
   sessionUserName: string
   expandedCategoryIds?: Iterable<string>
 }): void {
   const { q, client, sessionUserName, expandedCategoryIds } = params
+  const isMtc = q.kind === 'maintenance'
   const totals = calcTotals(q)
-  const iva    = totals.venta * (q.iva / 100)
-  const conIva = totals.venta + iva
-  const enUF   = q.uf > 0 ? totals.venta / q.uf : 0
 
-  const valRows = buildQuotationValuationRows(q, expandedCategoryIds).map(row => {
-    const detailRows = row.details.map(({ item, meta }) => `        <tr class="det">
+  const valRows = buildQuotationValuationRows(q, expandedCategoryIds)
+    .map(row => {
+      const detailRows = row.details
+        .map(
+          ({ item, meta }) => `        <tr class="det">
           <td class="cn det-indent"></td>
           <td class="det-desc"><span class="det-bullet">&middot;</span><span>${esc(item.desc)}</span><span class="det-meta">${esc(meta)}</span></td>
           <td></td>
-        </tr>`).join('\n')
+        </tr>`
+        )
+        .join('\n')
 
-    return `        <tr>
+      return `        <tr>
           <td class="cn">${row.rowNumber}</td>
           <td>${esc(row.cat.label)}</td>
           <td class="cm">${fmtCLP.format(row.venta)}</td>
         </tr>${detailRows ? `\n${detailRows}` : ''}`
-  }).join('\n')
+    })
+    .join('\n')
 
   const listRows = (items: string[]) =>
     items.map((item, i) => `      <li><span class="n">${i + 1}.</span>${esc(item)}</li>`).join('\n')
@@ -60,6 +78,7 @@ export function downloadHtml(params: {
     /* sections */
     .sec{margin-bottom:22px;break-inside:avoid-page;page-break-inside:avoid}
     .st{font-size:7.5pt;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#1e3a8a;border-left:3px solid #1e3a8a;padding-left:9px;margin-bottom:12px}
+    .gt2{font-size:7.5pt;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#1e3a8a;margin:14px 0 8px}
     /* lists */
     ol.dl{list-style:none;padding:0;margin:0}
     ol.dl li{display:flex;gap:7px;align-items:flex-start;margin-bottom:6px;font-size:10pt;color:#1e293b;line-height:1.55;break-inside:avoid;page-break-inside:avoid}
@@ -95,17 +114,136 @@ export function downloadHtml(params: {
     }
   `
 
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Cotización ${esc(q.correlative)}</title>
-<style>${css}</style>
-</head>
-<body>
-<div class="page">
+  const clientBlock = `  <div class="sg">
+    <div class="gt">Datos del Cliente</div>
+    <table class="ct">
+      <tbody>
+        <tr><th>Empresa</th><td>${esc(q.client_name || '—')}</td><th>RUT</th><td>${esc(client?.rut || '—')}</td></tr>
+        <tr><th>Contacto</th><td>${esc(q.contact || '—')}</td><th>Cargo</th><td>${esc(client?.cargo || '—')}</td></tr>
+        <tr><th>Referencia</th><td colspan="3">${esc(q.ref || '—')}</td></tr>
+        ${q.enduser ? `<tr><th>Usuario Final</th><td colspan="3">${esc(q.enduser)}</td></tr>` : ''}
+        <tr class="re"><th>Elaborado por</th><td colspan="3">${esc(sessionUserName)}</td></tr>
+      </tbody>
+    </table>
+  </div>`
 
+  const scopeBlock = (title: string) => `  <div class="sec">
+    <div class="st">${title}</div>
+    <ol class="dl">
+${listRows(q.scope)}
+    </ol>
+  </div>`
+
+  const footerBlock = (pointNumber: string) => `  <div class="ft">
+    <div class="ft-t">
+      <p>Esta cotización es válida según las condiciones indicadas en el punto ${pointNumber}.</p>
+      <p>Documento: ${esc(q.correlative)} &nbsp;·&nbsp; Ingeniería y Servicios Bravo SPA</p>
+    </div>
+    <div class="ft-s">
+      <div class="ft-sl"></div>
+      <p>Firma y Timbre</p>
+      <p>Representante Autorizado</p>
+    </div>
+  </div>`
+
+  let body: string
+
+  if (isMtc) {
+    const ivaVisita = totals.venta * (q.iva / 100)
+    const totalVisitaConIva = totals.venta + ivaVisita
+    const visits = q.visits_per_year ?? (q.frequency ? VISITS_PER_YEAR[q.frequency] : 0)
+    const netoAnual = totals.venta * visits
+    const ivaAnual = netoAnual * (q.iva / 100)
+    const totalAnualConIva = netoAnual + ivaAnual
+    const enUF = q.uf > 0 ? totalAnualConIva / q.uf : 0
+    const enUSD = q.usd > 0 ? totalAnualConIva / q.usd : 0
+
+    body = `
+  <div class="lh">
+    <div class="lh-l">
+      <div class="co">N&beta;yB</div>
+      <div class="cs"><strong>Ingeniería y Servicios Bravo SPA</strong></div>
+      <div class="cs">RUT: 77.175.319-1 &nbsp;·&nbsp; Tel. +56 (9) 90943080</div>
+    </div>
+    <div class="lh-r">
+      <div class="dt">Cotización de Mantención</div>
+      <div class="dn">${esc(q.correlative)}</div>
+      <div class="dd">Fecha: ${fmtDateLong(q.date)}</div>
+    </div>
+  </div>
+  <hr class="rule">
+
+${clientBlock}
+
+${scopeBlock('I. Alcance del Servicio de Mantención')}
+
+  <div class="sec">
+    <div class="st">II. Equipos Cubiertos</div>
+    <table class="ct">
+      <tbody>
+        <tr><th>N° de equipos</th><td colspan="3">${q.equipment_count ?? '—'}</td></tr>
+        <tr><th>Descripción</th><td colspan="3">${esc(q.equipment_description || '—')}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec">
+    <div class="st">III. Plan de Visitas</div>
+    <table class="ct">
+      <tbody>
+        <tr><th>Frecuencia</th><td>${q.frequency ? FREQUENCY_LABELS[q.frequency] : '—'}</td><th>Visitas/año</th><td>${visits || '—'}</td></tr>
+        <tr><th>Vigencia</th><td colspan="3">${q.contract_start_date ? `Desde ${fmtDateLong(q.contract_start_date)}` : 'A definir'} · indefinida, con renovación automática salvo aviso de término</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec">
+    <div class="st">IV. Valorización</div>
+
+    <div class="gt2">Valor por visita</div>
+    <table class="vt">
+      <thead><tr><th class="cn">N°</th><th>Descripción</th><th class="cm">Valor Neto CLP</th></tr></thead>
+      <tbody>
+${valRows}
+        <tr class="sub"><td colspan="2" style="text-align:right">Subtotal Neto por Visita</td><td class="cm">${fmtCLP.format(totals.venta)}</td></tr>
+        <tr class="riv"><td colspan="2" style="text-align:right">IVA (${q.iva}%)</td><td class="cm">${fmtCLP.format(ivaVisita)}</td></tr>
+        <tr class="tot"><td colspan="2" style="text-align:right">TOTAL POR VISITA CON IVA</td><td class="cm">${fmtCLP.format(totalVisitaConIva)}</td></tr>
+      </tbody>
+    </table>
+
+    <div class="gt2">Valor anual estimado (${visits || 0} visitas/año)</div>
+    <table class="vt">
+      <tbody>
+        <tr class="sub"><td colspan="2" style="text-align:right">Subtotal Neto Anual</td><td class="cm">${fmtCLP.format(netoAnual)}</td></tr>
+        <tr class="riv"><td colspan="2" style="text-align:right">IVA (${q.iva}%)</td><td class="cm">${fmtCLP.format(ivaAnual)}</td></tr>
+        <tr class="tot"><td colspan="2" style="text-align:right">TOTAL ANUAL CON IVA</td><td class="cm">${fmtCLP.format(totalAnualConIva)}</td></tr>
+        ${q.show_uf_equivalent && q.uf > 0 ? `<tr class="ruf"><td colspan="2" style="text-align:right">Equivalente en UF (ref. ${fmtCLP.format(q.uf)}/UF)</td><td class="cm">${enUF.toFixed(2)} UF</td></tr>` : ''}
+        ${q.show_usd_equivalent && q.usd > 0 ? `<tr class="ruf"><td colspan="2" style="text-align:right">Equivalente en USD (ref. ${fmtCLP.format(q.usd)}/USD)</td><td class="cm">US$ ${fmtDecimal.format(enUSD)}</td></tr>` : ''}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec">
+    <div class="st">V. Exclusiones</div>
+    <ol class="dl">
+${listRows(q.exclusions)}
+    </ol>
+  </div>
+
+  <div class="sec">
+    <div class="st">VI. Condiciones Comerciales</div>
+    <ol class="dl">
+${listRows(q.commercial)}
+    </ol>
+  </div>
+
+${footerBlock('VI')}`
+  } else {
+    const iva = totals.venta * (q.iva / 100)
+    const conIva = totals.venta + iva
+    const enUF = q.uf > 0 ? totals.venta / q.uf : 0
+
+    body = `
   <div class="lh">
     <div class="lh-l">
       <div class="co">N&beta;yB</div>
@@ -120,25 +258,9 @@ export function downloadHtml(params: {
   </div>
   <hr class="rule">
 
-  <div class="sg">
-    <div class="gt">Datos del Cliente</div>
-    <table class="ct">
-      <tbody>
-        <tr><th>Empresa</th><td>${esc(q.client_name || '—')}</td><th>RUT</th><td>${esc(client?.rut || '—')}</td></tr>
-        <tr><th>Contacto</th><td>${esc(q.contact || '—')}</td><th>Cargo</th><td>${esc(client?.cargo || '—')}</td></tr>
-        <tr><th>Referencia</th><td colspan="3">${esc(q.ref || '—')}</td></tr>
-        ${q.enduser ? `<tr><th>Usuario Final</th><td colspan="3">${esc(q.enduser)}</td></tr>` : ''}
-        <tr class="re"><th>Elaborado por</th><td colspan="3">${esc(sessionUserName)}</td></tr>
-      </tbody>
-    </table>
-  </div>
+${clientBlock}
 
-  <div class="sec">
-    <div class="st">I. Alcance de los Trabajos</div>
-    <ol class="dl">
-${listRows(q.scope)}
-    </ol>
-  </div>
+${scopeBlock('I. Alcance de los Trabajos')}
 
   <div class="sec">
     <div class="st">II. Valorización de Trabajos</div>
@@ -168,27 +290,29 @@ ${listRows(q.commercial)}
     </ol>
   </div>
 
-  <div class="ft">
-    <div class="ft-t">
-      <p>Esta cotización es válida según las condiciones indicadas en el punto IV.</p>
-      <p>Documento: ${esc(q.correlative)} &nbsp;·&nbsp; Ingeniería y Servicios Bravo SPA</p>
-    </div>
-    <div class="ft-s">
-      <div class="ft-sl"></div>
-      <p>Firma y Timbre</p>
-      <p>Representante Autorizado</p>
-    </div>
-  </div>
+${footerBlock('IV')}`
+  }
 
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${isMtc ? 'Mantención' : 'Cotización'} ${esc(q.correlative)}</title>
+<style>${css}</style>
+</head>
+<body>
+<div class="page">
+${body}
 </div>
 </body>
 </html>`
 
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
-  a.download = `Cotizacion-${q.correlative}-${q.date}.html`
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${isMtc ? 'Mantencion' : 'Cotizacion'}-${q.correlative}-${q.date}.html`
   a.click()
   URL.revokeObjectURL(url)
 }

@@ -5,6 +5,8 @@ const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins'] as const
 const STATUSES = ['Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada'] as const
 const OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada'] as const
 const TERM_TYPES = ['scope', 'exclusion', 'commercial'] as const
+const KINDS = ['project', 'maintenance'] as const
+const FREQUENCIES = ['mensual', 'trimestral', 'semestral', 'anual'] as const
 
 const categoryInputSchema = z.object({
   category_id: z.enum(CATEGORY_IDS),
@@ -49,6 +51,17 @@ const quotationBodyBase = {
   categories: z.array(categoryInputSchema).max(10).nullish(),
   line_items: z.array(lineItemInputSchema).max(500).nullish(),
   terms: z.array(termInputSchema).max(200).nullish(),
+  // Mantención (kind='maintenance'): contratos de servicio recurrente.
+  // Todo nullish porque no aplica a kind='project'.
+  kind: z.enum(KINDS).nullish(),
+  equipment_count: z.coerce.number().int().min(0).max(9999).nullish(),
+  equipment_description: optionalStr(2000),
+  frequency: z.enum(FREQUENCIES).nullish(),
+  visits_per_year: z.coerce.number().int().min(0).max(365).nullish(),
+  contract_start_date: isoDateStr.nullish(),
+  show_uf_equivalent: z.boolean().nullish(),
+  show_usd_equivalent: z.boolean().nullish(),
+  usd_value: money.nullish(),
 }
 
 export const quotationCreateSchema = z.object({

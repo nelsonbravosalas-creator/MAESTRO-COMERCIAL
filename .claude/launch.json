@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "dev"],
       "cwd": "frontend",
       "port": 5173
+    },
+    {
+      "name": "backend-json",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:json"],
+      "cwd": "backend",
+      "port": 3000
     }
   ]
 }

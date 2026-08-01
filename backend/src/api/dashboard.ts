@@ -9,19 +9,13 @@ export const createDashboardRouter = (pool: Pool) => {
 
   router.get('/kpis', async (req: AuthRequest, res) => {
     try {
-      const [
-        clients,
-        openQuotes,
-        projects,
-        invoiced,
-        costs,
-        pipeline,
-      ] = await Promise.all([
+      const [clients, openQuotes, projects, invoiced, costs, pipeline] = await Promise.all([
         pool.query('SELECT COUNT(*)::int AS count FROM clients WHERE deleted_at IS NULL'),
         pool.query(
           `SELECT COUNT(*)::int AS count
              FROM quotations
             WHERE status IN ('Emitida', 'Enviada')
+              AND kind != 'maintenance'
               AND deleted_at IS NULL`
         ),
         pool.query(
@@ -45,15 +39,14 @@ export const createDashboardRouter = (pool: Pool) => {
              FROM v_quotation_totals v
              JOIN quotations q ON q.id = v.quotation_id
             WHERE q.status IN ('Emitida', 'Enviada')
+              AND q.kind != 'maintenance'
               AND q.deleted_at IS NULL`
         ),
       ])
 
       const totalFacturado = Number(invoiced.rows[0].total) || 0
       const totalGasto = Number(costs.rows[0].total) || 0
-      const margen = totalFacturado > 0
-        ? ((totalFacturado - totalGasto) / totalFacturado) * 100
-        : 0
+      const margen = totalFacturado > 0 ? ((totalFacturado - totalGasto) / totalFacturado) * 100 : 0
 
       logger.info('Dashboard KPIs retrieved', { userId: req.user?.id })
 

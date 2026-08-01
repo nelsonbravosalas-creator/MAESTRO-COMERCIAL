@@ -9,6 +9,7 @@ import { api } from './api/api'
 // docx) queda fuera del chunk inicial. Solo se descarga cuando el usuario
 // realmente navega ahí, no en la carga de /login.
 const Quotations = lazy(() => import('./pages/Quotations'))
+const Maintenance = lazy(() => import('./pages/Maintenance'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Clients = lazy(() => import('./pages/Clients'))
 const Catalogo = lazy(() => import('./pages/Catalogo'))
@@ -136,7 +137,14 @@ function NavSyncButton() {
 }
 
 type Page =
-  'dashboard' | 'quotations' | 'clients' | 'catalogo' | 'projects' | 'logistica' | 'invoices'
+  | 'dashboard'
+  | 'quotations'
+  | 'maintenance'
+  | 'clients'
+  | 'catalogo'
+  | 'projects'
+  | 'logistica'
+  | 'invoices'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -192,6 +200,9 @@ function App() {
           <button type="button" className={cls('quotations')} onClick={() => nav('quotations')}>
             Cotizaciones
           </button>
+          <button type="button" className={cls('maintenance')} onClick={() => nav('maintenance')}>
+            Mantenciones
+          </button>
           <button type="button" className={cls('clients')} onClick={() => nav('clients')}>
             Clientes
           </button>
@@ -225,7 +236,10 @@ function App() {
       <main className="app-main authenticated">
         <Suspense fallback={<PageLoading />}>
           {currentPage === 'dashboard' && <Dashboard />}
-          {currentPage === 'quotations' && <Quotations />}
+          {currentPage === 'quotations' && (
+            <Quotations onNavigateToMaintenance={() => nav('maintenance')} />
+          )}
+          {currentPage === 'maintenance' && <Maintenance />}
           {currentPage === 'clients' && <Clients />}
           {currentPage === 'catalogo' && <Catalogo />}
           {currentPage === 'projects' && <Projects />}

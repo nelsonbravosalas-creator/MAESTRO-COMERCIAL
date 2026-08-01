@@ -1,7 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import '../styles/Quotations.css'
 import {
-  useMaestro, useActiveQuotation, calcCat, calcTotals, fmtCLP, fmtDecimal,
+  useMaestro,
+  useActiveQuotation,
+  calcCat,
+  calcTotals,
+  fmtCLP,
+  fmtDecimal,
 } from '../stores/maestro-store'
 import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
@@ -20,7 +25,7 @@ import { CITIES, getDistance } from '../data/cityDistances'
 // guardar de este archivo (header, Base, Costeo, Cotización) para que todos
 // avisen lo mismo: conflicto de versión (409, ofrece recargar) o cualquier
 // otro error (red, validación, sesión) con su mensaje real.
-async function reportSaveError(err: unknown, reloadActive: () => Promise<void>) {
+export async function reportSaveError(err: unknown, reloadActive: () => Promise<void>) {
   if (err instanceof ApiError && err.status === 409) {
     const shouldReload = window.confirm(
       `${err.message}\n\n¿Recargar la versión del servidor? Perderás tus cambios locales no guardados.`
@@ -28,21 +33,28 @@ async function reportSaveError(err: unknown, reloadActive: () => Promise<void>) 
     if (shouldReload) await reloadActive().catch(() => {})
     return
   }
-  window.alert(err instanceof Error ? err.message : 'No se pudo guardar la cotización. Verifica tu conexión.')
+  window.alert(
+    err instanceof Error ? err.message : 'No se pudo guardar la cotización. Verifica tu conexión.'
+  )
 }
 
-const STATUS_META: Record<QuoteStatus, { label: string; cls: string }> = {
-  Borrador:    { label: 'Borrador',    cls: 'st-borrador'    },
-  Emitida:     { label: 'Emitida',     cls: 'st-emitida'     },
-  Enviada:     { label: 'Enviada',     cls: 'st-enviada'     },
-  Adjudicada:  { label: 'Adjudicada', cls: 'st-adjudicada'  },
-  Perdida:     { label: 'Perdida',    cls: 'st-perdida'     },
-  Anulada:     { label: 'Anulada',    cls: 'st-anulada'     },
+export const STATUS_META: Record<QuoteStatus, { label: string; cls: string }> = {
+  Borrador: { label: 'Borrador', cls: 'st-borrador' },
+  Emitida: { label: 'Emitida', cls: 'st-emitida' },
+  Enviada: { label: 'Enviada', cls: 'st-enviada' },
+  Adjudicada: { label: 'Adjudicada', cls: 'st-adjudicada' },
+  Perdida: { label: 'Perdida', cls: 'st-perdida' },
+  Anulada: { label: 'Anulada', cls: 'st-anulada' },
 }
 
-const OP_STATES: OperState[] = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
+export const OP_STATES: OperState[] = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
 
-const fmtDate = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+export const fmtDate = (d: string) =>
+  new Date(d + 'T12:00:00').toLocaleDateString('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 const IMPORT_CATEGORY_IDS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
 
 type ImportPreview = {
@@ -65,7 +77,10 @@ const buildImportPreview = (payload: any, fileName: string): ImportPreview => {
   for (const line of payload?.lineas ?? []) {
     const categoryId = line?.category_id as CategoryId
     if (IMPORT_CATEGORY_IDS.includes(categoryId)) counts[categoryId] += 1
-    const costo = (Number(line?.cantidad) || 0) * Math.max(1, Number(line?.dias) || 1) * (Number(line?.precio_unitario) || 0)
+    const costo =
+      (Number(line?.cantidad) || 0) *
+      Math.max(1, Number(line?.dias) || 1) *
+      (Number(line?.precio_unitario) || 0)
     const margin = Math.max(0, Math.min(99.9, margins.get(categoryId) ?? 30))
     totalCosto += costo
     totalVenta += margin >= 99.9 ? costo : costo / (1 - margin / 100)
@@ -76,11 +91,31 @@ const buildImportPreview = (payload: any, fileName: string): ImportPreview => {
 
 // ── Master List ────────────────────────────────────────────────────────────────
 
-function QuotationsList({ onEdit }: { onEdit: () => void }) {
+function QuotationsList({
+  onEdit,
+  onNavigateToMaintenance,
+}: {
+  onEdit: () => void
+  onNavigateToMaintenance?: () => void
+}) {
   const {
-    quotations, newDraft, loadQuote, duplicateQuote, createVersion, deleteQuote, importQuotation,
-    setStatus, setOperState, activeId,
+    quotations: allQuotations,
+    newDraft,
+    loadQuote,
+    duplicateQuote,
+    createVersion,
+    deleteQuote,
+    importQuotation,
+    setStatus,
+    setOperState,
+    activeId,
   } = useMaestro()
+  // Los contratos de mantención viven en su propia sección ("Mantenciones"),
+  // no en este listado de cotizaciones de proyecto.
+  const quotations = useMemo(
+    () => allQuotations.filter(q => q.kind !== 'maintenance'),
+    [allQuotations]
+  )
   const { canDeleteQuotation, canChangeQuotationStatus } = usePermissions()
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
@@ -105,15 +140,23 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
       .filter(x => {
         if (filterStatus !== 'all' && x.status !== filterStatus) return false
         if (!q) return true
-        return x.correlative.toLowerCase().includes(q)
-            || x.client_name.toLowerCase().includes(q)
-            || x.ref?.toLowerCase().includes(q)
+        return (
+          x.correlative.toLowerCase().includes(q) ||
+          x.client_name.toLowerCase().includes(q) ||
+          x.ref?.toLowerCase().includes(q)
+        )
       })
       .sort((a, b) => b.correlative.localeCompare(a.correlative))
   }, [quotations, search, filterStatus])
 
-  const handleNew = () => { newDraft(); onEdit() }
-  const handleEdit = (id: string) => { loadQuote(id); onEdit() }
+  const handleNew = () => {
+    newDraft('project')
+    onEdit()
+  }
+  const handleEdit = (id: string) => {
+    loadQuote(id)
+    onEdit()
+  }
 
   // duplicateQuote/createVersion ya no crean una copia local "zombie" si el
   // backend rechaza el correlativo — si fallan, no hay nada que editar.
@@ -135,12 +178,17 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
     }
   }
 
-  const handleDelete = (id: string) => { deleteQuote(id); setConfirm(null) }
+  const handleDelete = (id: string) => {
+    deleteQuote(id)
+    setConfirm(null)
+  }
 
   const handleExport = () => {
     const blob = new Blob([JSON.stringify(quotations, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
-    a.download = `maestro-cotizaciones-${new Date().toISOString().slice(0,10)}.json`; a.click()
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `maestro-cotizaciones-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
   }
 
   const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,7 +235,9 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
       <div className="q-list-toolbar">
         <div className="q-toolbar-left">
           <h2 className="q-title">Cotizaciones</h2>
-          <span className="q-count">{filtered.length} / {quotations.length}</span>
+          <span className="q-count">
+            {filtered.length} / {quotations.length}
+          </span>
         </div>
         <div className="q-toolbar-right">
           <input
@@ -196,9 +246,17 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <select className="q-filter" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+          <select
+            className="q-filter"
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+          >
             <option value="all">Todos los estados</option>
-            {Object.keys(STATUS_META).map(s => <option key={s} value={s}>{s}</option>)}
+            {Object.keys(STATUS_META).map(s => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </select>
           <button className="btn-outline-sm" onClick={handleExport} title="Exportar JSON">
             ↓ Export
@@ -213,6 +271,15 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
           <button className="btn-outline-sm" onClick={() => importInputRef.current?.click()}>
             Importar cotizacion
           </button>
+          {onNavigateToMaintenance && (
+            <button
+              className="btn-outline-sm"
+              onClick={onNavigateToMaintenance}
+              title="Ir a Mantenciones"
+            >
+              + Cotizar Mantención
+            </button>
+          )}
           <button className="btn-primary-sm" onClick={handleNew}>
             + Nueva
           </button>
@@ -223,7 +290,9 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
       {filtered.length === 0 ? (
         <div className="q-empty">
           <p>No hay cotizaciones{search ? ' que coincidan con la búsqueda' : ''}.</p>
-          <button className="btn-primary-sm" onClick={handleNew}>Crear primera cotización</button>
+          <button className="btn-primary-sm" onClick={handleNew}>
+            Crear primera cotización
+          </button>
         </div>
       ) : (
         <div className="q-table-wrap">
@@ -251,7 +320,9 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                       <span className="q-correlative">{q.correlative}</span>
                     </td>
                     <td>
-                      <span className="q-client-name">{q.client_name || <em className="q-empty-cell">Sin cliente</em>}</span>
+                      <span className="q-client-name">
+                        {q.client_name || <em className="q-empty-cell">Sin cliente</em>}
+                      </span>
                     </td>
                     <td>
                       <span className="q-ref">{q.ref || '—'}</span>
@@ -267,9 +338,15 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                         onChange={e => setStatus(q.id, e.target.value as QuoteStatus)}
                         onClick={e => e.stopPropagation()}
                         disabled={!canChangeQuotationStatus}
-                        title={canChangeQuotationStatus ? undefined : 'Tu rol no puede cambiar el estado'}
+                        title={
+                          canChangeQuotationStatus ? undefined : 'Tu rol no puede cambiar el estado'
+                        }
                       >
-                        {Object.keys(STATUS_META).map(s => <option key={s} value={s}>{s}</option>)}
+                        {Object.keys(STATUS_META).map(s => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td>
@@ -279,14 +356,30 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                         onChange={e => setOperState(q.id, e.target.value as OperState)}
                         onClick={e => e.stopPropagation()}
                       >
-                        {OP_STATES.map(s => <option key={s} value={s}>{s.trim() || '—'}</option>)}
+                        {OP_STATES.map(s => (
+                          <option key={s} value={s}>
+                            {s.trim() || '—'}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td className="text-right q-total">{fmtCLP.format(venta)}</td>
                     <td>
                       <div className="q-row-actions">
-                        <button className="btn-icon" title="Editar" onClick={() => handleEdit(q.id)}>✎</button>
-                        <button className="btn-icon" title="Duplicar" onClick={() => handleDuplicate(q.id)}>⧉</button>
+                        <button
+                          className="btn-icon"
+                          title="Editar"
+                          onClick={() => handleEdit(q.id)}
+                        >
+                          ✎
+                        </button>
+                        <button
+                          className="btn-icon"
+                          title="Duplicar"
+                          onClick={() => handleDuplicate(q.id)}
+                        >
+                          ⧉
+                        </button>
                         <button
                           className="btn-icon btn-icon-version"
                           title="Nueva versión (mismo N°, para reestudiar margen)"
@@ -295,7 +388,13 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
                           V+
                         </button>
                         {canDeleteQuotation && (
-                          <button className="btn-icon btn-danger" title="Eliminar" onClick={() => setConfirm(q.id)}>✕</button>
+                          <button
+                            className="btn-icon btn-danger"
+                            title="Eliminar"
+                            onClick={() => setConfirm(q.id)}
+                          >
+                            ✕
+                          </button>
                         )}
                       </div>
                     </td>
@@ -308,40 +407,97 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
       )}
 
       {(importPreview || (importError && !importResult)) && (
-        <div className="modal-overlay" onClick={() => { if (!importing) { setImportPreview(null); setImportError(null) } }}>
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (!importing) {
+              setImportPreview(null)
+              setImportError(null)
+            }
+          }}
+        >
           <div className="modal-confirm import-modal" onClick={e => e.stopPropagation()}>
             <h3>{importPreview ? 'Previsualizar importacion' : 'No se pudo leer el archivo'}</h3>
             {importPreview ? (
               <>
                 <div className="import-summary">
-                  <div><strong>Archivo</strong><span>{importPreview.fileName}</span></div>
-                  <div><strong>Correlativo</strong><span>{importPreview.payload?.correlative || '-'}</span></div>
-                  <div><strong>Cliente</strong><span>{importPreview.payload?.cliente?.nombre || '-'}</span></div>
-                  <div><strong>Usuario final</strong><span>{importPreview.payload?.enduser || '-'}</span></div>
-                  <div><strong>Referencia</strong><span>{importPreview.payload?.ref || '-'}</span></div>
-                  <div><strong>Costo neto estimado</strong><span>{fmtCLP.format(importPreview.totalCosto)}</span></div>
-                  <div><strong>Venta neta estimada</strong><span>{fmtCLP.format(importPreview.totalVenta)}</span></div>
+                  <div>
+                    <strong>Archivo</strong>
+                    <span>{importPreview.fileName}</span>
+                  </div>
+                  <div>
+                    <strong>Correlativo</strong>
+                    <span>{importPreview.payload?.correlative || '-'}</span>
+                  </div>
+                  <div>
+                    <strong>Cliente</strong>
+                    <span>{importPreview.payload?.cliente?.nombre || '-'}</span>
+                  </div>
+                  <div>
+                    <strong>Usuario final</strong>
+                    <span>{importPreview.payload?.enduser || '-'}</span>
+                  </div>
+                  <div>
+                    <strong>Referencia</strong>
+                    <span>{importPreview.payload?.ref || '-'}</span>
+                  </div>
+                  <div>
+                    <strong>Costo neto estimado</strong>
+                    <span>{fmtCLP.format(importPreview.totalCosto)}</span>
+                  </div>
+                  <div>
+                    <strong>Venta neta estimada</strong>
+                    <span>{fmtCLP.format(importPreview.totalVenta)}</span>
+                  </div>
                 </div>
                 <div className="import-counts">
                   {IMPORT_CATEGORY_IDS.map(cid => (
-                    <span key={cid}>{cid.toUpperCase()}: {importPreview.counts[cid]}</span>
+                    <span key={cid}>
+                      {cid.toUpperCase()}: {importPreview.counts[cid]}
+                    </span>
                   ))}
                 </div>
                 {importError && <p className="import-error">{importError}</p>}
                 <div className="modal-confirm-actions">
-                  <button className="btn-primary-sm" onClick={handleConfirmImport} disabled={importing}>
+                  <button
+                    className="btn-primary-sm"
+                    onClick={handleConfirmImport}
+                    disabled={importing}
+                  >
                     {importing ? 'Importando...' : 'Confirmar importacion'}
                   </button>
-                  <button className="btn-outline-sm" onClick={() => importInputRef.current?.click()} disabled={importing}>Seleccionar otro JSON</button>
-                  <button className="btn-outline-sm" onClick={() => { setImportPreview(null); setImportError(null) }} disabled={importing}>Cancelar</button>
+                  <button
+                    className="btn-outline-sm"
+                    onClick={() => importInputRef.current?.click()}
+                    disabled={importing}
+                  >
+                    Seleccionar otro JSON
+                  </button>
+                  <button
+                    className="btn-outline-sm"
+                    onClick={() => {
+                      setImportPreview(null)
+                      setImportError(null)
+                    }}
+                    disabled={importing}
+                  >
+                    Cancelar
+                  </button>
                 </div>
               </>
             ) : (
               <>
                 <p className="import-error">{importError}</p>
                 <div className="modal-confirm-actions">
-                  <button className="btn-outline-sm" onClick={() => importInputRef.current?.click()}>Seleccionar JSON</button>
-                  <button className="btn-outline-sm" onClick={() => setImportError(null)}>Cerrar</button>
+                  <button
+                    className="btn-outline-sm"
+                    onClick={() => importInputRef.current?.click()}
+                  >
+                    Seleccionar JSON
+                  </button>
+                  <button className="btn-outline-sm" onClick={() => setImportError(null)}>
+                    Cerrar
+                  </button>
                 </div>
               </>
             )}
@@ -354,17 +510,36 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
           <div className="modal-confirm import-modal" onClick={e => e.stopPropagation()}>
             <h3>Importacion completada</h3>
             <div className="import-summary">
-              <div><strong>Cliente</strong><span>{importResult.reporte_importacion.cliente.accion}</span></div>
-              <div><strong>UF usada</strong><span>{fmtCLP.format(importResult.reporte_importacion.uf.valor)} ({importResult.reporte_importacion.uf.fuente})</span></div>
-              <div><strong>Lineas</strong><span>{importResult.reporte_importacion.lineas_vinculadas_catalogo} / {importResult.reporte_importacion.lineas_total} vinculadas</span></div>
+              <div>
+                <strong>Cliente</strong>
+                <span>{importResult.reporte_importacion.cliente.accion}</span>
+              </div>
+              <div>
+                <strong>UF usada</strong>
+                <span>
+                  {fmtCLP.format(importResult.reporte_importacion.uf.valor)} (
+                  {importResult.reporte_importacion.uf.fuente})
+                </span>
+              </div>
+              <div>
+                <strong>Lineas</strong>
+                <span>
+                  {importResult.reporte_importacion.lineas_vinculadas_catalogo} /{' '}
+                  {importResult.reporte_importacion.lineas_total} vinculadas
+                </span>
+              </div>
             </div>
             {importResult.reporte_importacion.lineas_sin_match.length > 0 && (
               <div className="import-unmatched">
                 <strong>Lineas sin match</strong>
                 <ul>
-                  {importResult.reporte_importacion.lineas_sin_match.map((line: any, idx: number) => (
-                    <li key={`${line.descripcion}-${idx}`}>{line.descripcion} - {line.motivo}</li>
-                  ))}
+                  {importResult.reporte_importacion.lineas_sin_match.map(
+                    (line: any, idx: number) => (
+                      <li key={`${line.descripcion}-${idx}`}>
+                        {line.descripcion} - {line.motivo}
+                      </li>
+                    )
+                  )}
                 </ul>
               </div>
             )}
@@ -372,13 +547,21 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
               <div className="import-unmatched">
                 <strong>Advertencias</strong>
                 <ul>
-                  {importResult.reporte_importacion.advertencias.map((warning: string, idx: number) => <li key={idx}>{warning}</li>)}
+                  {importResult.reporte_importacion.advertencias.map(
+                    (warning: string, idx: number) => (
+                      <li key={idx}>{warning}</li>
+                    )
+                  )}
                 </ul>
               </div>
             )}
             <div className="modal-confirm-actions">
-              <button className="btn-primary-sm" onClick={handleViewImported}>Ver cotizacion</button>
-              <button className="btn-outline-sm" onClick={() => setImportResult(null)}>Cerrar</button>
+              <button className="btn-primary-sm" onClick={handleViewImported}>
+                Ver cotizacion
+              </button>
+              <button className="btn-outline-sm" onClick={() => setImportResult(null)}>
+                Cerrar
+              </button>
             </div>
           </div>
         </div>
@@ -391,8 +574,12 @@ function QuotationsList({ onEdit }: { onEdit: () => void }) {
             <h3>¿Eliminar cotización?</h3>
             <p>Esta acción no se puede deshacer.</p>
             <div className="modal-confirm-actions">
-              <button className="btn-danger-sm" onClick={() => handleDelete(confirm)}>Eliminar</button>
-              <button className="btn-outline-sm" onClick={() => setConfirm(null)}>Cancelar</button>
+              <button className="btn-danger-sm" onClick={() => handleDelete(confirm)}>
+                Eliminar
+              </button>
+              <button className="btn-outline-sm" onClick={() => setConfirm(null)}>
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
@@ -434,15 +621,30 @@ function TabBase() {
           </div>
           <div className="base-row">
             <label>Fecha</label>
-            <input type="date" value={q.date} onChange={e => patch({ date: e.target.value })} className="base-input" />
+            <input
+              type="date"
+              value={q.date}
+              onChange={e => patch({ date: e.target.value })}
+              className="base-input"
+            />
           </div>
           <div className="base-row">
             <label>Referencia obra</label>
-            <input value={q.ref} onChange={e => patch({ ref: e.target.value })} className="base-input" placeholder="Ref. proyecto u obra" />
+            <input
+              value={q.ref}
+              onChange={e => patch({ ref: e.target.value })}
+              className="base-input"
+              placeholder="Ref. proyecto u obra"
+            />
           </div>
           <div className="base-row">
             <label>Usuario final</label>
-            <input value={q.enduser} onChange={e => patch({ enduser: e.target.value })} className="base-input" placeholder="Empresa usuaria final" />
+            <input
+              value={q.enduser}
+              onChange={e => patch({ enduser: e.target.value })}
+              className="base-input"
+              placeholder="Empresa usuaria final"
+            />
           </div>
         </div>
 
@@ -456,28 +658,37 @@ function TabBase() {
               className="base-input"
               onChange={e => {
                 const cl = clients.find(c => c.id === e.target.value)
-                patch({ client_id: e.target.value, client_name: cl?.name || '', contact: cl?.contact || '' })
+                patch({
+                  client_id: e.target.value,
+                  client_name: cl?.name || '',
+                  contact: cl?.contact || '',
+                })
               }}
             >
               <option value="">— Seleccionar cliente —</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
           <div className="base-row">
             <label>Contacto</label>
-            <input value={q.contact} onChange={e => patch({ contact: e.target.value })} className="base-input" placeholder="Nombre del contacto" />
+            <input
+              value={q.contact}
+              onChange={e => patch({ contact: e.target.value })}
+              className="base-input"
+              placeholder="Nombre del contacto"
+            />
           </div>
           <div className="base-row">
             <label>RUT</label>
-            <span className="base-rut">
-              {clients.find(c => c.id === q.client_id)?.rut || '—'}
-            </span>
+            <span className="base-rut">{clients.find(c => c.id === q.client_id)?.rut || '—'}</span>
           </div>
           <div className="base-row">
             <label>Ciudad</label>
-            <span className="base-rut">
-              {clients.find(c => c.id === q.client_id)?.city || '—'}
-            </span>
+            <span className="base-rut">{clients.find(c => c.id === q.client_id)?.city || '—'}</span>
           </div>
         </div>
 
@@ -491,7 +702,11 @@ function TabBase() {
               className={`base-input q-status-sel ${STATUS_META[q.status].cls}`}
               onChange={e => patch({ status: e.target.value as QuoteStatus })}
             >
-              {Object.keys(STATUS_META).map(s => <option key={s} value={s}>{s}</option>)}
+              {Object.keys(STATUS_META).map(s => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
             </select>
           </div>
           <div className="base-row">
@@ -501,16 +716,32 @@ function TabBase() {
               className="base-input"
               onChange={e => patch({ operState: e.target.value as OperState })}
             >
-              {OP_STATES.map(s => <option key={s} value={s}>{s.trim() || '—'}</option>)}
+              {OP_STATES.map(s => (
+                <option key={s} value={s}>
+                  {s.trim() || '—'}
+                </option>
+              ))}
             </select>
           </div>
           <div className="base-row">
             <label>UF referencia</label>
-            <input type="number" value={q.uf} onChange={e => patch({ uf: parseFloat(e.target.value) || 0 })} className="base-input" />
+            <input
+              type="number"
+              value={q.uf}
+              onChange={e => patch({ uf: parseFloat(e.target.value) || 0 })}
+              className="base-input"
+            />
           </div>
           <div className="base-row">
             <label>IVA %</label>
-            <input type="number" value={q.iva} onChange={e => patch({ iva: parseFloat(e.target.value) || 19 })} className="base-input" min="0" max="100" />
+            <input
+              type="number"
+              value={q.iva}
+              onChange={e => patch({ iva: parseFloat(e.target.value) || 19 })}
+              className="base-input"
+              min="0"
+              max="100"
+            />
           </div>
         </div>
       </div>
@@ -526,7 +757,7 @@ function TabBase() {
 
 // ── Tab Costeo ─────────────────────────────────────────────────────────────────
 
-function CosteoRow({ catId }: { catId: CategoryId }) {
+export function CosteoRow({ catId }: { catId: CategoryId }) {
   const { addItem, removeItem, patchItem, setCatMargin, toggleCat } = useMaestro()
   const q = useActiveQuotation()
   if (!q) return null
@@ -554,7 +785,8 @@ function CosteoRow({ catId }: { catId: CategoryId }) {
             type="number"
             className="cost-margin-input"
             value={cat.margin}
-            min={0} max={99}
+            min={0}
+            max={99}
             onChange={e => setCatMargin(catId, parseFloat(e.target.value) || 0)}
             onClick={e => e.stopPropagation()}
           />
@@ -611,7 +843,11 @@ function CosteoRow({ catId }: { catId: CategoryId }) {
                             style={{ flex: 1 }}
                           >
                             <option value="">Punto A…</option>
-                            {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            {CITIES.map(c => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
                           </select>
                           <span style={{ color: '#94a3b8', fontSize: '12px' }}>→</span>
                           <select
@@ -626,7 +862,11 @@ function CosteoRow({ catId }: { catId: CategoryId }) {
                             style={{ flex: 1 }}
                           >
                             <option value="">Punto B…</option>
-                            {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            {CITIES.map(c => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
                           </select>
                         </div>
                       ) : (
@@ -635,9 +875,9 @@ function CosteoRow({ catId }: { catId: CategoryId }) {
                           value={item.desc}
                           onChange={val => patchItem(catId, i, 'desc', val)}
                           onSelect={(sel: CatalogItemUI) => {
-                            patchItem(catId, i, 'desc',   sel.desc)
+                            patchItem(catId, i, 'desc', sel.desc)
                             patchItem(catId, i, 'unidad', sel.unidad)
-                            patchItem(catId, i, 'unit',   sel.price)
+                            patchItem(catId, i, 'unit', sel.price)
                           }}
                         />
                       )}
@@ -685,7 +925,13 @@ function CosteoRow({ catId }: { catId: CategoryId }) {
                       <span className="cost-row-total">{fmtCLP.format(rowTotal)}</span>
                     </td>
                     <td className="col-del">
-                      <button className="btn-icon-sm btn-del-row" onClick={() => removeItem(catId, i)} title="Eliminar fila">✕</button>
+                      <button
+                        className="btn-icon-sm btn-del-row"
+                        onClick={() => removeItem(catId, i)}
+                        title="Eliminar fila"
+                      >
+                        ✕
+                      </button>
                     </td>
                   </tr>
                 )
@@ -701,7 +947,7 @@ function CosteoRow({ catId }: { catId: CategoryId }) {
   )
 }
 
-function TabCosteo() {
+export function TabCosteo() {
   const { patchActive, saveActive, reloadActive } = useMaestro()
   const q = useActiveQuotation()
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'ok' | 'offline'>('idle')
@@ -728,10 +974,13 @@ function TabCosteo() {
   }
 
   const saveLabel =
-    saveState === 'saving' ? 'Guardando…' :
-    saveState === 'ok'     ? '✓ Guardado' :
-    saveState === 'offline'? '⚠ Solo local' :
-    'Guardar'
+    saveState === 'saving'
+      ? 'Guardando…'
+      : saveState === 'ok'
+        ? '✓ Guardado'
+        : saveState === 'offline'
+          ? '⚠ Solo local'
+          : 'Guardar'
 
   return (
     <div className="tab-costeo">
@@ -758,7 +1007,8 @@ function TabCosteo() {
               value={q.iva}
               onChange={e => patchActive({ iva: parseFloat(e.target.value) || 19 })}
               className="costeo-config-input costeo-config-sm"
-              min="0" max="100"
+              min="0"
+              max="100"
             />
             <span className="config-suffix">%</span>
           </div>
@@ -821,7 +1071,9 @@ function TabCosteo() {
                   <td className="text-right mono">{fmtCLP.format(r.venta)}</td>
                   <td className="text-right mono">{fmtCLP.format(r.beneficio)}</td>
                   <td className="text-right mono">{fmtDecimal.format(cat.margin)}%</td>
-                  <td className="text-right mono">{q.uf > 0 ? fmtDecimal.format(r.venta / q.uf) : '—'} UF</td>
+                  <td className="text-right mono">
+                    {q.uf > 0 ? fmtDecimal.format(r.venta / q.uf) : '—'} UF
+                  </td>
                 </tr>
               )
             })}
@@ -843,7 +1095,9 @@ function TabCosteo() {
 
       {/* Category accordions */}
       <div className="cost-accordions">
-        {cats.map(c => <CosteoRow key={c} catId={c} />)}
+        {cats.map(c => (
+          <CosteoRow key={c} catId={c} />
+        ))}
       </div>
     </div>
   )
@@ -851,7 +1105,11 @@ function TabCosteo() {
 
 // ── Tab Cotización (Document) ──────────────────────────────────────────────────
 
-function AutoTextarea({ value, onChange, ariaLabel }: {
+export function AutoTextarea({
+  value,
+  onChange,
+  ariaLabel,
+}: {
   value: string
   onChange: (v: string) => void
   ariaLabel: string
@@ -865,7 +1123,9 @@ function AutoTextarea({ value, onChange, ariaLabel }: {
     el.style.height = `${el.scrollHeight}px`
   }, [])
 
-  useEffect(() => { resize() }, [value, resize])
+  useEffect(() => {
+    resize()
+  }, [value, resize])
 
   return (
     <textarea
@@ -880,7 +1140,13 @@ function AutoTextarea({ value, onChange, ariaLabel }: {
   )
 }
 
-function EditableList({ items, listKey }: { items: string[]; listKey: 'scope' | 'exclusions' | 'commercial' }) {
+export function EditableList({
+  items,
+  listKey,
+}: {
+  items: string[]
+  listKey: 'scope' | 'exclusions' | 'commercial'
+}) {
   const { addListItem, insertListItemAfter, removeListItem, patchListItem } = useMaestro()
   return (
     <ol className="doc-list">
@@ -901,32 +1167,48 @@ function EditableList({ items, listKey }: { items: string[]; listKey: 'scope' | 
           >
             {'\u21B5'}
           </button>
-          <button type="button" className="btn-icon-sm btn-del-row" onClick={() => removeListItem(listKey, i)}>✕</button>
+          <button
+            type="button"
+            className="btn-icon-sm btn-del-row"
+            onClick={() => removeListItem(listKey, i)}
+          >
+            ✕
+          </button>
         </li>
       ))}
       <li className="doc-list-add">
-        <button type="button" className="btn-add-list" onClick={() => addListItem(listKey)}>+ Agregar ítem</button>
+        <button type="button" className="btn-add-list" onClick={() => addListItem(listKey)}>
+          + Agregar ítem
+        </button>
       </li>
     </ol>
   )
 }
 
-const fmtDateLong = (d: string) =>
-  new Date(d + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
+export const fmtDateLong = (d: string) =>
+  new Date(d + 'T12:00:00').toLocaleDateString('es-CL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 
 function TabCotizacion() {
   const q = useActiveQuotation()
   const { clients, saveActive, reloadActive } = useMaestro()
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set())
-  const [toast, setToast]   = useState<{ msg: string; ok: boolean } | null>(null)
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
   const [loadingDocx, setLoadingDocx] = useState(false)
   const [loadingPdf, setLoadingPdf] = useState(false)
   const docRef = useRef<HTMLDivElement>(null)
 
   const sessionUser = useMemo(() => {
-    try { const u = localStorage.getItem('user'); return u ? JSON.parse(u) : null }
-    catch { return null }
+    try {
+      const u = localStorage.getItem('user')
+      return u ? JSON.parse(u) : null
+    } catch {
+      return null
+    }
   }, [])
 
   const showToast = useCallback((msg: string, ok = true) => {
@@ -938,9 +1220,9 @@ function TabCotizacion() {
 
   const client = clients.find(c => c.id === q.client_id)
   const totals = calcTotals(q)
-  const iva    = totals.venta * (q.iva / 100)
+  const iva = totals.venta * (q.iva / 100)
   const conIva = totals.venta + iva
-  const enUF   = q.uf > 0 ? totals.venta / q.uf : 0
+  const enUF = q.uf > 0 ? totals.venta / q.uf : 0
 
   const handleSave = async () => {
     setSaving(true)
@@ -958,17 +1240,32 @@ function TabCotizacion() {
   const handleDocx = async () => {
     setLoadingDocx(true)
     try {
-      await downloadDocx({ q, client, sessionUserName: sessionUser?.name || '\u2014', expandedCategoryIds: expandedCats })
+      await downloadDocx({
+        q,
+        client,
+        sessionUserName: sessionUser?.name || '\u2014',
+        expandedCategoryIds: expandedCats,
+      })
       showToast('Documento DOCX generado')
-    } catch { showToast('Error al generar DOCX', false) }
-    finally { setLoadingDocx(false) }
+    } catch {
+      showToast('Error al generar DOCX', false)
+    } finally {
+      setLoadingDocx(false)
+    }
   }
 
   const handleHtml = () => {
     try {
-      downloadHtml({ q, client, sessionUserName: sessionUser?.name || '\u2014', expandedCategoryIds: expandedCats })
+      downloadHtml({
+        q,
+        client,
+        sessionUserName: sessionUser?.name || '\u2014',
+        expandedCategoryIds: expandedCats,
+      })
       showToast('Documento HTML generado')
-    } catch { showToast('Error al generar HTML', false) }
+    } catch {
+      showToast('Error al generar HTML', false)
+    }
   }
 
   const handlePdf = async () => {
@@ -994,7 +1291,6 @@ function TabCotizacion() {
 
   return (
     <div className="tab-coti">
-
       {/* Toast notification */}
       {toast && (
         <div className={`coti-toast ${toast.ok ? 'coti-toast-ok' : 'coti-toast-err'}`}>
@@ -1026,7 +1322,6 @@ function TabCotizacion() {
 
       {/* ── Document (letter format) ── */}
       <div className="coti-doc" ref={docRef}>
-
         {/* Letterhead */}
         <div className="doc-letterhead">
           <div className="doc-lh-brand">
@@ -1046,23 +1341,28 @@ function TabCotizacion() {
           <table className="doc-client-table">
             <tbody>
               <tr>
-                <th>Empresa</th><td>{q.client_name || '—'}</td>
-                <th>RUT</th>   <td>{client?.rut || '—'}</td>
+                <th>Empresa</th>
+                <td>{q.client_name || '—'}</td>
+                <th>RUT</th> <td>{client?.rut || '—'}</td>
               </tr>
               <tr>
-                <th>Contacto</th><td>{q.contact || '—'}</td>
-                <th>Cargo</th>  <td>{client?.cargo || '—'}</td>
+                <th>Contacto</th>
+                <td>{q.contact || '—'}</td>
+                <th>Cargo</th> <td>{client?.cargo || '—'}</td>
               </tr>
               <tr>
-                <th>Referencia</th><td colSpan={3}>{q.ref || '—'}</td>
+                <th>Referencia</th>
+                <td colSpan={3}>{q.ref || '—'}</td>
               </tr>
               {q.enduser && (
                 <tr>
-                  <th>Usuario Final</th><td colSpan={3}>{q.enduser}</td>
+                  <th>Usuario Final</th>
+                  <td colSpan={3}>{q.enduser}</td>
                 </tr>
               )}
               <tr className="doc-row-elaborado">
-                <th>Elaborado por</th><td colSpan={3}>{sessionUser?.name || '—'}</td>
+                <th>Elaborado por</th>
+                <td colSpan={3}>{sessionUser?.name || '—'}</td>
               </tr>
             </tbody>
           </table>
@@ -1088,15 +1388,22 @@ function TabCotizacion() {
             </thead>
             <tbody>
               {buildQuotationValuationRows(q, expandedCats).map(row => {
-                const items  = (q.items[row.cat.id] || []).filter(it => it.cant > 0 && it.desc)
+                const items = (q.items[row.cat.id] || []).filter(it => it.cant > 0 && it.desc)
                 const isOpen = row.details.length > 0
                 return (
                   <React.Fragment key={row.cat.id}>
                     <tr className={`doc-valuation-row ${isOpen ? 'doc-row-expanded' : ''}`}>
                       <td className="val-expand no-print">
                         {items.length > 0 && (
-                          <label className="doc-expand-toggle" title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}>
-                            <input type="checkbox" checked={expandedCats.has(row.cat.id)} onChange={() => toggleCat(row.cat.id)} />
+                          <label
+                            className="doc-expand-toggle"
+                            title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={expandedCats.has(row.cat.id)}
+                              onChange={() => toggleCat(row.cat.id)}
+                            />
                             <span className="doc-expand-icon">{isOpen ? '▾' : '▸'}</span>
                           </label>
                         )}
@@ -1113,9 +1420,7 @@ function TabCotizacion() {
                         <td className="doc-detail-desc" colSpan={2}>
                           <span className="doc-detail-bullet">·</span>
                           <span className="doc-detail-name">{item.desc}</span>
-                          <span className="doc-detail-meta">
-                            {meta}
-                          </span>
+                          <span className="doc-detail-meta">{meta}</span>
                         </td>
                       </tr>
                     ))}
@@ -1162,7 +1467,10 @@ function TabCotizacion() {
         <div className="doc-footer">
           <div className="doc-footer-text">
             <p>Esta cotización es válida según las condiciones indicadas en el punto IV.</p>
-            <p>Ingeniería y Servicios Bravo SPA &nbsp;·&nbsp; RUT: 77.175.319-1 &nbsp;·&nbsp; Tel. +56 (9) 90943080</p>
+            <p>
+              Ingeniería y Servicios Bravo SPA &nbsp;·&nbsp; RUT: 77.175.319-1 &nbsp;·&nbsp; Tel.
+              +56 (9) 90943080
+            </p>
           </div>
           <div className="doc-footer-stamp">
             <div className="doc-footer-stamp-line" />
@@ -1177,7 +1485,9 @@ function TabCotizacion() {
 
 // ── Main Quotations ────────────────────────────────────────────────────────────
 
-export const Quotations: React.FC = () => {
+export const Quotations: React.FC<{ onNavigateToMaintenance?: () => void }> = ({
+  onNavigateToMaintenance,
+}) => {
   const [view, setView] = useState<'list' | 'edit'>('list')
   const [syncing, setSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'ok' | 'err'>('idle')
@@ -1192,7 +1502,7 @@ export const Quotations: React.FC = () => {
       saveActive().catch(err => {
         window.alert(
           `No se pudo sincronizar con el servidor: ${err instanceof Error ? err.message : 'error desconocido'}.\n` +
-          'Tus cambios quedaron guardados solo en este navegador.'
+            'Tus cambios quedaron guardados solo en este navegador.'
         )
       })
     }
@@ -1219,12 +1529,14 @@ export const Quotations: React.FC = () => {
   return (
     <div className="quotations-root">
       {view === 'list' ? (
-        <QuotationsList onEdit={goEdit} />
+        <QuotationsList onEdit={goEdit} onNavigateToMaintenance={onNavigateToMaintenance} />
       ) : (
         <div className="q-editor">
           {/* Editor header */}
           <div className="q-editor-header">
-            <button type="button" className="btn-back" onClick={goList}>← Listado</button>
+            <button type="button" className="btn-back" onClick={goList}>
+              ← Listado
+            </button>
             <div className="q-editor-title">
               <span className="q-correlative">{active?.correlative ?? '—'}</span>
               <span className="q-editor-client">{active?.client_name || 'Sin cliente'}</span>
@@ -1246,22 +1558,31 @@ export const Quotations: React.FC = () => {
               ) : (
                 <span>⇅</span>
               )}
-              {syncing ? 'Sincronizando…' : syncStatus === 'ok' ? 'Sincronizado' : syncStatus === 'err' ? 'Error al sync' : 'Forzar sync'}
+              {syncing
+                ? 'Sincronizando…'
+                : syncStatus === 'ok'
+                  ? 'Sincronizado'
+                  : syncStatus === 'err'
+                    ? 'Error al sync'
+                    : 'Forzar sync'}
             </button>
             <div className="q-editor-tabs">
-              <button type="button"
+              <button
+                type="button"
                 className={`q-tab ${activeTab === 'base' ? 'q-tab-active' : ''}`}
                 onClick={() => setTab('base')}
               >
                 Base
               </button>
-              <button type="button"
+              <button
+                type="button"
                 className={`q-tab ${activeTab === 'costeo' ? 'q-tab-active' : ''}`}
                 onClick={() => setTab('costeo')}
               >
                 Costeo
               </button>
-              <button type="button"
+              <button
+                type="button"
                 className={`q-tab ${activeTab === 'coti' ? 'q-tab-active' : ''}`}
                 onClick={() => setTab('coti')}
               >
@@ -1272,9 +1593,9 @@ export const Quotations: React.FC = () => {
 
           {/* Tab content */}
           <div className="q-tab-content">
-            {activeTab === 'base'   && <TabBase />}
+            {activeTab === 'base' && <TabBase />}
             {activeTab === 'costeo' && <TabCosteo />}
-            {activeTab === 'coti'   && <TabCotizacion />}
+            {activeTab === 'coti' && <TabCotizacion />}
           </div>
         </div>
       )}

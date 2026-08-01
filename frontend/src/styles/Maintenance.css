@@ -1,0 +1,36 @@
+/* ── Mantenciones — pequeños extras sobre Quotations.css ──────────────────── */
+
+.mtc-currency-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mtc-currency-toggle input {
+  cursor: pointer;
+}
+
+.mtc-usd-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
+.mtc-usd-input input {
+  width: 90px;
+  padding: 5px 8px;
+  border: 1px solid #94a3b8;
+  border-radius: 5px;
+  font-size: 0.82rem;
+}
+
+.mtc-annual-title {
+  margin-top: 16px;
+}

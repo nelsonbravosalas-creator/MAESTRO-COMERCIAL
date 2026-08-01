@@ -31,11 +31,20 @@ const CATEGORY_COLORS: Record<string, string> = {
   ins: '#164e63',
 }
 
+const VALID_KINDS = ['project', 'maintenance']
+const VALID_FREQUENCIES = ['mensual', 'trimestral', 'semestral', 'anual']
+
 const normalizeStatus = (status: string | undefined) =>
   VALID_STATUSES.includes(status ?? '') ? status : 'Borrador'
 
 const normalizeOperState = (state: string | undefined | null) =>
   state && VALID_OPER_STATES.includes(state) ? state : null
+
+const normalizeKind = (kind: string | undefined | null) =>
+  VALID_KINDS.includes(kind ?? '') ? (kind as string) : 'project'
+
+const normalizeFrequency = (frequency: string | undefined | null) =>
+  frequency && VALID_FREQUENCIES.includes(frequency) ? frequency : null
 
 const paramString = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : (value ?? '')
@@ -674,8 +683,11 @@ export const createQuotationsRouter = (pool: Pool) => {
       const result = await db.query(
         `INSERT INTO quotations
           (correlative, client_id, contact_id, enduser, ref, date, valid_until,
-           status, oper_state, uf_value, iva_pct, notes, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+           status, oper_state, uf_value, iva_pct, notes, created_by,
+           kind, equipment_count, equipment_description, frequency, visits_per_year,
+           contract_start_date, show_uf_equivalent, show_usd_equivalent, usd_value)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+                 $14, $15, $16, $17, $18, $19, $20, $21, $22)
          RETURNING *`,
         [
           body.correlative,
@@ -691,6 +703,15 @@ export const createQuotationsRouter = (pool: Pool) => {
           Number(body.iva_pct) || 19,
           body.notes || null,
           req.user?.id ?? null,
+          normalizeKind(body.kind),
+          body.equipment_count ?? null,
+          body.equipment_description || null,
+          normalizeFrequency(body.frequency),
+          body.visits_per_year ?? null,
+          body.contract_start_date || null,
+          Boolean(body.show_uf_equivalent),
+          Boolean(body.show_usd_equivalent),
+          body.usd_value ?? null,
         ]
       )
 
@@ -740,11 +761,20 @@ export const createQuotationsRouter = (pool: Pool) => {
                 uf_value = $10,
                 iva_pct = $11,
                 notes = $12,
+                kind = $13,
+                equipment_count = $14,
+                equipment_description = $15,
+                frequency = $16,
+                visits_per_year = $17,
+                contract_start_date = $18,
+                show_uf_equivalent = $19,
+                show_usd_equivalent = $20,
+                usd_value = $21,
                 version = version + 1,
                 updated_at = NOW()
-          WHERE id = $13
+          WHERE id = $22
             AND deleted_at IS NULL
-            AND version = $14
+            AND version = $23
           RETURNING *`,
           [
             body.correlative,
@@ -759,6 +789,15 @@ export const createQuotationsRouter = (pool: Pool) => {
             Number(body.uf_value) || 0,
             Number(body.iva_pct) || 19,
             body.notes || null,
+            normalizeKind(body.kind),
+            body.equipment_count ?? null,
+            body.equipment_description || null,
+            normalizeFrequency(body.frequency),
+            body.visits_per_year ?? null,
+            body.contract_start_date || null,
+            Boolean(body.show_uf_equivalent),
+            Boolean(body.show_usd_equivalent),
+            body.usd_value ?? null,
             quotationId,
             expectedVersion,
           ]
@@ -815,14 +854,16 @@ export const createQuotationsRouter = (pool: Pool) => {
 
       if (result.rows.length === 0) return res.status(404).json({ error: 'Quotation not found' })
 
-      // Auto-create project when status becomes 'Adjudicada'
+      // Auto-create project when status becomes 'Adjudicada' — no aplica a
+      // contratos de mantención (kind='maintenance'): son visitas
+      // recurrentes, no una obra puntual con fin.
       if (normalizeStatus(status) === 'Adjudicada') {
         try {
           const qRow = await pool.query(
-            `SELECT q.client_id, q.correlative, c.name AS client_name FROM quotations q LEFT JOIN clients c ON c.id = q.client_id WHERE q.id = $1`,
+            `SELECT q.client_id, q.correlative, q.kind, c.name AS client_name FROM quotations q LEFT JOIN clients c ON c.id = q.client_id WHERE q.id = $1`,
             [quotationId]
           )
-          if (qRow.rows[0]) {
+          if (qRow.rows[0] && qRow.rows[0].kind !== 'maintenance') {
             const { client_id, correlative, client_name } = qRow.rows[0]
             // Check if a project for this quotation already exists
             const existing = await pool.query(
@@ -875,8 +916,11 @@ export const createQuotationsRouter = (pool: Pool) => {
         const inserted = await db.query(
           `INSERT INTO quotations
           (correlative, client_id, contact_id, enduser, ref, date, valid_until,
-           status, oper_state, uf_value, iva_pct, notes, version, created_by)
-         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10, $11, $12, $13)
+           status, oper_state, uf_value, iva_pct, notes, version, created_by,
+           kind, equipment_count, equipment_description, frequency, visits_per_year,
+           contract_start_date, show_uf_equivalent, show_usd_equivalent, usd_value)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10, $11, $12, $13,
+                 $14, $15, $16, $17, $18, $19, $20, $21, $22)
          RETURNING *`,
           [
             req.body.correlative,
@@ -892,6 +936,15 @@ export const createQuotationsRouter = (pool: Pool) => {
             source.notes,
             Number(source.version || 1) + 1,
             req.user?.id ?? null,
+            source.kind,
+            source.equipment_count,
+            source.equipment_description,
+            source.frequency,
+            source.visits_per_year,
+            source.contract_start_date,
+            source.show_uf_equivalent,
+            source.show_usd_equivalent,
+            source.usd_value,
           ]
         )
 

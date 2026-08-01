@@ -26,13 +26,23 @@ vi.mock('../../api/api', () => ({
 
 import api, { ApiError } from '../../api/api'
 import {
-  calcCat, calcTotals, generateCorrelative, generateVersionCorrelative, useMaestro,
+  calcCat,
+  calcTotals,
+  generateCorrelative,
+  generateVersionCorrelative,
+  useMaestro,
 } from '../maestro-store'
 
 function makeCategory(overrides: Partial<CostCategory> = {}): CostCategory {
   return {
-    id: 'mo', label: 'Mano de Obra', margin: 20, color: '#000',
-    showDetails: false, showValues: false, note: '', collapsed: false,
+    id: 'mo',
+    label: 'Mano de Obra',
+    margin: 20,
+    color: '#000',
+    showDetails: false,
+    showValues: false,
+    note: '',
+    collapsed: false,
     ...overrides,
   }
 }
@@ -47,13 +57,39 @@ function emptyItems(): Record<CategoryId, CostItem[]> {
 
 function makeQuotation(overrides: Partial<MasterQuotation> = {}): MasterQuotation {
   const base: MasterQuotation = {
-    id: 'srv-1', correlative: 'SYM-001-01-2026', client_id: 'c1', client_name: 'Cliente',
-    contact_id: null, contact: '', enduser: '', ref: '', date: '2026-01-01', valid_until: null,
-    status: 'Borrador', operState: null, uf: 39000, iva: 19, notes: null, version: 1,
+    id: 'srv-1',
+    correlative: 'SYM-001-01-2026',
+    client_id: 'c1',
+    client_name: 'Cliente',
+    contact_id: null,
+    contact: '',
+    enduser: '',
+    ref: '',
+    date: '2026-01-01',
+    valid_until: null,
+    status: 'Borrador',
+    operState: null,
+    uf: 39000,
+    iva: 19,
+    notes: null,
+    version: 1,
     categories: [makeCategory()],
     items: { ...emptyItems(), mo: [makeItem()] },
-    scope: [], exclusions: [], commercial: [], total: 0,
-    created_at: '2026-01-01', updated_at: '2026-01-01',
+    scope: [],
+    exclusions: [],
+    commercial: [],
+    total: 0,
+    created_at: '2026-01-01',
+    updated_at: '2026-01-01',
+    kind: 'project',
+    equipment_count: null,
+    equipment_description: null,
+    frequency: null,
+    visits_per_year: null,
+    contract_start_date: null,
+    usd: 950,
+    show_uf_equivalent: false,
+    show_usd_equivalent: false,
   }
   return { ...base, ...overrides }
 }
@@ -81,7 +117,7 @@ describe('calcCat / calcTotals', () => {
       categories: [makeCategory({ id: 'mo', margin: 20 }), makeCategory({ id: 'log', margin: 0 })],
       items: {
         ...emptyItems(),
-        mo:  [makeItem({ cant: 2, unit: 100, days: 1 })],
+        mo: [makeItem({ cant: 2, unit: 100, days: 1 })],
         log: [makeItem({ id: 'i2', cant: 1, unit: 50, days: 1 })],
       },
     })
@@ -193,7 +229,11 @@ describe('saveActive — no debe marcar "unsaved:false" si el backend rechaza el
     const x = makeQuotation({ id: 'q-1', correlative: 'SYM-001-01-2026' })
     const y = makeQuotation({ id: 'srv-2', correlative: 'SYM-002-01-2026' })
     let resolveSave!: (v: MasterQuotation) => void
-    ;(api.createQuotation as any).mockReturnValue(new Promise(res => { resolveSave = res }))
+    ;(api.createQuotation as any).mockReturnValue(
+      new Promise(res => {
+        resolveSave = res
+      })
+    )
     useMaestro.setState({ quotations: [x, y], activeId: 'q-1', unsaved: true })
 
     const savePromise = useMaestro.getState().saveActive()

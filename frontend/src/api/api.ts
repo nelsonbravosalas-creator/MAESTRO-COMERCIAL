@@ -235,6 +235,15 @@ function toMasterQuotation(q: any): MasterQuotation {
     total: quotationVentaNeta(q),
     created_at: q.created_at,
     updated_at: q.updated_at,
+    kind: q.kind ?? 'project',
+    equipment_count: q.equipment_count ?? null,
+    equipment_description: q.equipment_description ?? null,
+    frequency: q.frequency ?? null,
+    visits_per_year: q.visits_per_year ?? null,
+    contract_start_date: q.contract_start_date ?? null,
+    usd: Number(q.usd_value) || 0,
+    show_uf_equivalent: Boolean(q.show_uf_equivalent),
+    show_usd_equivalent: Boolean(q.show_usd_equivalent),
   }
 }
 
@@ -287,6 +296,15 @@ function fromMasterQuotation(q: MasterQuotation) {
     categories,
     line_items,
     terms,
+    kind: q.kind ?? 'project',
+    equipment_count: q.equipment_count ?? null,
+    equipment_description: q.equipment_description ?? null,
+    frequency: q.frequency ?? null,
+    visits_per_year: q.visits_per_year ?? null,
+    contract_start_date: q.contract_start_date || null,
+    usd_value: q.usd || 0,
+    show_uf_equivalent: Boolean(q.show_uf_equivalent),
+    show_usd_equivalent: Boolean(q.show_usd_equivalent),
   }
 }
 

@@ -560,6 +560,15 @@ app.post('/api/quotations', requireAuth, (req: AuthReq, res: Response) => {
       categories,
       line_items,
       terms,
+      kind,
+      equipment_count,
+      equipment_description,
+      frequency,
+      visits_per_year,
+      contract_start_date,
+      show_uf_equivalent,
+      show_usd_equivalent,
+      usd_value,
     } = req.body
 
     if (!client_id) return res.status(400).json({ error: 'client_id es requerido' })
@@ -588,6 +597,16 @@ app.post('/api/quotations', requireAuth, (req: AuthReq, res: Response) => {
       updated_at: now(),
       deleted_at: null,
       created_by: req.user.id,
+      // Mantención (kind='maintenance'): contratos de servicio recurrente.
+      kind: kind === 'maintenance' ? 'maintenance' : 'project',
+      equipment_count: equipment_count ?? null,
+      equipment_description: equipment_description ?? null,
+      frequency: frequency || null,
+      visits_per_year: visits_per_year ?? null,
+      contract_start_date: contract_start_date || null,
+      show_uf_equivalent: Boolean(show_uf_equivalent),
+      show_usd_equivalent: Boolean(show_usd_equivalent),
+      usd_value: Number(usd_value) || Number(cfg('dolar_value')) || 950,
     }
     db.quotations.push(quotation)
 
@@ -702,6 +721,15 @@ app.put('/api/quotations/:id', requireAuth, (req: AuthReq, res: Response) => {
     categories,
     line_items,
     terms,
+    kind,
+    equipment_count,
+    equipment_description,
+    frequency,
+    visits_per_year,
+    contract_start_date,
+    show_uf_equivalent,
+    show_usd_equivalent,
+    usd_value,
   } = req.body
 
   Object.assign(q, {
@@ -718,6 +746,16 @@ app.put('/api/quotations/:id', requireAuth, (req: AuthReq, res: Response) => {
     notes: notes ?? q.notes,
     version: q.version + 1,
     updated_at: now(),
+    // Mantención (kind='maintenance'): contratos de servicio recurrente.
+    kind: kind === 'maintenance' ? 'maintenance' : 'project',
+    equipment_count: equipment_count ?? q.equipment_count ?? null,
+    equipment_description: equipment_description ?? q.equipment_description ?? null,
+    frequency: frequency ?? q.frequency ?? null,
+    visits_per_year: visits_per_year ?? q.visits_per_year ?? null,
+    contract_start_date: contract_start_date ?? q.contract_start_date ?? null,
+    show_uf_equivalent: Boolean(show_uf_equivalent),
+    show_usd_equivalent: Boolean(show_usd_equivalent),
+    usd_value: usd_value ?? q.usd_value ?? null,
   })
 
   // Reemplazar categorías si vienen en el body
@@ -1058,7 +1096,9 @@ app.delete(
 // DASHBOARD
 // ────────────────────────────────────────────────────────────
 app.get('/api/dashboard/kpis', requireAuth, (_req: Request, res: Response) => {
-  const activeQuotes = db.quotations.filter((q: any) => !q.deleted_at)
+  // El pipeline de ventas es sobre cotizaciones de proyecto puntual — los
+  // contratos de mantención (kind='maintenance') tienen su propio panel.
+  const activeQuotes = db.quotations.filter((q: any) => !q.deleted_at && q.kind !== 'maintenance')
   const activeProjects = db.projects.filter((p: any) => !p.deleted_at)
   const activeInvoices = db.invoices.filter((i: any) => !i.deleted_at && i.status !== 'cancelled')
   const activeClients = db.clients.filter((c: any) => !c.deleted_at)

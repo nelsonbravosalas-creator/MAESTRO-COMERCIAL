@@ -62,7 +62,14 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      # La raíz llegó a producción con express@5/body-parser@2 mientras backend/
+      # y toda la suite de tests corrían sobre express@4/body-parser@1. Un tsc
+      # limpio no lo detecta: son majors distintos con los mismos tipos básicos.
+      - run: npm run check:deps-sync
       - run: npx tsc --noEmit
+      # Las dependencias de la raíz son las que corren en la función serverless;
+      # auditarlas aparte de backend/ y frontend/ (que ya se auditan arriba).
+      - run: npm audit --omit=dev --audit-level=high
 
   secrets:
     runs-on: ubuntu-latest

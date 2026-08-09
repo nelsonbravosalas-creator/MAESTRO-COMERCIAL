@@ -108,6 +108,18 @@ refactorización de build sin forma de probarla end-to-end aquí.
 raíz con la misma versión. Si no, el runtime de Vercel puede fallar con
 `Cannot find module` en producción aunque los tests locales pasen.
 
+**Actualización — la mitigación manual falló y ahora está automatizada.** La
+disciplina manual no se sostuvo: la raíz derivó a `express@5`, `body-parser@2` y
+`dotenv@17` mientras `backend/` y toda la suite de tests seguían en `express@4`,
+`body-parser@1` y `dotenv@16`. El resultado es peor que un `Cannot find module`,
+porque no falla de forma visible: producción corría sobre majors que **ningún
+test ejecutó nunca**, y `tsc` no lo detecta (los tipos básicos coinciden). Las
+versiones se realinearon con `backend/package.json` y `scripts/check-deps-sync.mjs`
+verifica la igualdad exacta de rangos en el job `vercel-function` de CI. El job
+también corre ahora `npm audit --omit=dev` sobre la raíz, que antes solo se
+auditaba en `backend/` y `frontend/` — es decir, justo las dependencias que sí
+llegan a producción quedaban sin auditar.
+
 **Revisión sugerida:** al planificar el siguiente cambio de infraestructura de
 despliegue (por ejemplo, si se separa el backend a su propio servicio), evaluar
 migrar a npm workspaces o eliminar la duplicación por completo.

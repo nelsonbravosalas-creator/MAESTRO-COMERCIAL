@@ -6,6 +6,49 @@ su integración nativa con GitHub (no hay un job de GitHub Actions que llame a
 documento describe el estado actual y lo que falta para el flujo con gates
 completo del plan de remediación (`A-09`).
 
+## Variables de entorno requeridas en Vercel
+
+Se configuran en **Project Settings → Environment Variables**, entorno
+`Production` (y `Preview`, si se quiere que los previews funcionen). La función
+serverless lee `process.env` en frío: **si falta cualquiera de las obligatorias,
+la API entera responde 503 y ninguna ruta `/api/*` funciona** — el frontend
+estático sigue sirviéndose igual, así que el síntoma es "la app carga pero el
+login no anda".
+
+| Variable              | Obligatoria | Valor                                                                             |
+| --------------------- | ----------- | --------------------------------------------------------------------------------- |
+| `DATABASE_URL`        | **Sí**      | Cadena de Neon. La conexión valida el certificado (`rejectUnauthorized: true`).   |
+| `JWT_SECRET`          | **Sí**      | Mínimo 32 caracteres. Generar con `openssl rand -base64 48`.                      |
+| `ALLOWED_ORIGINS`     | **Sí**      | Orígenes separados por coma, sin barra final: `https://<tu-dominio>.vercel.app`.  |
+| `NODE_ENV`            | Recomendada | `production` — oculta los mensajes de error internos en las respuestas.           |
+| `FRONTEND_PUBLIC_URL` | Recomendada | URL pública; se usa para armar el link de reset de contraseña.                    |
+| `ADMIN_SETUP_SECRET`  | Situacional | Mínimo 32 caracteres. Necesaria **solo** para crear el primer admin (ver README). |
+| `SENTRY_DSN`          | Opcional    | Sin definir, `captureException()` es un no-op.                                    |
+| `RESEND_API_KEY`      | Opcional    | Sin definir, el mailer solo loguea — ver `docs/EMAIL_SETUP.md`.                   |
+| `MAIL_FROM`           | Opcional    | Requerida si se define `RESEND_API_KEY`.                                          |
+| `LOG_LEVEL`           | Opcional    | Por defecto `info`.                                                               |
+
+`PORT` **no** se configura en Vercel: no hay un servidor escuchando un puerto,
+la plataforma invoca la función directamente.
+
+Cambiar una variable de entorno **no** redespliega solo. Después de guardarlas
+hay que forzar un redeploy (Deployments → último → Redeploy) para que la
+función tome los valores nuevos.
+
+### Cómo se ve una configuración incompleta
+
+`api/index.ts` distingue los dos casos y responde JSON accionable en vez de un
+500 opaco:
+
+```bash
+curl https://<tu-dominio>.vercel.app/api/health
+# {"error":"Service unavailable","message":"DATABASE_URL no configurado...","code":"DB_NOT_CONFIGURED"}
+# {"error":"Service unavailable","message":"La API no arrancó: faltan variables...","code":"ENV_INVALID"}
+```
+
+Los nombres exactos de las variables que fallan quedan en **Deployments → (el
+deployment) → Runtime Logs**, no en la respuesta HTTP.
+
 ## Flujo actual
 
 ```

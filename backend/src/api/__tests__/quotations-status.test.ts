@@ -14,7 +14,7 @@ const CLIENT_ID = '11111111-1111-4111-8111-111111111111'
 // (dedupe + totalsFor + INSERT). El objetivo es probar que ese INSERT
 // se salta para kind='maintenance' — ver A-XX en quotations.ts:818-851.
 function makeFakeDb(row: Record<string, any>) {
-  let projectsInserted: any[] = []
+  const projectsInserted: any[] = []
 
   async function query(sql: string, params: any[] = []) {
     const s = sql.trim()

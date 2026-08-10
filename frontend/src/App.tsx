@@ -15,6 +15,7 @@ const Clients = lazy(() => import('./pages/Clients'))
 const Catalogo = lazy(() => import('./pages/Catalogo'))
 const Projects = lazy(() => import('./pages/Projects'))
 const Logistica = lazy(() => import('./pages/Logistica'))
+const Invoices = lazy(() => import('./pages/Invoices'))
 
 function PageLoading() {
   return <div className="page-placeholder">Cargando…</div>
@@ -244,9 +245,7 @@ function App() {
           {currentPage === 'catalogo' && <Catalogo />}
           {currentPage === 'projects' && <Projects />}
           {currentPage === 'logistica' && <Logistica />}
-          {currentPage === 'invoices' && (
-            <div className="page-placeholder">Módulo de Facturas — Próximamente</div>
-          )}
+          {currentPage === 'invoices' && <Invoices />}
         </Suspense>
       </main>
     </div>

@@ -1,0 +1,420 @@
+/* ── Invoices Module ──────────────────────────────────────────────────────── */
+
+.inv-root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f1f5f9;
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.inv-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px 16px;
+  background: #0f172a;
+  border-bottom: 2px solid #0e7490;
+  flex-shrink: 0;
+}
+
+.inv-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.inv-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.inv-count {
+  font-size: 0.78rem;
+  color: #64748b;
+  background: #1e293b;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-family: 'Space Mono', monospace;
+}
+
+.inv-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inv-select,
+.inv-input {
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.inv-input::placeholder {
+  color: #64748b;
+}
+
+/* ── Tarjetas de cobranza ────────────────────────────────────────────────── */
+
+.inv-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  padding: 18px 28px 4px;
+  flex-shrink: 0;
+}
+
+.inv-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  border-left: 4px solid #94a3b8;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+}
+
+.inv-card.is-danger {
+  border-left-color: #ef4444;
+}
+.inv-card.is-warning {
+  border-left-color: #f59e0b;
+}
+.inv-card.is-success {
+  border-left-color: #10b981;
+}
+.inv-card.is-primary {
+  border-left-color: #2563eb;
+}
+
+.inv-card-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.inv-card-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0f172a;
+  font-family: 'Space Mono', monospace;
+  margin-top: 4px;
+}
+
+.inv-card-sub {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* ── Tabla ───────────────────────────────────────────────────────────────── */
+
+.inv-table-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 28px 28px;
+}
+
+.inv-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+}
+
+.inv-table thead th {
+  background: #0f172a;
+  color: #94a3b8;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left;
+  padding: 14px 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.inv-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.86rem;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.inv-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.inv-num {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  color: #0e7490;
+}
+
+.inv-money {
+  font-family: 'Space Mono', monospace;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.inv-money.is-pending {
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.inv-money.is-zero {
+  color: #94a3b8;
+}
+
+/* ── Badges de estado ────────────────────────────────────────────────────── */
+
+.inv-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.inv-badge.al_dia {
+  background: #e0f2fe;
+  color: #075985;
+}
+.inv-badge.por_vencer {
+  background: #fef3c7;
+  color: #92400e;
+}
+.inv-badge.vencida {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.inv-badge.parcial {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.inv-badge.parcial_vencida {
+  background: #ffe4e6;
+  color: #9f1239;
+}
+.inv-badge.pagada {
+  background: #d1fae5;
+  color: #065f46;
+}
+.inv-badge.anulada {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.inv-mora {
+  font-size: 0.72rem;
+  color: #b91c1c;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.inv-tag-factoring {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #cffafe;
+  color: #155e75;
+  margin-left: 6px;
+}
+
+/* ── Acciones ────────────────────────────────────────────────────────────── */
+
+.inv-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.inv-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 5px 9px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: #334155;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.inv-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.inv-btn.is-primary {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+.inv-btn.is-primary:hover {
+  background: #1d4ed8;
+}
+
+.inv-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+
+.inv-modal {
+  background: #fff;
+  border-radius: 14px;
+  width: min(760px, 94vw);
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 20px 50px rgb(15 23 42 / 30%);
+}
+
+.inv-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.inv-modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.inv-modal-body {
+  padding: 20px 22px;
+}
+
+.inv-section-title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  font-weight: 700;
+  margin: 22px 0 10px;
+}
+
+.inv-section-title:first-child {
+  margin-top: 0;
+}
+
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.inv-field label {
+  display: block;
+  font-size: 0.76rem;
+  color: #475569;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.inv-field input,
+.inv-field select,
+.inv-field textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.86rem;
+  font-family: inherit;
+  color: #0f172a;
+  background: #fff;
+}
+
+.inv-field textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.inv-field .inv-error {
+  color: #b91c1c;
+  font-size: 0.74rem;
+  margin-top: 3px;
+}
+
+.inv-payments-list {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.inv-payment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.84rem;
+}
+
+.inv-payment-row:last-child {
+  border-bottom: none;
+}
+
+.inv-payment-meta {
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.inv-empty {
+  padding: 18px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.inv-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 22px;
+  border-top: 1px solid #e2e8f0;
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+}
+
+.inv-alert {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  margin-bottom: 12px;
+}
+
+.inv-loading {
+  padding: 40px;
+  text-align: center;
+  color: #64748b;
+}

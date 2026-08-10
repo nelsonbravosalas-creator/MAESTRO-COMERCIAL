@@ -12,7 +12,11 @@ CREATE TYPE quote_status     AS ENUM ('Borrador', 'Emitida', 'Enviada', 'Perdida
 CREATE TYPE oper_state       AS ENUM ('Pendiente de ejecución', 'En ejecución', 'Terminada');
 CREATE TYPE project_status   AS ENUM ('planning', 'in_progress', 'completed', 'paused', 'cancelled');
 CREATE TYPE invoice_status   AS ENUM ('draft', 'issued', 'paid', 'cancelled');
-CREATE TYPE payment_cond     AS ENUM ('cash', 'credit', 'partial');
+CREATE TYPE payment_term     AS ENUM ('contado', 'dias_15', 'dias_30', 'dias_60', 'dias_90');
+CREATE TYPE payment_method   AS ENUM ('transferencia', 'cheque', 'efectivo', 'tarjeta', 'otro');
+CREATE TYPE sii_doc_type     AS ENUM ('factura_afecta', 'factura_exenta', 'nota_credito');
+CREATE TYPE financing_type   AS ENUM ('factoring', 'confirming');
+CREATE TYPE financing_status AS ENUM ('cedida', 'anticipada', 'liquidada', 'rechazada');
 CREATE TYPE cost_category_id AS ENUM ('mo', 'log', 'mat', 'rep', 'ins');
 CREATE TYPE term_type        AS ENUM ('scope', 'exclusion', 'commercial');
 CREATE TYPE audit_action     AS ENUM ('INSERT', 'UPDATE', 'DELETE');
@@ -361,13 +365,19 @@ CREATE TABLE invoices (
   client_id    UUID           NOT NULL REFERENCES clients(id),
   number       TEXT           NOT NULL,
   date         DATE           NOT NULL DEFAULT CURRENT_DATE,
-  payment_cond payment_cond   NOT NULL DEFAULT 'credit',
+  payment_term payment_term   NOT NULL DEFAULT 'dias_30',
   due_date     DATE,
   net_amount   NUMERIC(14,2)  NOT NULL DEFAULT 0,
   tax_amount   NUMERIC(14,2)  NOT NULL DEFAULT 0,
   total_amount NUMERIC(14,2)  NOT NULL DEFAULT 0,
   is_factored  BOOLEAN        NOT NULL DEFAULT false,
   status       invoice_status NOT NULL DEFAULT 'draft',
+  -- Gestión de cobranza: la emisión es del SII, acá se controla el cobro.
+  doc_type     sii_doc_type   NOT NULL DEFAULT 'factura_afecta',
+  observations TEXT,
+  follow_up_date DATE,
+  -- Una nota de crédito referencia la factura cuyo monto rebaja.
+  credits_invoice_id UUID     REFERENCES invoices(id) ON DELETE SET NULL,
   created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
   deleted_at   TIMESTAMPTZ,
@@ -379,6 +389,9 @@ CREATE TABLE invoices (
 CREATE INDEX ix_invoices_client_id ON invoices (client_id) WHERE deleted_at IS NULL;
 CREATE INDEX ix_invoices_status    ON invoices (status)    WHERE deleted_at IS NULL;
 CREATE INDEX ix_invoices_date      ON invoices (date DESC) WHERE deleted_at IS NULL;
+CREATE INDEX ix_invoices_due_date  ON invoices (due_date)  WHERE deleted_at IS NULL;
+CREATE INDEX ix_invoices_follow_up ON invoices (follow_up_date)
+  WHERE deleted_at IS NULL AND follow_up_date IS NOT NULL;
 
 CREATE TRIGGER trg_invoices_updated_at
   BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
@@ -395,6 +408,89 @@ CREATE TABLE invoice_items (
 );
 
 CREATE INDEX ix_inv_items_invoice_id ON invoice_items (invoice_id);
+
+-- Pagos (abonos). Tabla propia y no campos en `invoices`: el abono parcial es
+-- la norma, y el estado de pago se deriva del dinero recibido — ver
+-- v_invoice_balance más abajo.
+CREATE TABLE invoice_payments (
+  id           UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id   UUID           NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  paid_at      DATE           NOT NULL DEFAULT CURRENT_DATE,
+  amount       NUMERIC(14,2)  NOT NULL CHECK (amount > 0),
+  method       payment_method NOT NULL DEFAULT 'transferencia',
+  reference    TEXT,
+  observations TEXT,
+  created_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+  created_by   UUID           REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX ix_payments_invoice ON invoice_payments (invoice_id);
+CREATE INDEX ix_payments_date    ON invoice_payments (paid_at DESC);
+
+-- Factoring / confirming. Tabla aparte y no un booleano porque tiene ciclo de
+-- vida propio (cesión → anticipo → liquidación) y un costo financiero que se
+-- necesita poder reportar.
+CREATE TABLE invoice_factoring (
+  id                 UUID             PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id         UUID             NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  type               financing_type   NOT NULL DEFAULT 'factoring',
+  company            TEXT             NOT NULL,
+  ceded_at           DATE             NOT NULL DEFAULT CURRENT_DATE,
+  advance_amount     NUMERIC(14,2)    NOT NULL DEFAULT 0 CHECK (advance_amount >= 0),
+  rate_pct           NUMERIC(6,3)     CHECK (rate_pct IS NULL OR rate_pct >= 0),
+  cost_amount        NUMERIC(14,2)    NOT NULL DEFAULT 0 CHECK (cost_amount >= 0),
+  expected_settle_at DATE,
+  settled_at         DATE,
+  status             financing_status NOT NULL DEFAULT 'cedida',
+  observations       TEXT,
+  created_at         TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+  updated_at         TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+  created_by         UUID             REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT uq_factoring_invoice UNIQUE (invoice_id)
+);
+
+CREATE INDEX ix_factoring_status ON invoice_factoring (status);
+
+CREATE TRIGGER trg_factoring_updated_at
+  BEFORE UPDATE ON invoice_factoring FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+-- ============================================================
+-- VISTA: Saldo y estado de cobranza por factura
+-- ============================================================
+-- Mismo criterio que v_quotation_totals: el dinero se calcula, no se almacena.
+CREATE VIEW v_invoice_balance AS
+SELECT
+  i.id AS invoice_id,
+  i.total_amount,
+  COALESCE(p.pagado, 0)                                              AS paid_amount,
+  COALESCE(nc.creditado, 0)                                          AS credited_amount,
+  i.total_amount - COALESCE(p.pagado, 0) - COALESCE(nc.creditado, 0) AS balance,
+  CASE WHEN i.due_date IS NULL THEN NULL
+       ELSE (CURRENT_DATE - i.due_date) END                          AS days_overdue,
+  CASE
+    WHEN i.status = 'cancelled'                                            THEN 'anulada'
+    WHEN i.total_amount - COALESCE(p.pagado,0) - COALESCE(nc.creditado,0) <= 0
+                                                                           THEN 'pagada'
+    WHEN COALESCE(p.pagado, 0) > 0 AND i.due_date IS NOT NULL
+         AND i.due_date < CURRENT_DATE                                     THEN 'parcial_vencida'
+    WHEN COALESCE(p.pagado, 0) > 0                                         THEN 'parcial'
+    WHEN i.due_date IS NOT NULL AND i.due_date < CURRENT_DATE              THEN 'vencida'
+    WHEN i.due_date IS NOT NULL AND i.due_date <= CURRENT_DATE + 7         THEN 'por_vencer'
+    ELSE 'al_dia'
+  END                                                                AS payment_state
+FROM invoices i
+LEFT JOIN (
+  SELECT invoice_id, SUM(amount) AS pagado
+    FROM invoice_payments GROUP BY invoice_id
+) p ON p.invoice_id = i.id
+LEFT JOIN (
+  SELECT credits_invoice_id AS invoice_id, SUM(total_amount) AS creditado
+    FROM invoices
+   WHERE doc_type = 'nota_credito' AND deleted_at IS NULL
+     AND credits_invoice_id IS NOT NULL
+   GROUP BY credits_invoice_id
+) nc ON nc.invoice_id = i.id
+WHERE i.deleted_at IS NULL;
 
 -- ============================================================
 -- AUDITORÍA

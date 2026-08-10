@@ -508,6 +508,33 @@ export const api = {
   deleteTask: (projectId: string, taskId: string) =>
     del<any>(`/api/projects/${projectId}/tasks/${taskId}`),
 
+  // ── Facturas ────────────────────────────────────────────────
+  // El saldo y el estado de cobranza vienen calculados desde
+  // v_invoice_balance: el front nunca los recalcula ni los guarda.
+  getInvoices: (params?: { state?: string; client_id?: string }) => {
+    const qs = new URLSearchParams()
+    if (params?.state) qs.set('state', params.state)
+    if (params?.client_id) qs.set('client_id', params.client_id)
+    const suffix = qs.toString() ? `?${qs}` : ''
+    return get<any[]>(`/api/invoices${suffix}`)
+  },
+  getInvoice: (id: string) => get<any>(`/api/invoices/${id}`),
+  getInvoiceSummary: () => get<any>('/api/invoices/summary'),
+  createInvoice: (data: any) => post<any>('/api/invoices', data),
+  updateInvoiceFollowUp: (id: string, data: any) =>
+    patch<any>(`/api/invoices/${id}/follow-up`, data),
+  updateInvoiceStatus: (id: string, data: any) => patch<any>(`/api/invoices/${id}/status`, data),
+  deleteInvoice: (id: string) => del<any>(`/api/invoices/${id}`),
+
+  getPayments: (invoiceId: string) => get<any[]>(`/api/invoices/${invoiceId}/payments`),
+  addPayment: (invoiceId: string, data: any) =>
+    post<any>(`/api/invoices/${invoiceId}/payments`, data),
+  deletePayment: (paymentId: string) => del<any>(`/api/invoices/payments/${paymentId}`),
+
+  saveFactoring: (invoiceId: string, data: any) =>
+    put<any>(`/api/invoices/${invoiceId}/factoring`, data),
+  deleteFactoring: (invoiceId: string) => del<any>(`/api/invoices/${invoiceId}/factoring`),
+
   // ── Dashboard ───────────────────────────────────────────────
   getKPIs: () => get<any>('/api/dashboard/kpis'),
 }

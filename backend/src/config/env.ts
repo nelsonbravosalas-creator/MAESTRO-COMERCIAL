@@ -20,13 +20,32 @@ export const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>
 
+// `process.exit(1)` mataba la función serverless de Vercel durante el import, y
+// la plataforma solo puede responder FUNCTION_INVOCATION_FAILED: un 500 opaco,
+// idéntico para "falta JWT_SECRET" que para un bug real. Lanzar un error deja el
+// motivo en los logs y permite que api/index.ts responda algo accionable.
+// En server.ts el efecto es el mismo (el proceso no arranca), pero con stack.
+export class EnvValidationError extends Error {
+  readonly fieldErrors: Record<string, string[] | undefined>
+
+  constructor(fieldErrors: Record<string, string[] | undefined>) {
+    const names = Object.keys(fieldErrors).sort()
+    super(`Configuración de entorno inválida: ${names.join(', ')}`)
+    this.name = 'EnvValidationError'
+    this.fieldErrors = fieldErrors
+  }
+
+  /** Nombres de las variables mal configuradas. Nunca incluye sus valores. */
+  get variableNames(): string[] {
+    return Object.keys(this.fieldErrors).sort()
+  }
+}
+
 // Recibe una fuente inyectable para poder probarla sin depender de process.env global.
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = envSchema.safeParse(source)
   if (!parsed.success) {
-    // eslint-disable-next-line no-console
-    console.error('Configuración de entorno inválida:', parsed.error.flatten().fieldErrors)
-    process.exit(1)
+    throw new EnvValidationError(parsed.error.flatten().fieldErrors)
   }
   return parsed.data
 }

@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # A-09: comprobaciones mínimas post-deploy. Uso:
 #   ./scripts/smoke.sh https://tu-app.vercel.app
-#
-# No se ejecutó nunca contra un deploy real en esta sesión (sin acceso a
-# Vercel) — revisar la lógica antes de confiar en él para gatillar un rollback
-# automático.
 set -euo pipefail
 
 URL="${1:?Uso: smoke.sh <URL base, sin barra final>}"
@@ -34,8 +30,9 @@ else
   FAILED=1
 fi
 
-# 2. Login rechaza credenciales inválidas correctamente (no 500)
-check "login con credenciales inválidas responde 401, no 500" "/api/auth/login" "401" || true
+# 2. La API enruta de verdad: un GET a una ruta solo-POST debe dar 404 del
+# router, no un 500 de una función que murió al arrancar.
+check "la API enruta (GET a ruta solo-POST -> 404, no 500)" "/api/auth/login" "404" || true
 login_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST "$URL/api/auth/login" \
   -H 'content-type: application/json' -d '{"email":"smoke-test@example.invalid","password":"no-existe"}')
 if [ "$login_code" = "401" ]; then

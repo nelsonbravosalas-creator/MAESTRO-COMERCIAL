@@ -268,4 +268,19 @@ describe('A-04: recuperación y cambio de contraseña', () => {
       .send({ current_password: 'viejaClave123', new_password: 'nuevaClave123' })
     expect(res.status).toBe(200)
   })
+
+  it('change-password: rechaza reusar la misma contraseña como "nueva"', async () => {
+    const app = buildApp(users, resets)
+    const token = jwt.sign(
+      { id: USER_ID, email: 'user@test.cl', name: 'Test', role: 'user' },
+      'test-secret-test-secret-test-secret'
+    )
+    const res = await request(app)
+      .post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ current_password: 'viejaClave123', new_password: 'viejaClave123' })
+
+    expect(res.status).toBe(400)
+    expect(res.body.message).toMatch(/distinta de la actual/i)
+  })
 })

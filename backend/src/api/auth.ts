@@ -121,12 +121,14 @@ export const createAuthRouter = (pool: Pool) => {
         if (!passwordMatch) {
           const attempts = (user.failed_login_attempts ?? 0) + 1
           const lockNow = attempts >= MAX_FAILED_ATTEMPTS
+          // make_interval en vez de interpolar el número en el SQL: la duración
+          // viaja como parámetro, así el texto de la consulta es constante.
           await pool.query(
             `UPDATE users
               SET failed_login_attempts = $2,
-                  locked_until = CASE WHEN $3 THEN NOW() + INTERVAL '${LOCKOUT_MINUTES} minutes' ELSE locked_until END
+                  locked_until = CASE WHEN $3 THEN NOW() + make_interval(mins => $4) ELSE locked_until END
             WHERE id = $1`,
-            [user.id, attempts, lockNow]
+            [user.id, attempts, lockNow, LOCKOUT_MINUTES]
           )
           if (lockNow) {
             logger.warn('Account locked after repeated failed logins', {
@@ -149,8 +151,14 @@ export const createAuthRouter = (pool: Pool) => {
         try {
           await pool.query(
             `INSERT INTO sessions (user_id, refresh_token_hash, ip_address, user_agent, expires_at)
-           VALUES ($1, $2, $3, $4, NOW() + INTERVAL '${REFRESH_TOKEN_DAYS} days')`,
-            [user.id, hashToken(refreshToken), req.ip ?? null, req.headers['user-agent'] ?? null]
+           VALUES ($1, $2, $3, $4, NOW() + make_interval(days => $5))`,
+            [
+              user.id,
+              hashToken(refreshToken),
+              req.ip ?? null,
+              req.headers['user-agent'] ?? null,
+              REFRESH_TOKEN_DAYS,
+            ]
           )
         } catch (sessionError: any) {
           logger.error('Could not persist refresh session — aborting login', {
@@ -236,17 +244,28 @@ export const createAuthRouter = (pool: Pool) => {
         }
 
         const tokenHash = hashToken(refresh_token)
+
+        // La transacción abre ANTES de leer la sesión, y el SELECT toma un lock
+        // de fila con FOR UPDATE. Antes el SELECT quedaba fuera: dos refresh
+        // concurrentes con el mismo token podían leer los dos `revoked_at IS
+        // NULL` y crear dos sesiones válidas, en vez de que el segundo activara
+        // la detección de reuso. Con el lock, el segundo espera y ve la fila ya
+        // revocada por el primero.
+        // `OF s` limita el lock a sessions: users se lee sin bloquear.
+        await db.query('BEGIN')
         const session = await db.query(
           `SELECT s.id, s.user_id, s.revoked_at, s.expires_at,
                 u.id AS uid, u.email, u.name, u.role, u.is_active
            FROM sessions s
            JOIN users u ON u.id = s.user_id
           WHERE s.refresh_token_hash = $1
-            AND u.deleted_at IS NULL`,
+            AND u.deleted_at IS NULL
+            FOR UPDATE OF s`,
           [tokenHash]
         )
 
         if (session.rows.length === 0) {
+          await db.query('ROLLBACK')
           return res.status(401).json({ error: 'Unauthorized', message: 'Sesión no encontrada' })
         }
 
@@ -254,11 +273,13 @@ export const createAuthRouter = (pool: Pool) => {
 
         if (row.revoked_at) {
           // Reuso de un token ya rotado (o de logout): posible robo. Se revoca
-          // todo lo que tenga el usuario, no solo esta sesión.
+          // todo lo que tenga el usuario, no solo esta sesión. Va con COMMIT
+          // porque esta rama sí escribe: la revocación debe persistir.
           await db.query(
             'UPDATE sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
             [row.user_id]
           )
+          await db.query('COMMIT')
           logger.error('Refresh token reuse detected — all sessions revoked', {
             userId: row.user_id,
           })
@@ -266,10 +287,12 @@ export const createAuthRouter = (pool: Pool) => {
         }
 
         if (new Date(row.expires_at).getTime() <= Date.now()) {
+          await db.query('ROLLBACK')
           return res.status(401).json({ error: 'Unauthorized', message: 'Refresh token expirado' })
         }
 
         if (!row.is_active) {
+          await db.query('ROLLBACK')
           return res.status(401).json({ error: 'Unauthorized', message: 'Usuario inválido' })
         }
 
@@ -277,12 +300,17 @@ export const createAuthRouter = (pool: Pool) => {
         const newAccessToken = signAccessToken(user)
         const newRefreshToken = signRefreshToken(user)
 
-        await db.query('BEGIN')
         await db.query('UPDATE sessions SET revoked_at = NOW() WHERE id = $1', [row.id])
         await db.query(
           `INSERT INTO sessions (user_id, refresh_token_hash, ip_address, user_agent, expires_at)
-         VALUES ($1, $2, $3, $4, NOW() + INTERVAL '${REFRESH_TOKEN_DAYS} days')`,
-          [user.id, hashToken(newRefreshToken), req.ip ?? null, req.headers['user-agent'] ?? null]
+         VALUES ($1, $2, $3, $4, NOW() + make_interval(days => $5))`,
+          [
+            user.id,
+            hashToken(newRefreshToken),
+            req.ip ?? null,
+            req.headers['user-agent'] ?? null,
+            REFRESH_TOKEN_DAYS,
+          ]
         )
         await db.query('COMMIT')
 
@@ -393,8 +421,8 @@ export const createAuthRouter = (pool: Pool) => {
           )
           await pool.query(
             `INSERT INTO password_resets (user_id, token_hash, expires_at)
-           VALUES ($1, $2, NOW() + INTERVAL '${RESET_TOKEN_MINUTES} minutes')`,
-            [user.id, tokenHash]
+           VALUES ($1, $2, NOW() + make_interval(mins => $3))`,
+            [user.id, tokenHash, RESET_TOKEN_MINUTES]
           )
 
           const resetUrl = `${env.FRONTEND_PUBLIC_URL}/reset-password?token=${rawToken}`
@@ -522,6 +550,17 @@ export const createAuthRouter = (pool: Pool) => {
           return res
             .status(401)
             .json({ error: 'Unauthorized', message: 'Contraseña actual incorrecta' })
+        }
+
+        // Se compara contra el hash y no `current_password === new_password`:
+        // así también se detecta el caso de mandar la misma clave escrita
+        // distinto de lo que el usuario tecleó como actual.
+        const sameAsCurrent = await bcrypt.compare(new_password, result.rows[0].password_hash)
+        if (sameAsCurrent) {
+          return res.status(400).json({
+            error: 'Bad request',
+            message: 'La nueva contraseña debe ser distinta de la actual',
+          })
         }
 
         const passwordHash = await bcrypt.hash(new_password, 10)

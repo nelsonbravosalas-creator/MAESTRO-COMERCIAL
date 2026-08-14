@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import express from 'express'
 import request from 'supertest'
-import { requestIdMiddleware } from '../requestId'
+import { requestIdMiddleware, type RequestWithId } from '../requestId'
 
 function buildApp() {
   const app = express()
   app.use(requestIdMiddleware)
-  app.get('/ping', (req: any, res) => res.json({ requestId: req.requestId }))
+  app.get('/ping', (req, res) => res.json({ requestId: (req as RequestWithId).requestId }))
   return app
 }
 

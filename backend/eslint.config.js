@@ -18,7 +18,9 @@ export default tseslint.config(
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+        // ignoreRestSiblings: los tests de env.ts destructuran `{ JWT_SECRET, ...rest }`
+        // a propósito, para omitir esa var del objeto que sí usan.
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-floating-promises': 'off', // requiere parserOptions.project; ver nota abajo

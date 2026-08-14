@@ -1,50 +1,23 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import '../styles/Invoices.css'
-import { api } from '../api/api'
+import {
+  api,
+  ApiError,
+  type Invoice,
+  type InvoiceDetail,
+  type InvoicePayment as Payment,
+  type InvoicePaymentState as PaymentState,
+  type InvoiceSummary,
+} from '../api/api'
 import { usePermissions } from '../hooks/usePermissions'
-
-// ── Tipos ─────────────────────────────────────────────────────────────────────
-
-type PaymentState =
-  'al_dia' | 'por_vencer' | 'vencida' | 'parcial' | 'parcial_vencida' | 'pagada' | 'anulada'
-
-interface Invoice {
-  id: string
-  number: string
-  client_id: string
-  client_name: string | null
-  date: string
-  due_date: string | null
-  payment_term: string
-  doc_type: string
-  total_amount: string | number
-  paid_amount: string | number | null
-  balance: string | number | null
-  days_overdue: number | null
-  payment_state: PaymentState | null
-  observations: string | null
-  follow_up_date: string | null
-  is_factored: boolean
-  factoring_company: string | null
-  factoring_type: string | null
-}
-
-interface Payment {
-  id: string
-  paid_at: string
-  amount: string | number
-  method: string
-  reference: string | null
-  observations: string | null
-  created_by_name: string | null
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const clp = (v: unknown) =>
   `$${Number(v ?? 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`
 
-const fecha = (v: string | null) => (v ? v.slice(0, 10).split('-').reverse().join('-') : '—')
+const fecha = (v: string | null | undefined) =>
+  v ? v.slice(0, 10).split('-').reverse().join('-') : '—'
 
 const ESTADO_LABEL: Record<PaymentState, string> = {
   al_dia: 'Al día',
@@ -77,7 +50,7 @@ interface DetalleProps {
 function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
   const { canChangeInvoiceStatus } = usePermissions()
   const [cargando, setCargando] = useState(true)
-  const [inv, setInv] = useState<any>(null)
+  const [inv, setInv] = useState<InvoiceDetail | null>(null)
   const [pagos, setPagos] = useState<Payment[]>([])
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -95,7 +68,7 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
   const cargar = useCallback(async () => {
     setCargando(true)
     try {
-      const data: any = await api.getInvoice(invoiceId)
+      const data = await api.getInvoice(invoiceId)
       setInv(data)
       setPagos(data.payments ?? [])
       setObservaciones(data.observations ?? '')
@@ -134,10 +107,14 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
       setReferencia('')
       await cargar()
       onChanged()
-    } catch (e: any) {
+    } catch (e) {
       // El backend devuelve el saldo real cuando el abono lo excede: se muestra
       // tal cual para que el usuario pueda corregir sin adivinar.
-      setError(e?.data?.message || e?.message || 'No se pudo registrar el abono')
+      const apiMessage =
+        e instanceof ApiError && e.data && typeof e.data === 'object' && 'message' in e.data
+          ? (e.data as { message?: string }).message
+          : undefined
+      setError(apiMessage || (e instanceof Error ? e.message : 'No se pudo registrar el abono'))
     } finally {
       setGuardando(false)
     }
@@ -217,8 +194,8 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
                   <div className="inv-card-label">Vencimiento</div>
                   <div>
                     {fecha(inv?.due_date)}
-                    {inv?.days_overdue > 0 && (
-                      <span className="inv-mora">{inv.days_overdue}d de mora</span>
+                    {(inv?.days_overdue ?? 0) > 0 && (
+                      <span className="inv-mora">{inv?.days_overdue}d de mora</span>
                     )}
                   </div>
                 </div>
@@ -390,7 +367,7 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
 
 export default function Invoices() {
   const [facturas, setFacturas] = useState<Invoice[]>([])
-  const [resumen, setResumen] = useState<any>(null)
+  const [resumen, setResumen] = useState<InvoiceSummary | null>(null)
   const [filtro, setFiltro] = useState<string>('')
   const [busqueda, setBusqueda] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -404,7 +381,7 @@ export default function Invoices() {
         api.getInvoices(filtro ? { state: filtro } : undefined),
         api.getInvoiceSummary(),
       ])
-      setFacturas(lista as Invoice[])
+      setFacturas(lista)
       setResumen(sum)
       setError(null)
     } catch (e) {

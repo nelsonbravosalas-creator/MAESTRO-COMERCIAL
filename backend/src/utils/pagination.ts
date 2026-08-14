@@ -2,8 +2,8 @@
 // insertan filas nuevas mientras alguien recorre las páginas (a diferencia de
 // OFFSET, que puede saltarse u omitir filas bajo escritura concurrente).
 
-export interface CursorPage {
-  data: any[]
+export interface CursorPage<T = unknown> {
+  data: T[]
   next_cursor: string | null
   has_more: boolean
 }
@@ -31,7 +31,10 @@ export function encodeCursor(row: { created_at: string | Date; id: string }): st
 
 // Arma la página: pide `limit + 1` filas (ya lo hizo el caller) y esta función
 // decide si hay más y arma el cursor de la última fila retenida.
-export function buildPage(rows: any[], limit: number): CursorPage {
+export function buildPage<T extends { created_at: string | Date; id: string }>(
+  rows: T[],
+  limit: number
+): CursorPage<T> {
   const hasMore = rows.length > limit
   const data = hasMore ? rows.slice(0, limit) : rows
   const last = data[data.length - 1]

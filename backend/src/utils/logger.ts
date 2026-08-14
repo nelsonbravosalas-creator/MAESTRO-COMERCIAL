@@ -14,9 +14,17 @@ const transports: winston.transport[] = [
 
 // File transports solo en desarrollo local (no en serverless/Vercel)
 if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
-  if (!fs.existsSync('logs')) fs.mkdirSync('logs')
+  // recursive:true no lanza EEXIST: necesario porque los tests corren varios
+  // workers en paralelo y todos importan este módulo al mismo tiempo — con
+  // existsSync + mkdirSync por separado, dos workers pueden ver "no existe"
+  // a la vez y el segundo mkdirSync revienta con EEXIST.
+  fs.mkdirSync('logs', { recursive: true })
   transports.push(
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error', format: winston.format.json() }),
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error',
+      format: winston.format.json(),
+    }),
     new winston.transports.File({ filename: 'logs/combined.log', format: winston.format.json() })
   )
 }

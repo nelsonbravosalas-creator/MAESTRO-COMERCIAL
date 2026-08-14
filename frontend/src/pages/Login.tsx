@@ -50,7 +50,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       if (data.refresh_token) localStorage.setItem('refreshToken', data.refresh_token)
       localStorage.setItem('user', JSON.stringify(data.user))
       onLoginSuccess(data.token)
-    } catch (err: any) {
+    } catch (err) {
       setError('Error conectando con el servidor')
       console.error('Login error:', err)
     } finally {

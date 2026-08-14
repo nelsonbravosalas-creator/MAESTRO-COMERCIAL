@@ -16,7 +16,7 @@ export const loginLimiterOptions: Partial<Options> = {
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: Request) =>
-    `${req.ip}:${String((req.body as any)?.email ?? '').toLowerCase()}`,
+    `${req.ip}:${String((req.body as { email?: string })?.email ?? '').toLowerCase()}`,
   message: { error: 'Too many requests', message: 'Demasiados intentos. Reintente en 15 minutos.' },
 }
 
@@ -34,7 +34,7 @@ export const forgotPasswordLimiterOptions: Partial<Options> = {
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: Request) =>
-    `${req.ip}:${String((req.body as any)?.email ?? '').toLowerCase()}`,
+    `${req.ip}:${String((req.body as { email?: string })?.email ?? '').toLowerCase()}`,
   message: {
     error: 'Too many requests',
     message: 'Demasiadas solicitudes. Reintente en una hora.',

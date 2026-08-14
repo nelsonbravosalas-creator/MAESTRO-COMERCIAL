@@ -59,6 +59,12 @@ app.use(
 const allowedOrigins = env.ALLOWED_ORIGINS.split(',')
   .map(o => o.trim())
   .filter(Boolean)
+// Frontend y API viven en el mismo deployment de Vercel, pero cada deployment
+// (incluida producción) recibe además una URL única autogenerada distinta del
+// dominio estable configurado en ALLOWED_ORIGINS. VERCEL_URL la provee la
+// plataforma misma (no es input de usuario), así que confiar en ella no abre
+// la allowlist a orígenes arbitrarios.
+if (process.env.VERCEL_URL) allowedOrigins.push(`https://${process.env.VERCEL_URL}`)
 app.use(cors(buildCorsOptions(allowedOrigins)))
 
 app.use(requestIdMiddleware)

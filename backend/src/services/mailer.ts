@@ -48,11 +48,12 @@ class ResendMailer implements Mailer {
         logger.error('Mailer: proveedor respondió error', { status: res.status, body })
         return { ok: false, error: `provider_${res.status}` }
       }
-      const data: any = await res.json()
+      const data = (await res.json()) as { id?: string }
       return { ok: true, providerId: data?.id }
-    } catch (error: any) {
-      logger.error('Mailer: fallo de red al enviar', { error: error.message })
-      return { ok: false, error: error.message }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      logger.error('Mailer: fallo de red al enviar', { error: message })
+      return { ok: false, error: message }
     }
   }
 }

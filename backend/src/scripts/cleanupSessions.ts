@@ -18,8 +18,10 @@ async function cleanupSessions() {
     )
     logger.info('Session cleanup completed', { deleted: result.rowCount })
     console.log(`Sesiones eliminadas: ${result.rowCount}`)
-  } catch (error: any) {
-    logger.error('Session cleanup failed', { error: error.message })
+  } catch (error) {
+    logger.error('Session cleanup failed', {
+      error: error instanceof Error ? error.message : String(error),
+    })
     process.exitCode = 1
   } finally {
     await pool.end()

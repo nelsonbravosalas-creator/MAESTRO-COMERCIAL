@@ -28,8 +28,8 @@ const clearAuth = () => {
 // (conflicto de versión) de un error genérico de red/servidor.
 export class ApiError extends Error {
   status: number
-  data?: any
-  constructor(status: number, message: string, data?: any) {
+  data?: unknown
+  constructor(status: number, message: string, data?: unknown) {
     super(message)
     this.status = status
     this.data = data
@@ -322,6 +322,112 @@ export interface ImportQuotationResult {
   reporte_importacion: ImportQuotationReport
 }
 
+// ── Facturas ──────────────────────────────────────────────────
+// Espejo del payment_state calculado por v_invoice_balance (ver
+// backend/src/api/invoices.ts).
+export type InvoicePaymentState =
+  'al_dia' | 'por_vencer' | 'vencida' | 'parcial' | 'parcial_vencida' | 'pagada' | 'anulada'
+
+export interface Invoice {
+  id: string
+  number: string
+  client_id: string
+  client_name: string | null
+  date: string
+  due_date: string | null
+  payment_term: string
+  doc_type: string
+  total_amount: string | number
+  paid_amount: string | number | null
+  balance: string | number | null
+  days_overdue: number | null
+  payment_state: InvoicePaymentState | null
+  observations: string | null
+  follow_up_date: string | null
+  is_factored: boolean
+  factoring_company: string | null
+  factoring_type: string | null
+}
+
+export interface InvoicePayment {
+  id: string
+  paid_at: string
+  amount: string | number
+  method: string
+  reference: string | null
+  observations: string | null
+  created_by_name: string | null
+}
+
+export interface InvoiceFactoring {
+  id: string
+  company: string
+  type: string | null
+  status: string
+  ceded_at: string | null
+  advance_amount: string | number
+  rate_pct: string | number | null
+  cost_amount: string | number
+  expected_settle_at: string | null
+  settled_at: string | null
+  observations: string | null
+}
+
+export interface InvoiceDetail extends Invoice {
+  items: unknown[]
+  payments: InvoicePayment[]
+  factoring: InvoiceFactoring | null
+}
+
+export interface InvoiceSummary {
+  by_state: Partial<Record<InvoicePaymentState, { count: number; balance: number }>>
+  total_outstanding: number
+}
+
+export interface InvoiceCreatePayload {
+  project_id?: string | null
+  client_id: string
+  number?: string
+  date: string
+  payment_term?: string | null
+  due_date?: string | null
+  doc_type?: string
+  items: Array<{ description: string; quantity: number; unit_price: number }>
+}
+
+export interface InvoiceFollowUpPayload {
+  observations: string | null
+  follow_up_date: string | null
+  due_date?: string | null
+  payment_term?: string | null
+}
+
+export interface InvoiceStatusPayload {
+  status: string
+  is_factored?: boolean | null
+}
+
+export interface InvoicePaymentPayload {
+  amount: number
+  method: string | null
+  paid_at: string
+  reference: string | null
+  observations?: string | null
+}
+
+export interface InvoiceFactoringPayload {
+  type: string | null
+  company: string
+  ceded_at?: string | null
+  advance_amount?: number
+  rate_pct?: number | null
+  cost_amount?: number
+  expected_settle_at?: string | null
+  settled_at?: string | null
+  status?: string | null
+  observations?: string | null
+}
+
 // ── API pública ───────────────────────────────────────────────
 
 export const api = {
@@ -516,27 +622,30 @@ export const api = {
     if (params?.state) qs.set('state', params.state)
     if (params?.client_id) qs.set('client_id', params.client_id)
     const suffix = qs.toString() ? `?${qs}` : ''
-    return get<any[]>(`/api/invoices${suffix}`)
+    return get<Invoice[]>(`/api/invoices${suffix}`)
   },
-  getInvoice: (id: string) => get<any>(`/api/invoices/${id}`),
-  getInvoiceSummary: () => get<any>('/api/invoices/summary'),
-  createInvoice: (data: any) => post<any>('/api/invoices', data),
-  updateInvoiceFollowUp: (id: string, data: any) =>
-    patch<any>(`/api/invoices/${id}/follow-up`, data),
-  updateInvoiceStatus: (id: string, data: any) => patch<any>(`/api/invoices/${id}/status`, data),
-  deleteInvoice: (id: string) => del<any>(`/api/invoices/${id}`),
+  getInvoice: (id: string) => get<InvoiceDetail>(`/api/invoices/${id}`),
+  getInvoiceSummary: () => get<InvoiceSummary>('/api/invoices/summary'),
+  createInvoice: (data: InvoiceCreatePayload) => post<Invoice>('/api/invoices', data),
+  updateInvoiceFollowUp: (id: string, data: InvoiceFollowUpPayload) =>
+    patch<Invoice>(`/api/invoices/${id}/follow-up`, data),
+  updateInvoiceStatus: (id: string, data: InvoiceStatusPayload) =>
+    patch<Invoice>(`/api/invoices/${id}/status`, data),
+  deleteInvoice: (id: string) => del<{ success: boolean }>(`/api/invoices/${id}`),
 
-  getPayments: (invoiceId: string) => get<any[]>(`/api/invoices/${invoiceId}/payments`),
-  addPayment: (invoiceId: string, data: any) =>
-    post<any>(`/api/invoices/${invoiceId}/payments`, data),
-  deletePayment: (paymentId: string) => del<any>(`/api/invoices/payments/${paymentId}`),
+  getPayments: (invoiceId: string) => get<InvoicePayment[]>(`/api/invoices/${invoiceId}/payments`),
+  addPayment: (invoiceId: string, data: InvoicePaymentPayload) =>
+    post<InvoicePayment>(`/api/invoices/${invoiceId}/payments`, data),
+  deletePayment: (paymentId: string) =>
+    del<{ success: boolean }>(`/api/invoices/payments/${paymentId}`),
 
-  saveFactoring: (invoiceId: string, data: any) =>
-    put<any>(`/api/invoices/${invoiceId}/factoring`, data),
-  deleteFactoring: (invoiceId: string) => del<any>(`/api/invoices/${invoiceId}/factoring`),
+  saveFactoring: (invoiceId: string, data: InvoiceFactoringPayload) =>
+    put<Invoice>(`/api/invoices/${invoiceId}/factoring`, data),
+  deleteFactoring: (invoiceId: string) =>
+    del<{ success: boolean }>(`/api/invoices/${invoiceId}/factoring`),
 
   // ── Dashboard ───────────────────────────────────────────────
-  getKPIs: () => get<any>('/api/dashboard/kpis'),
+  getKPIs: () => get<Record<string, unknown>>('/api/dashboard/kpis'),
 }
 
 export default api

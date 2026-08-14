@@ -21,7 +21,7 @@ export const CostIndicator: React.FC = () => {
         const token = localStorage.getItem('authToken')
         const response = await fetch('/api/dashboard/kpis', {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         })
@@ -32,8 +32,8 @@ export const CostIndicator: React.FC = () => {
 
         const data = await response.json()
         setKpis(data.kpis)
-      } catch (err: any) {
-        setError(err.message)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch KPIs')
         console.error('Error fetching KPIs:', err)
       } finally {
         setLoading(false)
@@ -68,21 +68,23 @@ export const CostIndicator: React.FC = () => {
       <div className="indicator-container">
         <div className={`indicator-card total-invoiced ${isHealthyMargin ? 'healthy' : 'warning'}`}>
           <div className="indicator-label">Total Facturado</div>
-          <div className="indicator-value">S/ {kpis.total_invoiced.toLocaleString('es-PE', { maximumFractionDigits: 2 })}</div>
+          <div className="indicator-value">
+            S/ {kpis.total_invoiced.toLocaleString('es-PE', { maximumFractionDigits: 2 })}
+          </div>
           <div className="indicator-period">Este mes</div>
         </div>
 
         <div className="indicator-card total-costs">
           <div className="indicator-label">Costos Totales</div>
-          <div className="indicator-value">S/ {kpis.total_costs.toLocaleString('es-PE', { maximumFractionDigits: 2 })}</div>
+          <div className="indicator-value">
+            S/ {kpis.total_costs.toLocaleString('es-PE', { maximumFractionDigits: 2 })}
+          </div>
           <div className="indicator-period">Este mes</div>
         </div>
 
         <div className={`indicator-card margin ${isHealthyMargin ? 'success' : 'warning'}`}>
           <div className="indicator-label">Margen de Ganancia</div>
-          <div className="indicator-value">
-            {kpis.margin_percentage.toFixed(1)}%
-          </div>
+          <div className="indicator-value">{kpis.margin_percentage.toFixed(1)}%</div>
           <div className="indicator-subvalue">
             S/ {kpis.margin.toLocaleString('es-PE', { maximumFractionDigits: 2 })}
           </div>

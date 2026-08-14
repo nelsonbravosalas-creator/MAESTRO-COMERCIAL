@@ -43,6 +43,8 @@ interface DB {
   execution_costs: any[]
   invoices: any[]
   invoice_items: any[]
+  invoice_payments: any[]
+  invoice_factoring: any[]
   audit_logs: any[]
   sync_events: any[]
 }
@@ -62,6 +64,8 @@ const EMPTY_DB: DB = {
   execution_costs: [],
   invoices: [],
   invoice_items: [],
+  invoice_payments: [],
+  invoice_factoring: [],
   audit_logs: [],
   sync_events: [],
 }
@@ -86,6 +90,82 @@ const now = () => new Date().toISOString()
 const uid = () => randomUUID()
 
 const cfg = (key: string) => db.app_config.find((c: any) => c.key === key)?.value
+
+// ── Facturas: saldo y estado de cobranza ────────────────────────
+// Espejo en JS de la vista v_invoice_balance (ver migración 0007). El saldo y
+// el estado nunca se guardan: se recalculan siempre a partir de los pagos, tal
+// como en Postgres, para que este backend y el real no puedan desincronizarse
+// en lo que reportan aunque sí lo hagan en cómo lo calculan.
+const TERM_DAYS: Record<string, number> = {
+  contado: 0,
+  dias_15: 15,
+  dias_30: 30,
+  dias_60: 60,
+  dias_90: 90,
+}
+
+const addDaysISO = (dateStr: string, days: number) => {
+  const d = new Date(`${dateStr}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+const resolveDueDate = (
+  date: string,
+  paymentTerm: string | null | undefined,
+  explicit: string | null | undefined
+): string | null => {
+  if (explicit) return explicit
+  if (!paymentTerm || !(paymentTerm in TERM_DAYS)) return null
+  return addDaysISO(date, TERM_DAYS[paymentTerm])
+}
+
+function calcInvoiceBalance(inv: any) {
+  const paidAmount = db.invoice_payments
+    .filter((p: any) => p.invoice_id === inv.id)
+    .reduce((s: number, p: any) => s + Number(p.amount), 0)
+  const creditedAmount = db.invoices
+    .filter(
+      (i: any) => i.doc_type === 'nota_credito' && !i.deleted_at && i.credits_invoice_id === inv.id
+    )
+    .reduce((s: number, i: any) => s + Number(i.total_amount), 0)
+  const balance = Number(inv.total_amount) - paidAmount - creditedAmount
+  const today = now().slice(0, 10)
+  const daysOverdue = inv.due_date
+    ? Math.round((Date.parse(today) - Date.parse(inv.due_date)) / 86_400_000)
+    : null
+
+  let paymentState: string
+  if (inv.status === 'cancelled') paymentState = 'anulada'
+  else if (balance <= 0) paymentState = 'pagada'
+  else if (paidAmount > 0 && inv.due_date && inv.due_date < today) paymentState = 'parcial_vencida'
+  else if (paidAmount > 0) paymentState = 'parcial'
+  else if (inv.due_date && inv.due_date < today) paymentState = 'vencida'
+  else if (inv.due_date && inv.due_date <= addDaysISO(today, 7)) paymentState = 'por_vencer'
+  else paymentState = 'al_dia'
+
+  return {
+    paid_amount: paidAmount,
+    credited_amount: creditedAmount,
+    balance,
+    days_overdue: daysOverdue,
+    payment_state: paymentState,
+  }
+}
+
+function decorateInvoice(inv: any) {
+  const balance = calcInvoiceBalance(inv)
+  const factoring = db.invoice_factoring.find((f: any) => f.invoice_id === inv.id) || null
+  return {
+    ...inv,
+    client_name: db.clients.find((c: any) => c.id === inv.client_id)?.name || null,
+    ...balance,
+    factoring_id: factoring?.id ?? null,
+    factoring_company: factoring?.company ?? null,
+    factoring_type: factoring?.type ?? null,
+    factoring_status: factoring?.status ?? null,
+  }
+}
 
 const calcQuotationTotals = (quotationId: string) => {
   const cats = db.quotation_categories.filter((c: any) => c.quotation_id === quotationId)
@@ -533,7 +613,11 @@ app.get('/api/quotations', requireAuth, (_req: Request, res: Response) => {
       totals: calcQuotationTotals(q.id),
     }))
     .sort((a: any, b: any) => b.date.localeCompare(a.date))
-  res.json(list)
+  // El backend real pagina por cursor (ver buildPage en backend/src/utils/pagination.ts)
+  // y frontend/src/api/api.ts's getAllPages() espera esa forma {data, next_cursor,
+  // has_more}. db.json es chico: una sola página con has_more=false alcanza para
+  // que el contrato calce sin implementar cursores de verdad.
+  res.json({ data: list, next_cursor: null, has_more: false })
 })
 
 app.get('/api/quotations/:id', requireAuth, (req: Request, res: Response) => {
@@ -1007,20 +1091,61 @@ app.delete('/api/projects/:pid/costs/:id', requireAuth, (req: Request, res: Resp
 // ────────────────────────────────────────────────────────────
 // FACTURAS
 // ────────────────────────────────────────────────────────────
-app.get('/api/invoices', requireAuth, (_req: Request, res: Response) => {
-  res.json(
-    db.invoices
-      .filter((i: any) => !i.deleted_at)
-      .map((i: any) => ({
-        ...i,
-        client_name: db.clients.find((c: any) => c.id === i.client_id)?.name || null,
-      }))
-      .sort((a: any, b: any) => b.date.localeCompare(a.date))
-  )
+// IMPORTANTE: '/summary' tiene que registrarse antes que '/:id' — si no, Express
+// lo trata como un id y nunca llega a este handler.
+app.get('/api/invoices/summary', requireAuth, (_req: Request, res: Response) => {
+  const byState: Record<string, { count: number; balance: number }> = {}
+  let totalOutstanding = 0
+  db.invoices
+    .filter((i: any) => !i.deleted_at && i.doc_type !== 'nota_credito')
+    .forEach((i: any) => {
+      const { payment_state, balance } = calcInvoiceBalance(i)
+      if (!byState[payment_state]) byState[payment_state] = { count: 0, balance: 0 }
+      byState[payment_state].count += 1
+      byState[payment_state].balance += balance
+      if (!['pagada', 'anulada'].includes(payment_state)) totalOutstanding += balance
+    })
+  res.json({ by_state: byState, total_outstanding: totalOutstanding })
+})
+
+app.get('/api/invoices', requireAuth, (req: Request, res: Response) => {
+  const { state, client_id } = req.query as { state?: string; client_id?: string }
+  let list = db.invoices.filter((i: any) => !i.deleted_at)
+  if (client_id) list = list.filter((i: any) => i.client_id === client_id)
+  let decorated = list.map(decorateInvoice)
+  if (state) decorated = decorated.filter((i: any) => i.payment_state === state)
+  res.json(decorated.sort((a: any, b: any) => b.date.localeCompare(a.date)))
+})
+
+app.get('/api/invoices/:id', requireAuth, (req: Request, res: Response) => {
+  const inv = db.invoices.find((i: any) => i.id === req.params.id && !i.deleted_at)
+  if (!inv) return res.status(404).json({ error: 'Factura no encontrada' })
+  const items = db.invoice_items.filter((li: any) => li.invoice_id === inv.id)
+  const payments = db.invoice_payments
+    .filter((p: any) => p.invoice_id === inv.id)
+    .map((p: any) => ({
+      ...p,
+      created_by_name: db.users.find((u: any) => u.id === p.created_by)?.name || null,
+    }))
+    .sort((a: any, b: any) => b.paid_at.localeCompare(a.paid_at))
+  const factoring = db.invoice_factoring.find((f: any) => f.invoice_id === inv.id) || null
+  res.json({ ...decorateInvoice(inv), items, payments, factoring })
 })
 
 app.post('/api/invoices', requireAuth, (req: AuthReq, res: Response) => {
-  const { project_id, client_id, number, date, payment_cond, due_date, items } = req.body
+  const {
+    project_id,
+    client_id,
+    number,
+    date,
+    payment_term,
+    due_date,
+    doc_type,
+    credits_invoice_id,
+    observations,
+    follow_up_date,
+    items,
+  } = req.body
   if (!client_id) return res.status(400).json({ error: 'client_id es requerido' })
 
   let net_amount = 0
@@ -1028,32 +1153,39 @@ app.post('/api/invoices', requireAuth, (req: AuthReq, res: Response) => {
 
   if (Array.isArray(items)) {
     items.forEach((item: any, idx: number) => {
-      const subtotal = (item.quantity || 0) * (item.unit_price || 0)
+      if (!item.description) return
+      const subtotal = (Number(item.quantity) || 0) * (Number(item.unit_price) || 0)
       net_amount += subtotal
       lineItems.push({
         id: uid(),
-        description: item.description || '',
-        quantity: Number(item.quantity) || 0,
+        description: item.description,
+        quantity: Number(item.quantity) || 1,
         unit_price: Number(item.unit_price) || 0,
-        sort_order: idx,
+        sort_order: Number(item.sort_order ?? idx),
         created_at: now(),
       })
     })
   }
 
   const iva_pct = Number(cfg('iva_pct')) || 19
-  const tax_amount = net_amount * (iva_pct / 100)
+  const tax_amount = doc_type === 'factura_exenta' ? 0 : net_amount * (iva_pct / 100)
   const total_amount = net_amount + tax_amount
   const invNumber = number || `F-${String(db.invoices.length + 1).padStart(6, '0')}`
+  const invoiceDate = date || new Date().toISOString().slice(0, 10)
+  const term = payment_term || 'dias_30'
 
   const invoice = {
     id: uid(),
     project_id: project_id || null,
     client_id,
     number: invNumber,
-    date: date || new Date().toISOString().slice(0, 10),
-    payment_cond: payment_cond || 'credit',
-    due_date: due_date || null,
+    date: invoiceDate,
+    payment_term: term,
+    due_date: resolveDueDate(invoiceDate, term, due_date),
+    doc_type: doc_type || 'factura_afecta',
+    credits_invoice_id: credits_invoice_id || null,
+    observations: observations || null,
+    follow_up_date: follow_up_date || null,
     net_amount,
     tax_amount,
     total_amount,
@@ -1067,17 +1199,183 @@ app.post('/api/invoices', requireAuth, (req: AuthReq, res: Response) => {
   db.invoices.push(invoice)
   lineItems.forEach(li => db.invoice_items.push({ ...li, invoice_id: invoice.id }))
   saveDB(db)
-  res.status(201).json({ ...invoice, items: lineItems })
+  res.status(201).json({ ...decorateInvoice(invoice), items: lineItems })
 })
 
-app.patch('/api/invoices/:id/status', requireAuth, (req: Request, res: Response) => {
+// ── Seguimiento de cobranza ─────────────────────────────────────
+app.patch('/api/invoices/:id/follow-up', requireAuth, (req: Request, res: Response) => {
   const inv = db.invoices.find((i: any) => i.id === req.params.id && !i.deleted_at)
   if (!inv) return res.status(404).json({ error: 'Factura no encontrada' })
-  inv.status = req.body.status
+  const { observations, follow_up_date, due_date, payment_term } = req.body
+  if (observations !== undefined) inv.observations = observations
+  if (follow_up_date !== undefined) inv.follow_up_date = follow_up_date
+  if (due_date !== undefined) inv.due_date = due_date
+  if (payment_term !== undefined) inv.payment_term = payment_term
   inv.updated_at = now()
   saveDB(db)
-  res.json({ id: inv.id, status: inv.status })
+  res.json(decorateInvoice(inv))
 })
+
+// ── Pagos (abonos) ───────────────────────────────────────────────
+app.get('/api/invoices/:id/payments', requireAuth, (req: Request, res: Response) => {
+  const payments = db.invoice_payments
+    .filter((p: any) => p.invoice_id === req.params.id)
+    .map((p: any) => ({
+      ...p,
+      created_by_name: db.users.find((u: any) => u.id === p.created_by)?.name || null,
+    }))
+    .sort((a: any, b: any) => b.paid_at.localeCompare(a.paid_at))
+  res.json(payments)
+})
+
+app.post(
+  '/api/invoices/:id/payments',
+  requireAuth,
+  requireRole('admin', 'manager'),
+  (req: AuthReq, res: Response) => {
+    const inv = db.invoices.find((i: any) => i.id === req.params.id && !i.deleted_at)
+    if (!inv) return res.status(404).json({ error: 'Factura no encontrada' })
+
+    const amount = Number(req.body.amount)
+    if (!amount || amount <= 0)
+      return res.status(400).json({ error: 'El monto del abono debe ser mayor que cero' })
+
+    const { balance } = calcInvoiceBalance(inv)
+    if (amount > balance + 0.01) {
+      return res.status(400).json({
+        error: 'Payment exceeds balance',
+        message: `El abono ($${amount.toLocaleString('es-CL')}) supera el saldo pendiente ($${balance.toLocaleString('es-CL')}).`,
+        balance,
+      })
+    }
+
+    const payment = {
+      id: uid(),
+      invoice_id: inv.id,
+      paid_at: req.body.paid_at || new Date().toISOString().slice(0, 10),
+      amount,
+      method: req.body.method || 'transferencia',
+      reference: req.body.reference || null,
+      observations: req.body.observations || null,
+      created_at: now(),
+      created_by: req.user.id,
+    }
+    db.invoice_payments.push(payment)
+
+    // El status del documento se marca 'paid' solo cuando el saldo llega a
+    // cero, igual que en el backend real — misma historia en ambos lados.
+    const after = calcInvoiceBalance(inv)
+    if (after.balance <= 0 && inv.status !== 'cancelled') inv.status = 'paid'
+    inv.updated_at = now()
+    saveDB(db)
+    res.status(201).json({
+      ...payment,
+      created_by_name: db.users.find((u: any) => u.id === payment.created_by)?.name || null,
+    })
+  }
+)
+
+app.delete(
+  '/api/invoices/payments/:paymentId',
+  requireAuth,
+  requireRole('admin', 'manager'),
+  (req: Request, res: Response) => {
+    const idx = db.invoice_payments.findIndex((p: any) => p.id === req.params.paymentId)
+    if (idx === -1) return res.status(404).json({ error: 'Abono no encontrado' })
+    const [payment] = db.invoice_payments.splice(idx, 1)
+
+    // Al revertir un abono la factura deja de estar pagada.
+    const inv = db.invoices.find((i: any) => i.id === payment.invoice_id)
+    if (inv && inv.status === 'paid') {
+      const { balance } = calcInvoiceBalance(inv)
+      if (balance > 0) {
+        inv.status = 'issued'
+        inv.updated_at = now()
+      }
+    }
+    saveDB(db)
+    res.json({ message: 'Abono eliminado' })
+  }
+)
+
+// ── Factoring / confirming ───────────────────────────────────────
+app.put(
+  '/api/invoices/:id/factoring',
+  requireAuth,
+  requireRole('admin', 'manager'),
+  (req: AuthReq, res: Response) => {
+    const inv = db.invoices.find((i: any) => i.id === req.params.id && !i.deleted_at)
+    if (!inv) return res.status(404).json({ error: 'Factura no encontrada' })
+    if (!req.body.company) return res.status(400).json({ error: 'company es requerido' })
+
+    const existing = db.invoice_factoring.find((f: any) => f.invoice_id === inv.id)
+    const record = {
+      id: existing?.id ?? uid(),
+      invoice_id: inv.id,
+      type: req.body.type || 'factoring',
+      company: req.body.company,
+      ceded_at: req.body.ceded_at || new Date().toISOString().slice(0, 10),
+      advance_amount: Number(req.body.advance_amount) || 0,
+      rate_pct: req.body.rate_pct ?? null,
+      cost_amount: Number(req.body.cost_amount) || 0,
+      expected_settle_at: req.body.expected_settle_at || null,
+      settled_at: req.body.settled_at || null,
+      status: req.body.status || 'cedida',
+      observations: req.body.observations || null,
+      created_at: existing?.created_at ?? now(),
+      updated_at: now(),
+      created_by: existing?.created_by ?? req.user.id,
+    }
+    if (existing) Object.assign(existing, record)
+    else db.invoice_factoring.push(record)
+
+    inv.is_factored = true
+    inv.updated_at = now()
+    saveDB(db)
+    res.json(existing ?? record)
+  }
+)
+
+app.delete(
+  '/api/invoices/:id/factoring',
+  requireAuth,
+  requireRole('admin', 'manager'),
+  (req: Request, res: Response) => {
+    const idx = db.invoice_factoring.findIndex((f: any) => f.invoice_id === req.params.id)
+    if (idx === -1) return res.status(404).json({ error: 'Factoring no encontrado' })
+    db.invoice_factoring.splice(idx, 1)
+    const inv = db.invoices.find((i: any) => i.id === req.params.id)
+    if (inv) {
+      inv.is_factored = false
+      inv.updated_at = now()
+    }
+    saveDB(db)
+    res.json({ message: 'Factoring eliminado' })
+  }
+)
+
+// ── Estado del documento ─────────────────────────────────────────
+const updateInvoiceStatus = (req: AuthReq, res: Response) => {
+  const inv = db.invoices.find((i: any) => i.id === req.params.id && !i.deleted_at)
+  if (!inv) return res.status(404).json({ error: 'Factura no encontrada' })
+  if (req.body.status !== undefined) inv.status = req.body.status
+  if (req.body.is_factored !== undefined) inv.is_factored = req.body.is_factored
+  inv.updated_at = now()
+  saveDB(db)
+  res.json(decorateInvoice(inv))
+}
+app.patch(
+  '/api/invoices/:id/status',
+  requireAuth,
+  requireRole('admin', 'manager'),
+  updateInvoiceStatus
+)
+app.put(
+  '/api/invoices/:id/status',
+  requireAuth,
+  requireRole('admin', 'manager'),
+  updateInvoiceStatus
+)
 
 app.delete(
   '/api/invoices/:id',
@@ -1196,7 +1494,7 @@ app.listen(PORT, () => {
   console.log('║  GET  /api/clients')
   console.log('║  GET  /api/quotations')
   console.log('║  GET  /api/projects')
-  console.log('║  GET  /api/invoices')
+  console.log('║  GET  /api/invoices (+ /summary, /:id, pagos, factoring)')
   console.log('║  GET  /api/dashboard/kpis')
   console.log('║  GET  /api/sync/events')
   console.log('╠══════════════════════════════════════════════╣')

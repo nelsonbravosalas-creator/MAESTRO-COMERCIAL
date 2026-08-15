@@ -156,6 +156,7 @@ type Page =
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
+  const [invoicesQuotationId, setInvoicesQuotationId] = useState<string | undefined>(undefined)
   const [user, setUser] = useState<any>(null)
   const { theme, setTheme } = useTheme()
   const loadData = useMaestro(s => s.loadData)
@@ -229,13 +230,13 @@ function App() {
       <main className="app-main authenticated">
         <Suspense fallback={<PageLoading />}>
           {currentPage === 'dashboard'   && <Dashboard />}
-          {currentPage === 'quotations'  && <Quotations onNavigateToMaintenance={() => nav('maintenance')} onNavigateToInvoices={() => nav('invoices')} />}
+          {currentPage === 'quotations'  && <Quotations onNavigateToMaintenance={() => nav('maintenance')} onNavigateToInvoices={(qid) => { setInvoicesQuotationId(qid); nav('invoices') }} />}
           {currentPage === 'maintenance' && <Maintenance />}
           {currentPage === 'clients'     && <Clients />}
           {currentPage === 'catalogo'    && <Catalogo />}
           {currentPage === 'projects'    && <Projects />}
           {currentPage === 'logistica'   && <Logistica />}
-          {currentPage === 'invoices'    && <Invoices />}
+          {currentPage === 'invoices'    && <Invoices initialQuotationId={invoicesQuotationId} onConsumeQuotationId={() => setInvoicesQuotationId(undefined)} />}
         </Suspense>
       </main>
     </div>

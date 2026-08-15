@@ -418,3 +418,73 @@
   text-align: center;
   color: #64748b;
 }
+
+/* ── Referencia a cotización en la tabla ─────────────────────────────────── */
+
+.inv-quotacion-ref {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.82rem;
+  color: #0369a1;
+  font-weight: 600;
+}
+
+.inv-empty-cell {
+  color: #cbd5e1;
+}
+
+/* ── Banner de cotización vinculada en el modal ──────────────────────────── */
+
+.inv-quotacion-link {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.84rem;
+  color: #1e40af;
+  margin-bottom: 14px;
+}
+
+/* ── Sección título con botón inline ─────────────────────────────────────── */
+
+.inv-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inv-add-item-btn {
+  font-size: 0.76rem;
+  padding: 3px 9px;
+  margin-left: auto;
+}
+
+/* ── Filas de ítems en NuevaFactura ──────────────────────────────────────── */
+
+.inv-item-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.inv-item-desc {
+  flex: 1;
+}
+
+.inv-item-qty {
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.inv-item-price {
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.inv-remove-item-btn {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  color: #ef4444;
+  border-color: #fca5a5;
+  margin-top: 0;
+}

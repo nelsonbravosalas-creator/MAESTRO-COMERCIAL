@@ -48,11 +48,13 @@ export const createInvoicesRouter = (pool: Pool) => {
            f.id       AS factoring_id,
            f.company  AS factoring_company,
            f.type     AS factoring_type,
-           f.status   AS factoring_status
+           f.status   AS factoring_status,
+           qt.correlative AS quotation_correlative
       FROM invoices i
       LEFT JOIN clients c           ON c.id = i.client_id
       LEFT JOIN v_invoice_balance b ON b.invoice_id = i.id
-      LEFT JOIN invoice_factoring f ON f.invoice_id = i.id`
+      LEFT JOIN invoice_factoring f ON f.invoice_id = i.id
+      LEFT JOIN quotations qt       ON qt.id = i.quotation_id`
 
   // A-11: tope duro de filas (paginación real pendiente, ver docs/RIESGOS_ACEPTADOS.md).
   router.get('/', validate({ query: invoiceListQuerySchema }), async (req: AuthRequest, res) => {

@@ -11,7 +11,7 @@ import {
 import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { usePermissions } from '../hooks/usePermissions'
-import api, { ApiError } from '../api/api'
+import { ApiError } from '../api/api'
 import { downloadDocx } from '../utils/docxExport'
 import { downloadHtml } from '../utils/htmlExport'
 import { downloadPdfFromElement } from '../utils/pdfExport'
@@ -108,7 +108,7 @@ function QuotationsList({
 }: {
   onEdit: () => void
   onNavigateToMaintenance?: () => void
-  onNavigateToInvoices?: () => void
+  onNavigateToInvoices?: (quotationId: string) => void
 }) {
   const {
     quotations: allQuotations,
@@ -121,7 +121,6 @@ function QuotationsList({
     setStatus,
     setOperState,
     activeId,
-    loadData,
   } = useMaestro()
   // Los contratos de mantención viven en su propia sección ("Mantenciones"),
   // no en este listado de cotizaciones de proyecto.
@@ -138,33 +137,8 @@ function QuotationsList({
   const [importResult, setImportResult] = useState<any | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
-  const [creatingInvoice, setCreatingInvoice] = useState<string | null>(null)
-
-  const handleCreateInvoice = async (q: (typeof quotations)[0]) => {
-    if (creatingInvoice) return
-    setCreatingInvoice(q.id)
-    try {
-      const totals = calcTotals(q)
-      const venta = totals.venta > 0 ? totals.venta : (q.total ?? 0)
-      await api.createInvoice({
-        quotation_id: q.id,
-        client_id: q.client_id,
-        date: new Date().toISOString().slice(0, 10),
-        items: [
-          {
-            description: `Cotización ${q.correlative}${q.ref ? ` — ${q.ref}` : ''}`,
-            quantity: 1,
-            unit_price: venta,
-          },
-        ],
-      })
-      await loadData()
-      onNavigateToInvoices?.()
-    } catch {
-      window.alert('No se pudo crear la factura. Intenta nuevamente.')
-    } finally {
-      setCreatingInvoice(null)
-    }
+  const handleGoToInvoices = (q: (typeof quotations)[0]) => {
+    onNavigateToInvoices?.(q.id)
   }
 
   const elaboratedBy = useMemo(() => {
@@ -411,11 +385,10 @@ function QuotationsList({
                       {q.status === 'Adjudicada' && canCreateInvoice && (
                         <button
                           className="btn-invoice"
-                          title={q.invoice_count > 0 ? `Crear nueva factura (${q.invoice_count} existente${q.invoice_count > 1 ? 's' : ''})` : 'Crear factura'}
-                          onClick={() => handleCreateInvoice(q)}
-                          disabled={creatingInvoice === q.id}
+                          title={q.invoice_count > 0 ? `Ir a facturación (${q.invoice_count} factura${q.invoice_count > 1 ? 's' : ''})` : 'Crear factura en módulo de facturación'}
+                          onClick={() => handleGoToInvoices(q)}
                         >
-                          {creatingInvoice === q.id ? <span className="btn-spinner" /> : '🧾'}
+                          🧾
                           {q.invoice_count > 0 && (
                             <span className="invoice-badge">{q.invoice_count}</span>
                           )}
@@ -1579,7 +1552,7 @@ function TabCotizacion() {
 
 export const Quotations: React.FC<{
   onNavigateToMaintenance?: () => void
-  onNavigateToInvoices?: () => void
+  onNavigateToInvoices?: (quotationId: string) => void
 }> = ({ onNavigateToMaintenance, onNavigateToInvoices }) => {
   const [view, setView] = useState<'list' | 'edit'>('list')
   const [syncing, setSyncing] = useState(false)

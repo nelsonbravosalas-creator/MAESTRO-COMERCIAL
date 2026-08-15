@@ -335,6 +335,8 @@ export interface Invoice {
   number: string
   client_id: string
   client_name: string | null
+  quotation_id: string | null
+  quotation_correlative: string | null
   date: string
   due_date: string | null
   payment_term: string

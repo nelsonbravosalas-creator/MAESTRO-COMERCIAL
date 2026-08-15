@@ -363,9 +363,222 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
   )
 }
 
+// ── Modal de creación de factura ──────────────────────────────────────────────
+
+const DOC_TYPES = [
+  ['factura_afecta', 'Factura Afecta'],
+  ['factura_exenta', 'Factura Exenta'],
+  ['nota_credito', 'Nota de Crédito'],
+] as const
+
+const PAYMENT_TERMS = [
+  ['contado', 'Contado'],
+  ['dias_15', '15 días'],
+  ['dias_30', '30 días'],
+  ['dias_60', '60 días'],
+  ['dias_90', '90 días'],
+] as const
+
+interface NuevaFacturaProps {
+  quotationId?: string
+  onClose: () => void
+  onCreated: () => void
+}
+
+function NuevaFactura({ quotationId, onClose, onCreated }: NuevaFacturaProps) {
+  const [number, setNumber] = useState('')
+  const [clientId, setClientId] = useState('')
+  const [docType, setDocType] = useState('factura_afecta')
+  const [date, setDate] = useState(hoy())
+  const [paymentTerm, setPaymentTerm] = useState('dias_30')
+  const [items, setItems] = useState([{ description: '', quantity: 1, unit_price: 0 }])
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([])
+  const [quotacionInfo, setQuotacionInfo] = useState<string | null>(null)
+  const [cargandoQ, setCargandoQ] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    api.getClients().then(cs => setClients(cs.map(c => ({ id: c.id, name: c.name })))).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!quotationId) return
+    setCargandoQ(true)
+    api.getQuotation(quotationId).then(q => {
+      setClientId(q.client_id)
+      const label = `${q.correlative}${q.ref ? ` — ${q.ref}` : ''}`
+      setQuotacionInfo(label)
+      setItems([{
+        description: `Cotización ${label}`,
+        quantity: 1,
+        unit_price: q.total ?? 0,
+      }])
+    }).catch(() => {
+      setQuotacionInfo('(no se pudo cargar)')
+    }).finally(() => setCargandoQ(false))
+  }, [quotationId])
+
+  const updateItem = (idx: number, field: string, value: string | number) => {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it))
+  }
+
+  const addItem = () => setItems(prev => [...prev, { description: '', quantity: 1, unit_price: 0 }])
+  const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx))
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!number.trim()) { setError('El N° de Factura es obligatorio (número SII)'); return }
+    if (!clientId) { setError('Selecciona un cliente'); return }
+    const validItems = items.filter(it => it.description.trim())
+    if (validItems.length === 0) { setError('Agrega al menos un ítem con descripción'); return }
+
+    setGuardando(true)
+    setError(null)
+    try {
+      await api.createInvoice({
+        number: number.trim(),
+        client_id: clientId,
+        quotation_id: quotationId ?? null,
+        doc_type: docType,
+        date,
+        payment_term: paymentTerm,
+        items: validItems.map(it => ({
+          description: it.description,
+          quantity: Number(it.quantity) || 1,
+          unit_price: Number(it.unit_price) || 0,
+        })),
+      })
+      onCreated()
+    } catch (e: any) {
+      if (e?.status === 409) {
+        setError(`El N° de Factura "${number.trim()}" ya existe. Usa otro número.`)
+      } else {
+        setError(e instanceof Error ? e.message : 'No se pudo crear la factura')
+      }
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="inv-modal" onClick={e => e.stopPropagation()}>
+        <div className="inv-modal-header">
+          <h2>Nueva Factura</h2>
+          <button className="btn-modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="inv-modal-body">
+            {error && <div className="inv-alert">{error}</div>}
+            {cargandoQ && <div className="inv-loading" style={{ padding: '8px 0' }}>Cargando cotización…</div>}
+
+            {quotacionInfo && (
+              <div className="inv-quotacion-link">
+                Vinculada a cotización: <strong>{quotacionInfo}</strong>
+              </div>
+            )}
+
+            <div className="inv-section-title">Datos del documento</div>
+            <div className="inv-grid">
+              <div className="inv-field" style={{ gridColumn: 'span 2' }}>
+                <label htmlFor="nf-number">N° Factura (SII) *</label>
+                <input
+                  id="nf-number"
+                  value={number}
+                  onChange={e => setNumber(e.target.value)}
+                  placeholder="Ej: 334467"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="inv-field">
+                <label htmlFor="nf-doctype">Tipo documento</label>
+                <select id="nf-doctype" value={docType} onChange={e => setDocType(e.target.value)}>
+                  {DOC_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <div className="inv-field">
+                <label htmlFor="nf-date">Fecha emisión</label>
+                <input id="nf-date" type="date" value={date} onChange={e => setDate(e.target.value)} />
+              </div>
+              <div className="inv-field">
+                <label htmlFor="nf-term">Condición de pago</label>
+                <select id="nf-term" value={paymentTerm} onChange={e => setPaymentTerm(e.target.value)}>
+                  {PAYMENT_TERMS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <div className="inv-field" style={{ gridColumn: 'span 2' }}>
+                <label htmlFor="nf-client">Cliente *</label>
+                <select id="nf-client" value={clientId} onChange={e => setClientId(e.target.value)} required>
+                  <option value="">— Selecciona cliente —</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="inv-section-title">
+              Ítems
+              <button type="button" className="inv-btn inv-add-item-btn" onClick={addItem}>+ Agregar ítem</button>
+            </div>
+            {items.map((item, idx) => (
+              <div className="inv-item-row" key={idx}>
+                <div className="inv-field inv-item-desc">
+                  <input
+                    value={item.description}
+                    onChange={e => updateItem(idx, 'description', e.target.value)}
+                    placeholder="Descripción"
+                  />
+                </div>
+                <div className="inv-field inv-item-qty">
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="any"
+                    value={item.quantity}
+                    onChange={e => updateItem(idx, 'quantity', e.target.value)}
+                    placeholder="Cant."
+                  />
+                </div>
+                <div className="inv-field inv-item-price">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={item.unit_price}
+                    onChange={e => updateItem(idx, 'unit_price', e.target.value)}
+                    placeholder="Precio unit."
+                  />
+                </div>
+                {items.length > 1 && (
+                  <button type="button" className="inv-btn inv-remove-item-btn" onClick={() => removeItem(idx)} title="Quitar ítem">✕</button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="inv-modal-footer">
+            <button type="button" className="inv-btn" onClick={onClose} disabled={guardando}>Cancelar</button>
+            <button type="submit" className="inv-btn is-primary" disabled={guardando}>
+              {guardando ? 'Guardando…' : 'Crear Factura'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ── Página ────────────────────────────────────────────────────────────────────
 
-export default function Invoices() {
+export default function Invoices({
+  initialQuotationId,
+  onConsumeQuotationId,
+}: {
+  initialQuotationId?: string
+  onConsumeQuotationId?: () => void
+}) {
   const [facturas, setFacturas] = useState<Invoice[]>([])
   const [resumen, setResumen] = useState<InvoiceSummary | null>(null)
   const [filtro, setFiltro] = useState<string>('')
@@ -373,6 +586,15 @@ export default function Invoices() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [detalle, setDetalle] = useState<string | null>(null)
+  const [nuevaFactura, setNuevaFactura] = useState<{ quotationId?: string } | null>(null)
+
+  // Si se llega desde cotizaciones, abrir el modal de creación automáticamente
+  useEffect(() => {
+    if (initialQuotationId) {
+      setNuevaFactura({ quotationId: initialQuotationId })
+      onConsumeQuotationId?.()
+    }
+  }, [initialQuotationId])
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -430,6 +652,9 @@ export default function Invoices() {
             <option value="al_dia">Al día</option>
             <option value="pagada">Pagadas</option>
           </select>
+          <button className="inv-btn is-primary" onClick={() => setNuevaFactura({})}>
+            + Nueva Factura
+          </button>
         </div>
       </div>
 
@@ -476,6 +701,7 @@ export default function Invoices() {
             <thead>
               <tr>
                 <th>N° Factura</th>
+                <th>Cotización</th>
                 <th>Cliente</th>
                 <th>Emisión</th>
                 <th>Vencimiento</th>
@@ -499,6 +725,12 @@ export default function Invoices() {
                           {f.factoring_type === 'confirming' ? 'CONF' : 'FACT'}
                         </span>
                       )}
+                    </td>
+                    <td>
+                      {f.quotation_correlative
+                        ? <span className="inv-quotacion-ref">{f.quotation_correlative}</span>
+                        : <span className="inv-empty-cell">—</span>
+                      }
                     </td>
                     <td>{f.client_name ?? '—'}</td>
                     <td>{fecha(f.date)}</td>
@@ -539,6 +771,14 @@ export default function Invoices() {
           invoiceId={detalle}
           onClose={() => setDetalle(null)}
           onChanged={() => void cargar()}
+        />
+      )}
+
+      {nuevaFactura && (
+        <NuevaFactura
+          quotationId={nuevaFactura.quotationId}
+          onClose={() => setNuevaFactura(null)}
+          onCreated={() => { setNuevaFactura(null); void cargar() }}
         />
       )}
     </div>

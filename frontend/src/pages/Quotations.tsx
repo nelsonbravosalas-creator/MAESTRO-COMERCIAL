@@ -33,6 +33,14 @@ export async function reportSaveError(err: unknown, reloadActive: () => Promise<
     if (shouldReload) await reloadActive().catch(() => {})
     return
   }
+  if (err instanceof ApiError && err.status === 400) {
+    const details = (err.data as any)?.details as Array<{ path: string; message: string }> | undefined
+    const extra = details?.length
+      ? '\n\nCampos inválidos:\n' + details.map(d => `• ${d.path || 'body'}: ${d.message}`).join('\n')
+      : ''
+    window.alert(err.message + extra)
+    return
+  }
   window.alert(
     err instanceof Error ? err.message : 'No se pudo guardar la cotización. Verifica tu conexión.'
   )

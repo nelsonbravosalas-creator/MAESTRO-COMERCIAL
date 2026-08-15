@@ -1,58 +1,227 @@
-:root {
-  --primary: #2563eb;
-  --primary-dark: #1e40af;
-  --secondary: #64748b;
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --bg: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --text: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --border: #475569;
+/* ══════════════════════════════════════════════════════════════════
+   MAESTRO COMERCIAL — Design System
+   Temas: dark (default) | light | cyberpunk
+   Todos los componentes heredan sus colores vía var() desde aquí.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Tema Oscuro (default) ──────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --primary:          #2563eb;
+  --primary-dark:     #1e40af;
+  --primary-rgb:      37, 99, 235;
+  --secondary:        #64748b;
+  --success:          #10b981;
+  --danger:           #ef4444;
+  --warning:          #f59e0b;
+
+  --bg:               #0f172a;
+  --bg-secondary:     #1e293b;
+  --bg-tertiary:      #334155;
+  --bg-gradient:      linear-gradient(160deg, #0f172a 0%, #1a2744 50%, #1e293b 100%);
+
+  --text:             #f1f5f9;
+  --text-secondary:   #94a3b8;
+  --border:           #334155;
+  --border-hover:     #475569;
+
+  --shadow-sm:        0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:        0 4px 16px rgba(0,0,0,0.45);
+  --shadow-lg:        0 10px 40px rgba(0,0,0,0.5);
+  --shadow-primary:   rgba(37, 99, 235, 0.25);
+  --card-glow:        rgba(37, 99, 235, 0.12);
+
+  --header-bg:        rgba(15, 23, 42, 0.98);
+  --header-border:    #334155;
+  --header-shadow:    0 1px 0 #334155, 0 4px 20px rgba(0,0,0,0.3);
+
+  --input-bg:         #0f172a;
+  --input-border:     #334155;
+  --input-color:      #f1f5f9;
+  --focus-ring:       rgba(37, 99, 235, 0.35);
+
+  --nav-active-bg:    rgba(37, 99, 235, 0.12);
+  --nav-active-color: #60a5fa;
+  --nav-active-bdr:   #2563eb;
+  --nav-hover-bg:     rgba(255, 255, 255, 0.05);
+  --nav-tab-border:   rgba(255, 255, 255, 0.07);
+
+  --scrollbar-thumb:  #334155;
+  --scrollbar-track:  #1e293b;
+
+  /* Sync button */
+  --sync-idle-bdr:    #2563eb;
+  --sync-idle-bg:     rgba(37, 99, 235, 0.08);
+  --sync-idle-color:  #93c5fd;
 }
 
-* {
+/* ── Tema Claro ─────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --primary:          #2563eb;
+  --primary-dark:     #1e40af;
+  --primary-rgb:      37, 99, 235;
+  --secondary:        #64748b;
+  --success:          #059669;
+  --danger:           #dc2626;
+  --warning:          #d97706;
+
+  --bg:               #f1f5f9;
+  --bg-secondary:     #ffffff;
+  --bg-tertiary:      #e2e8f0;
+  --bg-gradient:      linear-gradient(160deg, #f8fafc 0%, #eff6ff 50%, #e2e8f0 100%);
+
+  --text:             #0f172a;
+  --text-secondary:   #475569;
+  --border:           #e2e8f0;
+  --border-hover:     #94a3b8;
+
+  --shadow-sm:        0 1px 3px rgba(15,23,42,0.08);
+  --shadow-md:        0 4px 16px rgba(15,23,42,0.1);
+  --shadow-lg:        0 10px 40px rgba(15,23,42,0.12);
+  --shadow-primary:   rgba(37, 99, 235, 0.15);
+  --card-glow:        rgba(37, 99, 235, 0.08);
+
+  --header-bg:        rgba(255, 255, 255, 0.97);
+  --header-border:    #e2e8f0;
+  --header-shadow:    0 1px 0 #e2e8f0, 0 4px 20px rgba(15,23,42,0.06);
+
+  --input-bg:         #ffffff;
+  --input-border:     #cbd5e1;
+  --input-color:      #0f172a;
+  --focus-ring:       rgba(37, 99, 235, 0.2);
+
+  --nav-active-bg:    rgba(37, 99, 235, 0.08);
+  --nav-active-color: #1d4ed8;
+  --nav-active-bdr:   #2563eb;
+  --nav-hover-bg:     rgba(15, 23, 42, 0.04);
+  --nav-tab-border:   rgba(15, 23, 42, 0.1);
+
+  --scrollbar-thumb:  #cbd5e1;
+  --scrollbar-track:  #f1f5f9;
+
+  --sync-idle-bdr:    #2563eb;
+  --sync-idle-bg:     rgba(37, 99, 235, 0.06);
+  --sync-idle-color:  #1d4ed8;
+}
+
+/* ── Tema Cyberpunk ─────────────────────────────────────────────── */
+[data-theme="cyberpunk"] {
+  --primary:          #ff6b00;
+  --primary-dark:     #cc5500;
+  --primary-rgb:      255, 107, 0;
+  --secondary:        #555555;
+  --success:          #00ff41;
+  --danger:           #ff2244;
+  --warning:          #ff8c00;
+
+  --bg:               #000000;
+  --bg-secondary:     #080808;
+  --bg-tertiary:      #111111;
+  --bg-gradient:      linear-gradient(160deg, #000000 0%, #060200 50%, #0a0300 100%);
+
+  --text:             #00ff41;
+  --text-secondary:   #00cc33;
+  --border:           rgba(255, 107, 0, 0.2);
+  --border-hover:     rgba(255, 107, 0, 0.5);
+
+  --shadow-sm:        0 1px 3px rgba(0,0,0,0.9);
+  --shadow-md:        0 4px 16px rgba(0,0,0,0.95);
+  --shadow-lg:        0 10px 40px rgba(0,0,0,1);
+  --shadow-primary:   rgba(255, 107, 0, 0.35);
+  --card-glow:        rgba(255, 107, 0, 0.1);
+
+  --header-bg:        rgba(0, 0, 0, 0.99);
+  --header-border:    rgba(255, 107, 0, 0.4);
+  --header-shadow:    0 0 0 1px rgba(255,107,0,0.3), 0 4px 30px rgba(255,107,0,0.08);
+
+  --input-bg:         #080808;
+  --input-border:     rgba(255, 107, 0, 0.35);
+  --input-color:      #00ff41;
+  --focus-ring:       rgba(255, 107, 0, 0.45);
+
+  --nav-active-bg:    rgba(255, 107, 0, 0.1);
+  --nav-active-color: #ff8c44;
+  --nav-active-bdr:   #ff6b00;
+  --nav-hover-bg:     rgba(0, 255, 65, 0.04);
+  --nav-tab-border:   rgba(255, 107, 0, 0.15);
+
+  --scrollbar-thumb:  rgba(255, 107, 0, 0.4);
+  --scrollbar-track:  #080808;
+
+  --sync-idle-bdr:    #ff6b00;
+  --sync-idle-bg:     rgba(255, 107, 0, 0.08);
+  --sync-idle-color:  #ff9944;
+}
+
+/* ── Transición global al cambiar tema ──────────────────────────── */
+*,
+*::before,
+*::after {
+  transition: background-color 0.25s ease, border-color 0.25s ease,
+              color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Excluir de transición lo que no debe animarse */
+button, a, input, select, textarea, svg, path, polyline, line, circle, rect {
+  transition: background-color 0.25s ease, border-color 0.25s ease,
+              color 0.25s ease, box-shadow 0.25s ease,
+              opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* ── Reset ──────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* ── Base ───────────────────────────────────────────────────────── */
 html,
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg);
   color: var(--text);
 }
 
+/* ── Custom Scrollbars ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); }
+
+/* ── Buttons ────────────────────────────────────────────────────── */
 button {
   cursor: pointer;
   border: none;
   font-size: 1rem;
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
-  transition: all 0.2s;
 }
 
-button:hover {
-  opacity: 0.9;
-}
+button:hover { opacity: 0.9; }
 
+/* ── Form controls ──────────────────────────────────────────────── */
 input,
 textarea,
 select {
-  background: var(--bg-secondary);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--input-color);
+  border: 1px solid var(--input-border);
   padding: 0.5rem;
   border-radius: 0.375rem;
   font-size: 1rem;
-  transition: border-color 0.2s;
 }
 
 input:focus,
@@ -60,26 +229,53 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
+/* Cyberpunk: neon glow on focus */
+[data-theme="cyberpunk"] input:focus,
+[data-theme="cyberpunk"] textarea:focus,
+[data-theme="cyberpunk"] select:focus {
+  box-shadow: 0 0 0 2px var(--focus-ring), 0 0 12px rgba(255, 107, 0, 0.2);
+}
+
+/* Cyberpunk: override all hardcoded white backgrounds in inputs */
+[data-theme="cyberpunk"] input,
+[data-theme="cyberpunk"] textarea,
+[data-theme="cyberpunk"] select {
+  background: var(--input-bg) !important;
+  color: var(--input-color) !important;
+  border-color: var(--input-border) !important;
+}
+
+[data-theme="cyberpunk"] input:focus,
+[data-theme="cyberpunk"] textarea:focus,
+[data-theme="cyberpunk"] select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px var(--focus-ring), 0 0 12px rgba(255, 107, 0, 0.2) !important;
+}
+
+/* Light: restore white inputs */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: var(--input-bg);
+  color: var(--input-color);
+  border-color: var(--input-border);
+}
+
+/* ── Links ──────────────────────────────────────────────────────── */
 a {
   color: var(--primary);
   text-decoration: none;
-  transition: color 0.2s;
 }
 
-a:hover {
-  color: var(--primary-dark);
-}
+a:hover { color: var(--primary-dark); }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+/* ── Tables ─────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; }
 
-th,
-td {
+th, td {
   padding: 0.75rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
@@ -88,20 +284,28 @@ td {
 th {
   background: var(--bg-secondary);
   font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-tr:hover {
-  background: var(--bg-secondary);
+tr:hover { background: var(--bg-secondary); }
+
+/* Cyberpunk: override hardcoded white table cells */
+[data-theme="cyberpunk"] td,
+[data-theme="cyberpunk"] th {
+  border-bottom-color: var(--border);
 }
 
-/* ── Mobile global ──────────────────────────────────────────────────────── */
-
-/* Previene el auto-zoom de iOS Safari cuando se enfoca un input < 16px */
+/* ── Mobile: prevent auto-zoom on iOS ───────────────────────────── */
 @media (max-width: 768px) {
-  input,
-  textarea,
-  select {
+  input, textarea, select {
     font-size: 16px !important;
   }
 }
 
+/* ── Cyberpunk body effects ─────────────────────────────────────── */
+[data-theme="cyberpunk"] body {
+  background: var(--bg);
+}

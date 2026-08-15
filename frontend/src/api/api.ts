@@ -260,6 +260,7 @@ function fromMasterQuotation(q: MasterQuotation) {
   const line_items: any[] = []
   for (const cid of Object.keys(q.items) as CategoryId[]) {
     q.items[cid].forEach((item, idx) => {
+      if (!item.desc?.trim()) return // omite filas sin descripción (fallarían min(1))
       line_items.push({
         id: item.id,
         category_id: cid,
@@ -274,9 +275,9 @@ function fromMasterQuotation(q: MasterQuotation) {
   }
 
   const terms: any[] = [
-    ...q.scope.map((c, i) => ({ term_type: 'scope', content: c, sort_order: i })),
-    ...q.exclusions.map((c, i) => ({ term_type: 'exclusion', content: c, sort_order: i })),
-    ...q.commercial.map((c, i) => ({ term_type: 'commercial', content: c, sort_order: i })),
+    ...q.scope.filter(c => c?.trim()).map((c, i) => ({ term_type: 'scope', content: c, sort_order: i })),
+    ...q.exclusions.filter(c => c?.trim()).map((c, i) => ({ term_type: 'exclusion', content: c, sort_order: i })),
+    ...q.commercial.filter(c => c?.trim()).map((c, i) => ({ term_type: 'commercial', content: c, sort_order: i })),
   ]
 
   return {

@@ -10,6 +10,12 @@ import type {
   MasterQuotation,
   CostCategory,
   CostItem,
+  InvoiceMilestone,
+  QuotationActivity,
+  AgingTramo,
+  CarteraData,
+  CycleTimes,
+  MarginAnalysisRow,
 } from '../types'
 
 // ── Base URL ──────────────────────────────────────────────────
@@ -247,6 +253,23 @@ function toMasterQuotation(q: any): MasterQuotation {
     invoice_count: Number(q.invoice_count) || 0,
     invoice_count_max: Number(q.invoice_count_max) || 1,
     total_con_iva: Number(q.total_con_iva) || 0,
+    oc_number: q.oc_number ?? null,
+    oc_date: q.oc_date ?? null,
+    oc_conditions: q.oc_conditions ?? null,
+    oc_document_name: q.oc_document_name ?? null,
+    oc_document_size: q.oc_document_size ?? null,
+    loss_reason: q.loss_reason ?? null,
+    loss_competitor: q.loss_competitor ?? null,
+    loss_notes: q.loss_notes ?? null,
+    follow_up_date: q.follow_up_date ?? null,
+    sent_at: q.sent_at ?? null,
+    awarded_at: q.awarded_at ?? null,
+    closed_at: q.closed_at ?? null,
+    version_reason: q.version_reason ?? null,
+    parent_version_id: q.parent_version_id ?? null,
+    approved_by: q.approved_by ?? null,
+    approved_at: q.approved_at ?? null,
+    approval_notes: q.approval_notes ?? null,
   }
 }
 
@@ -688,8 +711,44 @@ export const api = {
   updateQuotationBillingSplit: (id: string, invoice_count_max: number) =>
     patch<{ id: string; invoice_count_max: number }>(`/api/quotations/${id}/billing-split`, { invoice_count_max }),
 
+  // ── Pérdida ─────────────────────────────────────────────────────────────────
+  updateQuotationLoss: (id: string, data: { loss_reason: string; loss_competitor?: string | null; loss_notes?: string | null }) =>
+    patch<{ id: string }>(`/api/quotations/${id}/loss`, data),
+
+  // ── Seguimiento ──────────────────────────────────────────────────────────────
+  updateFollowUpDate: (id: string, follow_up_date: string | null) =>
+    patch<{ id: string; follow_up_date: string | null }>(`/api/quotations/${id}/follow-up`, { follow_up_date }),
+
+  // ── Milestones ───────────────────────────────────────────────────────────────
+  getMilestones: (id: string) =>
+    get<{ milestones: InvoiceMilestone[] }>(`/api/quotations/${id}/milestones`),
+  saveMilestone: (id: string, invoiceNumber: 1 | 2, data: { description: string; pct_of_total?: number | null }) =>
+    put<InvoiceMilestone>(`/api/quotations/${id}/milestones/${invoiceNumber}`, data),
+  deleteMilestone: (id: string, invoiceNumber: 1 | 2) =>
+    del<{ ok: boolean }>(`/api/quotations/${id}/milestones/${invoiceNumber}`),
+
+  // ── Actividades ───────────────────────────────────────────────────────────────
+  getActivities: (id: string) =>
+    get<{ activities: QuotationActivity[] }>(`/api/quotations/${id}/activities`),
+  createActivity: (id: string, data: { activity_type: string; content: string }) =>
+    post<QuotationActivity>(`/api/quotations/${id}/activities`, data),
+  deleteActivity: (activityId: string) =>
+    del<{ ok: boolean }>(`/api/activities/${activityId}`),
+
+  // ── Version diff ─────────────────────────────────────────────────────────────
+  getVersionDiff: (id: string) =>
+    get<{ versions: any[] }>(`/api/quotations/${id}/version-diff`),
+
+  // ── Aprobación ────────────────────────────────────────────────────────────────
+  approveQuotation: (id: string, approval_notes?: string | null) =>
+    post<{ id: string; status: string; approved_at: string }>(`/api/quotations/${id}/approve`, { approval_notes }),
+
   // ── Dashboard ───────────────────────────────────────────────
   getKPIs: () => get<Record<string, unknown>>('/api/dashboard/kpis'),
+  getAging: () => get<{ aging: AgingTramo[]; timestamp: string }>('/api/dashboard/aging'),
+  getCartera: () => get<{ cartera: CarteraData; timestamp: string }>('/api/dashboard/cartera'),
+  getCycleTimes: () => get<{ cycle_times: CycleTimes; timestamp: string }>('/api/dashboard/cycle-times'),
+  getMarginAnalysis: () => get<{ analysis: MarginAnalysisRow[]; timestamp: string }>('/api/dashboard/margin-analysis'),
 }
 
 export default api

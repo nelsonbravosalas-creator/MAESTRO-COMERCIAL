@@ -196,6 +196,14 @@ CREATE TABLE quotations (
   show_uf_equivalent   BOOLEAN NOT NULL DEFAULT false,
   show_usd_equivalent  BOOLEAN NOT NULL DEFAULT false,
   usd_value            NUMERIC(10,2),
+  -- Recepción de OC (Orden de Compra) u otro medio de aceptación formal.
+  -- Se completan al adjudicar la cotización.
+  oc_number            TEXT,
+  oc_date              DATE,
+  oc_conditions        TEXT,
+  oc_document          BYTEA,
+  oc_document_name     TEXT,
+  oc_document_size     INT,
   CONSTRAINT uq_quotations_correlative UNIQUE (correlative)
 );
 

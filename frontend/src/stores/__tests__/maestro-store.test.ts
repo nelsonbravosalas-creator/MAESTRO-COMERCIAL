@@ -93,6 +93,23 @@ function makeQuotation(overrides: Partial<MasterQuotation> = {}): MasterQuotatio
     invoice_count: 0,
     invoice_count_max: 1,
     total_con_iva: 0,
+    oc_number: null,
+    oc_date: null,
+    oc_conditions: null,
+    oc_document_name: null,
+    oc_document_size: null,
+    loss_reason: null,
+    loss_competitor: null,
+    loss_notes: null,
+    follow_up_date: null,
+    sent_at: null,
+    awarded_at: null,
+    closed_at: null,
+    version_reason: null,
+    parent_version_id: null,
+    approved_by: null,
+    approved_at: null,
+    approval_notes: null,
   }
   return { ...base, ...overrides }
 }

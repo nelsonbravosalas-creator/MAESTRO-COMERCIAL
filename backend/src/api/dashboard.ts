@@ -139,5 +139,135 @@ export const createDashboardRouter = (pool: Pool) => {
     }
   })
 
+  router.get('/aging', async (_req: AuthRequest, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          CASE
+            WHEN vb.payment_state = 'pagada' THEN 'pagada'
+            WHEN vb.due_date IS NULL THEN 'sin_vencimiento'
+            WHEN vb.due_date >= CURRENT_DATE THEN 'al_dia'
+            WHEN CURRENT_DATE - vb.due_date <= 30 THEN 'vencida_1_30'
+            WHEN CURRENT_DATE - vb.due_date <= 60 THEN 'vencida_31_60'
+            WHEN CURRENT_DATE - vb.due_date <= 90 THEN 'vencida_61_90'
+            ELSE 'vencida_90_mas'
+          END AS tramo,
+          COUNT(*)::int AS cantidad,
+          COALESCE(SUM(vb.balance), 0) AS monto_pendiente,
+          COALESCE(SUM(i.total_amount), 0) AS monto_total,
+          json_agg(json_build_object(
+            'invoice_id', i.id,
+            'quotation_id', i.quotation_id,
+            'correlative', q.correlative,
+            'client_name', c.name,
+            'total_amount', i.total_amount,
+            'balance', vb.balance,
+            'due_date', vb.due_date
+          )) AS facturas
+        FROM invoices i
+        JOIN v_invoice_balance vb ON vb.invoice_id = i.id
+        JOIN quotations q ON q.id = i.quotation_id
+        JOIN clients c ON c.id = i.client_id
+        WHERE i.deleted_at IS NULL AND i.status != 'cancelled'
+        GROUP BY tramo
+        ORDER BY tramo
+      `)
+      return res.json({ aging: result.rows, timestamp: new Date() })
+    } catch (error: any) {
+      logger.error('Dashboard aging error', { error: error.message })
+      return res.status(500).json({ error: 'Failed to fetch aging report' })
+    }
+  })
+
+  router.get('/cartera', async (_req: AuthRequest, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          COALESCE(SUM(t.total_con_iva), 0)                              AS adjudicado_total,
+          COALESCE(SUM(t.total_con_iva) - SUM(COALESCE(fi.facturado,0)),0) AS pendiente_facturar,
+          COALESCE(SUM(COALESCE(fi.por_cobrar,0)), 0)                    AS facturado_por_cobrar,
+          COALESCE(SUM(COALESCE(fi.cobrado_mes,0)), 0)                   AS cobrado_mes
+        FROM quotations q
+        JOIN v_quotation_totals t ON t.quotation_id = q.id
+        LEFT JOIN LATERAL (
+          SELECT
+            COALESCE(SUM(i.total_amount) FILTER (WHERE i.status != 'cancelled'), 0)                AS facturado,
+            COALESCE(SUM(vb.balance)     FILTER (WHERE i.status NOT IN ('paid','cancelled')), 0)   AS por_cobrar,
+            COALESCE(SUM(ip.amount)      FILTER (
+              WHERE ip.paid_at >= date_trunc('month', CURRENT_DATE)
+            ), 0) AS cobrado_mes
+          FROM invoices i
+          LEFT JOIN v_invoice_balance vb ON vb.invoice_id = i.id
+          LEFT JOIN invoice_payments ip ON ip.invoice_id = i.id
+          WHERE i.quotation_id = q.id AND i.deleted_at IS NULL
+        ) fi ON true
+        WHERE q.status IN ('Adjudicada','Cerrada') AND q.deleted_at IS NULL AND q.kind != 'maintenance'
+      `)
+      return res.json({ cartera: result.rows[0], timestamp: new Date() })
+    } catch (error: any) {
+      logger.error('Dashboard cartera error', { error: error.message })
+      return res.status(500).json({ error: 'Failed to fetch cartera report' })
+    }
+  })
+
+  router.get('/cycle-times', async (_req: AuthRequest, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          ROUND(AVG(EXTRACT(EPOCH FROM (sent_at - created_at))/86400)::numeric, 1) AS avg_draft_to_sent,
+          ROUND(AVG(EXTRACT(EPOCH FROM (awarded_at - sent_at))/86400)::numeric, 1) AS avg_sent_to_awarded,
+          ROUND(AVG(EXTRACT(EPOCH FROM (fi.first_invoice - awarded_at))/86400)::numeric, 1) AS avg_awarded_to_invoice,
+          ROUND(AVG(EXTRACT(EPOCH FROM (fp.first_payment - fi.first_invoice))/86400)::numeric, 1) AS avg_invoice_to_paid
+        FROM quotations q
+        LEFT JOIN LATERAL (
+          SELECT MIN(created_at) AS first_invoice FROM invoices WHERE quotation_id = q.id AND deleted_at IS NULL
+        ) fi ON true
+        LEFT JOIN LATERAL (
+          SELECT MIN(ip.paid_at) AS first_payment
+          FROM invoice_payments ip
+          JOIN invoices i ON i.id = ip.invoice_id
+          WHERE i.quotation_id = q.id
+        ) fp ON true
+        WHERE q.status IN ('Adjudicada','Cerrada')
+          AND q.deleted_at IS NULL
+          AND q.kind != 'maintenance'
+          AND q.sent_at IS NOT NULL
+      `)
+      return res.json({ cycle_times: result.rows[0], timestamp: new Date() })
+    } catch (error: any) {
+      logger.error('Dashboard cycle-times error', { error: error.message })
+      return res.status(500).json({ error: 'Failed to fetch cycle times' })
+    }
+  })
+
+  router.get('/margin-analysis', async (_req: AuthRequest, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          q.id, q.correlative, c.name AS client_name,
+          t.costo_neto   AS costo_presupuestado,
+          t.venta_neta   AS venta_presupuestada,
+          t.beneficio_bruto AS margen_presupuestado,
+          ROUND(t.beneficio_bruto / NULLIF(t.venta_neta,0) * 100, 1) AS margen_presupuestado_pct,
+          COALESCE(SUM(ec.quantity * ec.unit_price), 0) AS costo_real,
+          t.venta_neta - COALESCE(SUM(ec.quantity * ec.unit_price), 0) AS margen_real,
+          ROUND((t.venta_neta - COALESCE(SUM(ec.quantity * ec.unit_price), 0)) / NULLIF(t.venta_neta,0) * 100, 1) AS margen_real_pct
+        FROM quotations q
+        JOIN clients c ON c.id = q.client_id
+        JOIN v_quotation_totals t ON t.quotation_id = q.id
+        LEFT JOIN projects p ON p.quotation_id = q.id AND p.deleted_at IS NULL
+        LEFT JOIN execution_costs ec ON ec.project_id = p.id
+        WHERE q.status = 'Cerrada' AND q.deleted_at IS NULL
+        GROUP BY q.id, q.correlative, c.name, t.costo_neto, t.venta_neta, t.beneficio_bruto
+        ORDER BY (t.beneficio_bruto / NULLIF(t.venta_neta,0) - (t.venta_neta - COALESCE(SUM(ec.quantity * ec.unit_price), 0)) / NULLIF(t.venta_neta,0)) DESC
+        LIMIT 20
+      `)
+      return res.json({ analysis: result.rows, timestamp: new Date() })
+    } catch (error: any) {
+      logger.error('Dashboard margin-analysis error', { error: error.message })
+      return res.status(500).json({ error: 'Failed to fetch margin analysis' })
+    }
+  })
+
   return router
 }

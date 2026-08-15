@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import '../styles/Dashboard.css'
 import { useMaestro, fmtCLP, calcTotals, calcCat } from '../stores/maestro-store'
 import api from '../api/api'
-import type { CategoryId } from '../types'
+import type { CategoryId, AgingTramo, CarteraData, CycleTimes, MarginAnalysisRow } from '../types'
 import {
   ResponsiveContainer,
   PieChart,
@@ -20,6 +20,14 @@ import {
 } from 'recharts'
 
 // ── Constants ────────────────────────────────────────────────────
+
+const AGING_TRAMOS = [
+  { key: 'al_dia',        label: 'Al día',            color: '#059669' },
+  { key: 'vencida_1_30',  label: 'Vencida 1–30 días', color: '#d97706' },
+  { key: 'vencida_31_60', label: 'Vencida 31–60 días', color: '#ea580c' },
+  { key: 'vencida_61_90', label: 'Vencida 61–90 días', color: '#dc2626' },
+  { key: 'vencida_90_mas',label: 'Vencida +90 días',  color: '#7f1d1d' },
+]
 
 const STATUS_CFG = [
   { key: 'Borrador', color: '#94a3b8' },
@@ -98,6 +106,11 @@ export const Dashboard: React.FC = () => {
   )
   const [kpis, setKpis] = useState<KPIs | null>(null)
   const [loading, setLoading] = useState(true)
+  const [cartera, setCartera] = useState<CarteraData | null>(null)
+  const [loadingCartera, setLoadingCartera] = useState(true)
+  const [cycleTimes, setCycleTimes] = useState<CycleTimes | null>(null)
+  const [aging, setAging] = useState<AgingTramo[]>([])
+  const [marginAnalysis, setMarginAnalysis] = useState<MarginAnalysisRow[]>([])
 
   const fetchKPIs = useCallback(
     () =>
@@ -110,6 +123,10 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchKPIs().finally(() => setLoading(false))
+    api.getCartera().then(d => setCartera(d.cartera)).catch(() => {}).finally(() => setLoadingCartera(false))
+    api.getCycleTimes().then(d => setCycleTimes(d.cycle_times)).catch(() => {})
+    api.getAging().then(d => setAging(d.aging)).catch(() => {})
+    api.getMarginAnalysis().then(d => setMarginAnalysis(d.analysis)).catch(() => {})
   }, [fetchKPIs])
 
   const handleForceSync = useCallback(async () => {
@@ -299,6 +316,35 @@ export const Dashboard: React.FC = () => {
           loading={false}
           accent="#d97706"
         />
+      </div>
+
+      {/* Embudo de cartera */}
+      <div className="kpi-grid kpi-grid--4" style={{ marginBottom: 0 }}>
+        <KpiCard label="Adjudicado Total" value={cartera ? fmtCLP.format(cartera.adjudicado_total) : '—'} sub="contratos ganados" loading={loadingCartera} accent="#059669" />
+        <KpiCard label="Por Facturar" value={cartera ? fmtCLP.format(cartera.pendiente_facturar) : '—'} sub="adjudicado sin factura" loading={loadingCartera} accent="#0891b2" />
+        <KpiCard label="Por Cobrar" value={cartera ? fmtCLP.format(cartera.facturado_por_cobrar) : '—'} sub="facturado pendiente pago" loading={loadingCartera} accent="#d97706" />
+        <KpiCard label="Cobrado este Mes" value={cartera ? fmtCLP.format(cartera.cobrado_mes) : '—'} sub="ingresos confirmados" loading={loadingCartera} accent="#7c3aed" />
+      </div>
+
+      {/* Ciclo comercial */}
+      <div className="dashboard-card chart-card" style={{ marginBottom: 24 }}>
+        <h3 className="chart-title">Tiempo de Ciclo Comercial (promedio)</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+          {[
+            { label: 'Elaboración', value: cycleTimes?.avg_draft_to_sent, unit: 'días' },
+            { label: 'Decisión cliente', value: cycleTimes?.avg_sent_to_awarded, unit: 'días' },
+            { label: 'A primera factura', value: cycleTimes?.avg_awarded_to_invoice, unit: 'días' },
+            { label: 'A cobro', value: cycleTimes?.avg_invoice_to_paid, unit: 'días' },
+          ].map(({ label, value, unit }) => (
+            <div key={label} style={{ textAlign: 'center', padding: '16px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+              <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#e2e8f0' }}>
+                {value != null ? value : '—'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>{unit}</div>
+              <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>{label}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Row 1: Tendencia mensual + Distribución estado */}
@@ -506,6 +552,69 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Aging de cobranza */}
+      <div className="dashboard-card chart-card" style={{ marginBottom: 24 }}>
+        <h3 className="chart-title">Aging de Cobranza</h3>
+        {aging.length === 0 ? (
+          <div className="chart-empty">Sin facturas pendientes</div>
+        ) : (
+          <table className="recent-table">
+            <thead><tr>
+              <th>Tramo</th>
+              <th style={{ textAlign: 'right' }}>Facturas</th>
+              <th style={{ textAlign: 'right' }}>Monto total</th>
+              <th style={{ textAlign: 'right' }}>Pendiente cobro</th>
+            </tr></thead>
+            <tbody>
+              {AGING_TRAMOS.map(tramo => {
+                const row = aging.find(r => r.tramo === tramo.key)
+                if (!row) return null
+                return (
+                  <tr key={tramo.key}>
+                    <td><span style={{ color: tramo.color, fontWeight: 600 }}>{tramo.label}</span></td>
+                    <td style={{ textAlign: 'right' }}>{row.cantidad}</td>
+                    <td style={{ textAlign: 'right' }}>{fmtCLP.format(row.monto_total)}</td>
+                    <td style={{ textAlign: 'right', color: tramo.color, fontWeight: 600 }}>{fmtCLP.format(row.monto_pendiente)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Análisis margen real vs presupuestado */}
+      {marginAnalysis.length > 0 && (
+        <div className="dashboard-card chart-card" style={{ marginBottom: 24 }}>
+          <h3 className="chart-title">Rentabilidad Real vs. Presupuestada — Proyectos Cerrados</h3>
+          <table className="recent-table">
+            <thead><tr>
+              <th>Correlativo</th><th>Cliente</th>
+              <th style={{ textAlign: 'right' }}>Margen presup.</th>
+              <th style={{ textAlign: 'right' }}>Margen real</th>
+              <th style={{ textAlign: 'right' }}>Desvío</th>
+            </tr></thead>
+            <tbody>
+              {marginAnalysis.map(r => {
+                const desvio = r.margen_real_pct - r.margen_presupuestado_pct
+                const desvioColor = desvio >= -5 ? '#059669' : desvio >= -10 ? '#d97706' : '#dc2626'
+                return (
+                  <tr key={r.id}>
+                    <td className="cell-mono">{r.correlative}</td>
+                    <td>{r.client_name}</td>
+                    <td style={{ textAlign: 'right' }}>{r.margen_presupuestado_pct?.toFixed(1)}%</td>
+                    <td style={{ textAlign: 'right' }}>{r.margen_real_pct?.toFixed(1)}%</td>
+                    <td style={{ textAlign: 'right', color: desvioColor, fontWeight: 700 }}>
+                      {desvio > 0 ? '+' : ''}{desvio?.toFixed(1)} pp
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Recent quotes table */}
       <div className="dashboard-card chart-card">

@@ -398,4 +398,78 @@ export interface MasterQuotation {
   invoice_count: number
   invoice_count_max: number
   total_con_iva: number
+  // OC (Orden de Compra) u otro medio de aceptación formal del cliente
+  oc_number: string | null
+  oc_date: string | null
+  oc_conditions: string | null
+  oc_document_name: string | null
+  oc_document_size: number | null
+  // Motivo de pérdida
+  loss_reason: string | null
+  loss_competitor: string | null
+  loss_notes: string | null
+  // Seguimiento
+  follow_up_date: string | null
+  // Ciclo comercial
+  sent_at: string | null
+  awarded_at: string | null
+  closed_at: string | null
+  // Versión
+  version_reason: string | null
+  parent_version_id: string | null
+  // Aprobación
+  approved_by: string | null
+  approved_at: string | null
+  approval_notes: string | null
+}
+
+export interface InvoiceMilestone {
+  id: string
+  quotation_id: string
+  invoice_number: 1 | 2
+  description: string
+  pct_of_total: number | null
+}
+
+export interface QuotationActivity {
+  id: string
+  quotation_id: string
+  activity_type: 'llamada' | 'reunion' | 'correo' | 'nota_interna' | 'otro'
+  content: string
+  created_by: string | null
+  created_at: string
+}
+
+export interface AgingTramo {
+  tramo: string
+  cantidad: number
+  monto_pendiente: number
+  monto_total: number
+}
+
+export interface CarteraData {
+  adjudicado_total: number
+  pendiente_facturar: number
+  facturado_por_cobrar: number
+  cobrado_mes: number
+}
+
+export interface CycleTimes {
+  avg_draft_to_sent: number | null
+  avg_sent_to_awarded: number | null
+  avg_awarded_to_invoice: number | null
+  avg_invoice_to_paid: number | null
+}
+
+export interface MarginAnalysisRow {
+  id: string
+  correlative: string
+  client_name: string
+  costo_presupuestado: number
+  venta_presupuestada: number
+  margen_presupuestado: number
+  margen_presupuestado_pct: number
+  costo_real: number
+  margen_real: number
+  margen_real_pct: number
 }

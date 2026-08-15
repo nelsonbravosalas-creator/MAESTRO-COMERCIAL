@@ -8,7 +8,7 @@ import {
   fmtCLP,
   fmtDecimal,
 } from '../stores/maestro-store'
-import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
+import type { CategoryId, QuoteStatus, OperState, CatalogItemUI, QuotationActivity } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { usePermissions } from '../hooks/usePermissions'
 import { ApiError, api } from '../api/api'
@@ -98,6 +98,165 @@ const buildImportPreview = (payload: any, fileName: string): ImportPreview => {
   }
 
   return { fileName, payload, counts, totalCosto, totalVenta }
+}
+
+// ── Modal de motivo de pérdida ────────────────────────────────────────────────
+
+const LOSS_REASONS = [
+  { value: 'precio',           label: 'Precio / Tarifa' },
+  { value: 'competidor',       label: 'Competidor' },
+  { value: 'sin_presupuesto',  label: 'Sin presupuesto (cliente)' },
+  { value: 'timing',           label: 'Timing / Oportunidad' },
+  { value: 'no_ejecutado',     label: 'Proyecto no ejecutado' },
+  { value: 'otro',             label: 'Otro' },
+]
+
+function LossReasonModal({
+  quotationId: _quotationId,
+  correlative,
+  onConfirm,
+  onClose,
+}: {
+  quotationId: string
+  correlative: string
+  onConfirm: (data: { loss_reason: string; loss_competitor: string; loss_notes: string }) => Promise<void>
+  onClose: () => void
+}) {
+  const [reason, setReason] = React.useState('')
+  const [competitor, setCompetitor] = React.useState('')
+  const [notes, setNotes] = React.useState('')
+  const [guardando, setGuardando] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  const handleConfirm = async () => {
+    if (!reason) { setError('Selecciona un motivo de pérdida'); return }
+    setGuardando(true); setError(null)
+    try {
+      await onConfirm({ loss_reason: reason, loss_competitor: competitor, loss_notes: notes })
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al guardar')
+      setGuardando(false)
+    }
+  }
+
+  const lbl: React.CSSProperties = { display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: 4 }
+  const inp: React.CSSProperties = { width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box' }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-confirm" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+        <h3 style={{ margin: '0 0 4px', color: '#dc2626' }}>Cotización perdida</h3>
+        <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.85rem' }}>
+          {correlative} — ¿Por qué se perdió esta cotización?
+        </p>
+        {error && <div className="inv-alert" style={{ marginBottom: 12 }}>{error}</div>}
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={lbl}>Motivo de pérdida *</label>
+          <select value={reason} onChange={e => setReason(e.target.value)} style={inp} disabled={guardando}>
+            <option value="">— Selecciona un motivo —</option>
+            {LOSS_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+          </select>
+        </div>
+
+        {reason === 'competidor' && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={lbl}>Competidor (opcional)</label>
+            <input type="text" value={competitor} onChange={e => setCompetitor(e.target.value)} style={inp} placeholder="Nombre del competidor" maxLength={200} disabled={guardando} />
+          </div>
+        )}
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={lbl}>Observaciones (opcional)</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} style={{ ...inp, minHeight: 70, resize: 'vertical', fontFamily: 'inherit' }} maxLength={2000} disabled={guardando} />
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="inv-btn" onClick={onClose} disabled={guardando}>Cancelar</button>
+          <button className="inv-btn is-danger" onClick={handleConfirm} disabled={guardando}>
+            {guardando ? 'Guardando…' : 'Confirmar pérdida'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Panel de actividad ────────────────────────────────────────────────────────
+
+const ACTIVITY_ICONS: Record<string, string> = {
+  llamada: '📞', reunion: '🤝', correo: '✉️', nota_interna: '📝', otro: '💬'
+}
+
+function ActivityPanel({ quotationId }: { quotationId: string }) {
+  const [activities, setActivities] = React.useState<QuotationActivity[]>([])
+  const [type, setType] = React.useState('nota_interna')
+  const [content, setContent] = React.useState('')
+  const [saving, setSaving] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    api.getActivities(quotationId).then(d => setActivities(d.activities)).catch(() => {})
+  }, [quotationId])
+
+  const handleAdd = async () => {
+    if (!content.trim()) return
+    setSaving(true); setError(null)
+    try {
+      const act = await api.createActivity(quotationId, { activity_type: type, content })
+      setActivities(prev => [act, ...prev])
+      setContent('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al guardar')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div style={{ padding: '16px 0' }}>
+      <h4 style={{ margin: '0 0 12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        Actividad
+      </h4>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <select value={type} onChange={e => setType(e.target.value)} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.82rem' }}>
+          <option value="nota_interna">📝 Nota</option>
+          <option value="llamada">📞 Llamada</option>
+          <option value="reunion">🤝 Reunión</option>
+          <option value="correo">✉️ Correo</option>
+          <option value="otro">💬 Otro</option>
+        </select>
+        <input
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          placeholder="Registra una actividad o nota..."
+          style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleAdd()}
+          maxLength={5000}
+          disabled={saving}
+        />
+        <button className="inv-btn is-primary" onClick={handleAdd} disabled={saving || !content.trim()}>
+          {saving ? '…' : 'Agregar'}
+        </button>
+      </div>
+      {error && <div className="inv-alert" style={{ marginBottom: 8 }}>{error}</div>}
+      <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {activities.length === 0
+          ? <p style={{ color: '#94a3b8', fontSize: '0.82rem', textAlign: 'center', padding: '12px 0' }}>Sin actividad registrada</p>
+          : activities.map(act => (
+            <div key={act.id} style={{ display: 'flex', gap: 8, padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, fontSize: '0.82rem' }}>
+              <span style={{ fontSize: '1rem' }}>{ACTIVITY_ICONS[act.activity_type] ?? '💬'}</span>
+              <div style={{ flex: 1 }}>
+                <span style={{ color: '#e2e8f0' }}>{act.content}</span>
+                <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 2 }}>
+                  {new Date(act.created_at).toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  )
 }
 
 // ── Modal de configuración de facturación ────────────────────────────────────
@@ -196,12 +355,18 @@ function QuotationsList({
   const [importError, setImportError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [billingModal, setBillingModal] = useState<string | null>(null)
+  const [lossModal, setLossModal] = useState<string | null>(null)
 
   const handleGoToInvoices = (q: (typeof quotations)[0]) => {
     onNavigateToInvoices?.(q.id)
   }
 
   const handleStatusChange = (qid: string, newStatus: QuoteStatus) => {
+    if (newStatus === 'Perdida') {
+      // No cambia estado aún — espera el modal
+      setLossModal(qid)
+      return
+    }
     setStatus(qid, newStatus)
     if (newStatus === 'Adjudicada') {
       setBillingModal(qid)
@@ -414,7 +579,19 @@ function QuotationsList({
                     <td>
                       <span className="q-elaborated-by">{elaboratedBy}</span>
                     </td>
-                    <td className="q-date">{fmtDate(q.date)}</td>
+                    <td className="q-date">
+                      {fmtDate(q.date)}
+                      {q.status === 'Enviada' && q.follow_up_date && (
+                        <div style={{ fontSize: '0.7rem', marginTop: 2, color: new Date(q.follow_up_date) <= new Date() ? '#dc2626' : '#d97706' }}>
+                          📅 {fmtDate(q.follow_up_date)}
+                        </div>
+                      )}
+                      {q.status === 'Enviada' && !q.follow_up_date && q.valid_until && (() => {
+                        const diff = Math.ceil((new Date(q.valid_until).getTime() - Date.now()) / 86400000)
+                        if (diff <= 7) return <div style={{ fontSize: '0.7rem', color: diff <= 3 ? '#dc2626' : '#d97706', marginTop: 2 }}>⚠ Vence en {diff}d</div>
+                        return null
+                      })()}
+                    </td>
                     <td>
                       <select
                         className={`q-status-sel ${STATUS_META[q.status].cls}`}
@@ -432,6 +609,9 @@ function QuotationsList({
                           </option>
                         ))}
                       </select>
+                      {(q.status as string) === 'En revisión' && (
+                        <div style={{ fontSize: '0.7rem', marginTop: 2, color: '#d97706', fontWeight: 600 }}>⏳ Pendiente aprobación</div>
+                      )}
                     </td>
                     <td>
                       <select
@@ -474,6 +654,16 @@ function QuotationsList({
                           </button>
                         ) : (
                           <>
+                            {(q.status as string) === 'En revisión' && canChangeQuotationStatus && (
+                              <button
+                                className="btn-icon"
+                                title="Aprobar cotización"
+                                style={{ color: '#059669' }}
+                                onClick={() => api.approveQuotation(q.id).then(() => setStatus(q.id, 'Emitida')).catch(() => {})}
+                              >
+                                ✓
+                              </button>
+                            )}
                             <button
                               className="btn-icon"
                               title="Editar"
@@ -676,6 +866,23 @@ function QuotationsList({
           </div>
         </div>
       )}
+
+      {lossModal && (() => {
+        const q = quotations.find(x => x.id === lossModal)
+        if (!q) return null
+        return (
+          <LossReasonModal
+            quotationId={lossModal}
+            correlative={q.correlative}
+            onConfirm={async (data) => {
+              await api.updateQuotationLoss(lossModal, data)
+              setStatus(lossModal, 'Perdida')
+              setLossModal(null)
+            }}
+            onClose={() => setLossModal(null)}
+          />
+        )
+      })()}
 
       {billingModal && (
         <BillingConfigModal
@@ -1732,6 +1939,13 @@ export const Quotations: React.FC<{
               >
                 Cotización
               </button>
+              <button
+                type="button"
+                className={`q-tab ${activeTab === 'actividad' ? 'q-tab-active' : ''}`}
+                onClick={() => setTab('actividad')}
+              >
+                Actividad
+              </button>
             </div>
           </div>
 
@@ -1740,6 +1954,7 @@ export const Quotations: React.FC<{
             {activeTab === 'base' && <TabBase />}
             {activeTab === 'costeo' && <TabCosteo />}
             {activeTab === 'coti' && <TabCotizacion />}
+            {activeTab === 'actividad' && active && <ActivityPanel quotationId={active.id} />}
           </div>
         </div>
       )}

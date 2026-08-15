@@ -272,6 +272,26 @@
   background: #1d4ed8;
 }
 
+.inv-btn.is-warning {
+  background: #d97706;
+  border-color: #b45309;
+  color: #fff;
+}
+
+.inv-btn.is-warning:hover {
+  background: #b45309;
+}
+
+.inv-btn.is-danger {
+  background: #dc2626;
+  border-color: #b91c1c;
+  color: #fff;
+}
+
+.inv-btn.is-danger:hover {
+  background: #b91c1c;
+}
+
 .inv-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

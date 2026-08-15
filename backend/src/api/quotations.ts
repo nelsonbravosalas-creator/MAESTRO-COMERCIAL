@@ -10,10 +10,16 @@ import {
   quotationStatusSchema,
   quotationDuplicateSchema,
   quotationBillingSplitSchema,
+  quotationLossSchema,
+  quotationFollowUpSchema,
+  quotationMilestoneSchema,
+  quotationActivitySchema,
+  quotationVersionReasonSchema,
+  quotationApprovalSchema,
 } from '../schemas/quotations'
 import { decodeCursor, buildPage } from '../utils/pagination'
 
-const VALID_STATUSES = ['Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada', 'Cerrada']
+const VALID_STATUSES = ['Borrador', 'Emitida', 'En revisión', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada', 'Cerrada']
 const VALID_OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
 const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins']
 const TERM_TYPES = ['scope', 'exclusion', 'commercial']
@@ -873,15 +879,17 @@ export const createQuotationsRouter = (pool: Pool) => {
     const quotationId = paramString(req.params.id)
     try {
       const { status, oper_state } = req.body
+      const newStatus = normalizeStatus(status)
+
       const result = await pool.query(
         `UPDATE quotations
-            SET status = $1,
+            SET status     = $1,
                 oper_state = COALESCE($2, oper_state),
                 updated_at = NOW()
           WHERE id = $3
             AND deleted_at IS NULL
-          RETURNING id, status, oper_state`,
-        [normalizeStatus(status), normalizeOperState(oper_state), quotationId]
+          RETURNING id, status, oper_state, loss_reason, loss_competitor, loss_notes`,
+        [newStatus, normalizeOperState(oper_state), quotationId]
       )
 
       if (result.rows.length === 0) return res.status(404).json({ error: 'Quotation not found' })
@@ -889,7 +897,7 @@ export const createQuotationsRouter = (pool: Pool) => {
       // Auto-create project when status becomes 'Adjudicada' — no aplica a
       // contratos de mantención (kind='maintenance'): son visitas
       // recurrentes, no una obra puntual con fin.
-      if (normalizeStatus(status) === 'Adjudicada') {
+      if (newStatus === 'Adjudicada') {
         try {
           const qRow = await pool.query(
             `SELECT q.client_id, q.correlative, q.kind, c.name AS client_name FROM quotations q LEFT JOIN clients c ON c.id = q.client_id WHERE q.id = $1`,
@@ -962,9 +970,237 @@ export const createQuotationsRouter = (pool: Pool) => {
     }
   )
 
+  // ── Motivo de pérdida (endpoint separado) ─────────────────────────────────
+  // El frontend guarda los datos de pérdida primero y luego cambia el estado.
+  router.patch(
+    '/:id/loss',
+    roleMiddleware('admin', 'manager'),
+    validate({ params: uuidParams('id'), body: quotationLossSchema }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      const { loss_reason, loss_competitor, loss_notes } = req.body
+      try {
+        const result = await pool.query(
+          `UPDATE quotations
+              SET loss_reason     = $1::loss_reason,
+                  loss_competitor = $2,
+                  loss_notes      = $3,
+                  updated_at      = NOW()
+            WHERE id = $4 AND deleted_at IS NULL
+            RETURNING id, loss_reason, loss_competitor, loss_notes`,
+          [loss_reason, loss_competitor ?? null, loss_notes ?? null, id]
+        )
+        if (!result.rows.length) return res.status(404).json({ error: 'Quotation not found' })
+        return res.json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Update loss reason error', { error: error.message, id })
+        return res.status(500).json({ error: 'Failed to update loss reason' })
+      }
+    }
+  )
+
+  // ── Follow-up date ────────────────────────────────────────────────────────
+  router.patch(
+    '/:id/follow-up',
+    validate({ params: uuidParams('id'), body: quotationFollowUpSchema }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      try {
+        const result = await pool.query(
+          `UPDATE quotations SET follow_up_date=$1, updated_at=NOW()
+           WHERE id=$2 AND deleted_at IS NULL RETURNING id, follow_up_date`,
+          [req.body.follow_up_date ?? null, id]
+        )
+        if (!result.rows.length) return res.status(404).json({ error: 'Not found' })
+        return res.json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Update follow-up date error', { error: error.message, id })
+        return res.status(500).json({ error: 'Failed to update follow-up date' })
+      }
+    }
+  )
+
+  // ── Invoice milestones ─────────────────────────────────────────────────────
+  router.get(
+    '/:id/milestones',
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      try {
+        const result = await pool.query(
+          `SELECT * FROM quotation_invoice_milestones WHERE quotation_id=$1 ORDER BY invoice_number`,
+          [id]
+        )
+        return res.json({ milestones: result.rows })
+      } catch (error: any) {
+        logger.error('List milestones error', { error: error.message, id })
+        return res.status(500).json({ error: 'Failed to list milestones' })
+      }
+    }
+  )
+
+  router.put(
+    '/:id/milestones/:num',
+    validate({ params: uuidParams('id'), body: quotationMilestoneSchema }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      const num = parseInt(paramString(req.params.num), 10)
+      if (num < 1 || num > 2) return res.status(400).json({ error: 'invoice_number must be 1 or 2' })
+      try {
+        const result = await pool.query(
+          `INSERT INTO quotation_invoice_milestones (quotation_id, invoice_number, description, pct_of_total)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (quotation_id, invoice_number)
+           DO UPDATE SET description=$3, pct_of_total=$4, updated_at=NOW()
+           RETURNING *`,
+          [id, num, req.body.description, req.body.pct_of_total ?? null]
+        )
+        return res.json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Upsert milestone error', { error: error.message, id, num })
+        if (error.code === '23503') return res.status(404).json({ error: 'Quotation not found' })
+        return res.status(500).json({ error: 'Failed to upsert milestone' })
+      }
+    }
+  )
+
+  router.delete(
+    '/:id/milestones/:num',
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      const num = parseInt(paramString(req.params.num), 10)
+      try {
+        const result = await pool.query(
+          `DELETE FROM quotation_invoice_milestones WHERE quotation_id=$1 AND invoice_number=$2 RETURNING id`,
+          [id, num]
+        )
+        if (!result.rows.length) return res.status(404).json({ error: 'Milestone not found' })
+        return res.json({ message: 'Milestone deleted' })
+      } catch (error: any) {
+        logger.error('Delete milestone error', { error: error.message, id, num })
+        return res.status(500).json({ error: 'Failed to delete milestone' })
+      }
+    }
+  )
+
+  // ── Activities log ─────────────────────────────────────────────────────────
+  router.get(
+    '/:id/activities',
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      try {
+        const result = await pool.query(
+          `SELECT a.*, u.name AS created_by_name
+           FROM quotation_activities a
+           LEFT JOIN users u ON u.id = a.created_by
+           WHERE a.quotation_id=$1
+           ORDER BY a.created_at DESC`,
+          [id]
+        )
+        return res.json({ activities: result.rows })
+      } catch (error: any) {
+        logger.error('List activities error', { error: error.message, id })
+        return res.status(500).json({ error: 'Failed to list activities' })
+      }
+    }
+  )
+
+  router.post(
+    '/:id/activities',
+    validate({ params: uuidParams('id'), body: quotationActivitySchema }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      try {
+        const result = await pool.query(
+          `INSERT INTO quotation_activities (quotation_id, activity_type, content, created_by)
+           VALUES ($1, $2, $3, $4) RETURNING *`,
+          [id, req.body.activity_type, req.body.content, req.user?.id ?? null]
+        )
+        return res.status(201).json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Create activity error', { error: error.message, id })
+        if (error.code === '23503') return res.status(404).json({ error: 'Quotation not found' })
+        return res.status(500).json({ error: 'Failed to create activity' })
+      }
+    }
+  )
+
+  router.delete(
+    '/activities/:activityId',
+    validate({ params: uuidParams('activityId') }),
+    async (req: AuthRequest, res) => {
+      const activityId = paramString(req.params.activityId)
+      try {
+        const result = await pool.query(
+          `DELETE FROM quotation_activities WHERE id=$1 AND created_by=$2 RETURNING id`,
+          [activityId, req.user?.id ?? null]
+        )
+        if (!result.rows.length)
+          return res.status(404).json({ error: 'Activity not found or not authorized' })
+        return res.json({ message: 'Activity deleted' })
+      } catch (error: any) {
+        logger.error('Delete activity error', { error: error.message, activityId })
+        return res.status(500).json({ error: 'Failed to delete activity' })
+      }
+    }
+  )
+
+  // ── Version diff ───────────────────────────────────────────────────────────
+  router.get(
+    '/:id/version-diff',
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      try {
+        const result = await pool.query(
+          `SELECT
+            q.id, q.correlative, q.version, q.version_reason, q.parent_version_id,
+            v.venta_neta, v.costo_neto, v.beneficio_bruto,
+            v.beneficio_bruto / NULLIF(v.venta_neta,0) * 100 AS margen_pct
+           FROM quotations q
+           JOIN v_quotation_totals v ON v.quotation_id = q.id
+           WHERE q.id = $1 OR q.id = (SELECT parent_version_id FROM quotations WHERE id = $1)`,
+          [id]
+        )
+        return res.json({ versions: result.rows })
+      } catch (error: any) {
+        logger.error('Version diff error', { error: error.message, id })
+        return res.status(500).json({ error: 'Failed to fetch version diff' })
+      }
+    }
+  )
+
+  // ── Internal approval ──────────────────────────────────────────────────────
+  router.post(
+    '/:id/approve',
+    roleMiddleware('admin', 'manager'),
+    validate({ params: uuidParams('id'), body: quotationApprovalSchema }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      try {
+        const result = await pool.query(
+          `UPDATE quotations
+             SET approved_by=$1, approved_at=NOW(), approval_notes=$2,
+                 status='Emitida', updated_at=NOW()
+           WHERE id=$3 AND deleted_at IS NULL AND status='En revisión'
+           RETURNING id, status, approved_at`,
+          [req.user!.id, req.body.approval_notes ?? null, id]
+        )
+        if (!result.rows.length)
+          return res.status(404).json({ error: 'Not found or not pending approval' })
+        return res.json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Approve quotation error', { error: error.message, id })
+        return res.status(500).json({ error: 'Failed to approve quotation' })
+      }
+    }
+  )
+
   router.post(
     '/:id/duplicate',
-    validate({ params: uuidParams('id'), body: quotationDuplicateSchema }),
+    validate({ params: uuidParams('id'), body: quotationVersionReasonSchema }),
     async (req: AuthRequest, res) => {
       const db = await pool.connect()
       const quotationId = paramString(req.params.id)
@@ -978,9 +1214,10 @@ export const createQuotationsRouter = (pool: Pool) => {
           (correlative, client_id, contact_id, enduser, ref, date, valid_until,
            status, oper_state, uf_value, iva_pct, notes, version, created_by,
            kind, equipment_count, equipment_description, frequency, visits_per_year,
-           contract_start_date, show_uf_equivalent, show_usd_equivalent, usd_value)
+           contract_start_date, show_uf_equivalent, show_usd_equivalent, usd_value,
+           version_reason, parent_version_id)
          VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10, $11, $12, $13,
-                 $14, $15, $16, $17, $18, $19, $20, $21, $22)
+                 $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
          RETURNING *`,
           [
             req.body.correlative,
@@ -1005,6 +1242,8 @@ export const createQuotationsRouter = (pool: Pool) => {
             source.show_uf_equivalent,
             source.show_usd_equivalent,
             source.usd_value,
+            req.body.version_reason,
+            quotationId,
           ]
         )
 

@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { uuid, optionalStr, money, isoDateStr } from './common'
 
 const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins'] as const
-const STATUSES = ['Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada'] as const
+const STATUSES = ['Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada', 'Cerrada'] as const
 const OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada'] as const
 const TERM_TYPES = ['scope', 'exclusion', 'commercial'] as const
 const KINDS = ['project', 'maintenance'] as const
@@ -84,4 +84,9 @@ export const quotationStatusSchema = z.object({
 
 export const quotationDuplicateSchema = z.object({
   correlative: z.string().trim().min(1).max(50),
+})
+
+// Configuración de cuántas facturas puede generar una cotización Adjudicada.
+export const quotationBillingSplitSchema = z.object({
+  invoice_count_max: z.coerce.number().int().min(1).max(2),
 })

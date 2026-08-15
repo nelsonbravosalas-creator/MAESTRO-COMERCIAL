@@ -11,7 +11,7 @@ import {
 import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { usePermissions } from '../hooks/usePermissions'
-import { ApiError } from '../api/api'
+import { ApiError, api } from '../api/api'
 import { downloadDocx } from '../utils/docxExport'
 import { downloadHtml } from '../utils/htmlExport'
 import { downloadPdfFromElement } from '../utils/pdfExport'
@@ -46,7 +46,7 @@ export async function reportSaveError(err: unknown, reloadActive: () => Promise<
   )
 }
 
-export const LOCKED_STATUSES: QuoteStatus[] = ['Adjudicada', 'Perdida', 'Anulada']
+export const LOCKED_STATUSES: QuoteStatus[] = ['Adjudicada', 'Perdida', 'Anulada', 'Cerrada']
 
 export const STATUS_META: Record<QuoteStatus, { label: string; cls: string }> = {
   Borrador: { label: 'Borrador', cls: 'st-borrador' },
@@ -55,6 +55,7 @@ export const STATUS_META: Record<QuoteStatus, { label: string; cls: string }> = 
   Adjudicada: { label: 'Adjudicada', cls: 'st-adjudicada' },
   Perdida: { label: 'Perdida', cls: 'st-perdida' },
   Anulada: { label: 'Anulada', cls: 'st-anulada' },
+  Cerrada: { label: 'Cerrada', cls: 'st-cerrada' },
 }
 
 export const OP_STATES: OperState[] = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
@@ -99,6 +100,63 @@ const buildImportPreview = (payload: any, fileName: string): ImportPreview => {
   return { fileName, payload, counts, totalCosto, totalVenta }
 }
 
+// ── Modal de configuración de facturación ────────────────────────────────────
+
+function BillingConfigModal({
+  onConfirm,
+  onClose,
+}: {
+  quotationId: string
+  onConfirm: (count: 1 | 2) => Promise<void>
+  onClose: () => void
+}) {
+  const [count, setCount] = React.useState<1 | 2>(1)
+  const [guardando, setGuardando] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  const handleConfirm = async () => {
+    setGuardando(true)
+    setError(null)
+    try {
+      await onConfirm(count)
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo guardar la configuración')
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-confirm" onClick={e => e.stopPropagation()}>
+        <h3 style={{ margin: '0 0 8px' }}>Configurar facturación</h3>
+        <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.9rem' }}>
+          ¿Cuántas facturas se emitirán para esta cotización?
+        </p>
+        {error && <div className="inv-alert" style={{ marginBottom: 12 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          {([1, 2] as const).map(n => (
+            <button
+              key={n}
+              className={`inv-btn${count === n ? ' is-primary' : ''}`}
+              style={{ flex: 1, padding: '10px 0', fontSize: '1rem' }}
+              onClick={() => setCount(n)}
+            >
+              {n} factura{n > 1 ? 's' : ''}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="inv-btn" onClick={onClose} disabled={guardando}>Cancelar</button>
+          <button className="inv-btn is-primary" onClick={handleConfirm} disabled={guardando}>
+            {guardando ? 'Guardando…' : 'Confirmar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Master List ────────────────────────────────────────────────────────────────
 
 function QuotationsList({
@@ -137,8 +195,17 @@ function QuotationsList({
   const [importResult, setImportResult] = useState<any | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
+  const [billingModal, setBillingModal] = useState<string | null>(null)
+
   const handleGoToInvoices = (q: (typeof quotations)[0]) => {
     onNavigateToInvoices?.(q.id)
+  }
+
+  const handleStatusChange = (qid: string, newStatus: QuoteStatus) => {
+    setStatus(qid, newStatus)
+    if (newStatus === 'Adjudicada') {
+      setBillingModal(qid)
+    }
   }
 
   const elaboratedBy = useMemo(() => {
@@ -352,7 +419,7 @@ function QuotationsList({
                       <select
                         className={`q-status-sel ${STATUS_META[q.status].cls}`}
                         value={q.status}
-                        onChange={e => setStatus(q.id, e.target.value as QuoteStatus)}
+                        onChange={e => handleStatusChange(q.id, e.target.value as QuoteStatus)}
                         onClick={e => e.stopPropagation()}
                         disabled={!canChangeQuotationStatus}
                         title={
@@ -382,10 +449,10 @@ function QuotationsList({
                     </td>
                     <td className="text-right q-total">{fmtCLP.format(venta)}</td>
                     <td className="text-center">
-                      {q.status === 'Adjudicada' && canCreateInvoice && (
+                      {(q.status === 'Adjudicada' || q.status === 'Cerrada') && canCreateInvoice && (
                         <button
                           className="btn-invoice"
-                          title={q.invoice_count > 0 ? `Ir a facturación (${q.invoice_count} factura${q.invoice_count > 1 ? 's' : ''})` : 'Crear factura en módulo de facturación'}
+                          title={`Ir a facturación (${q.invoice_count}/${q.invoice_count_max} factura${q.invoice_count_max > 1 ? 's' : ''})`}
                           onClick={() => handleGoToInvoices(q)}
                         >
                           🧾
@@ -608,6 +675,17 @@ function QuotationsList({
             </div>
           </div>
         </div>
+      )}
+
+      {billingModal && (
+        <BillingConfigModal
+          quotationId={billingModal}
+          onConfirm={async (count) => {
+            await api.updateQuotationBillingSplit(billingModal, count)
+            setBillingModal(null)
+          }}
+          onClose={() => setBillingModal(null)}
+        />
       )}
 
       {/* Delete confirm modal */}

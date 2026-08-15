@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import '../styles/Invoices.css'
 import {
   api,
@@ -54,6 +54,9 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
   const [pagos, setPagos] = useState<Payment[]>([])
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [subiendo, setSubiendo] = useState(false)
+  const [docError, setDocError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Formulario de abono
   const [monto, setMonto] = useState('')
@@ -148,6 +151,22 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
       setError(e instanceof Error ? e.message : 'No se pudo guardar el seguimiento')
     } finally {
       setGuardando(false)
+    }
+  }
+
+  const subirDocumento = async (file: File) => {
+    setDocError(null)
+    if (file.type !== 'application/pdf') { setDocError('Solo se acepta PDF'); return }
+    if (file.size > 10 * 1024 * 1024) { setDocError('El archivo supera 10 MB'); return }
+    setSubiendo(true)
+    try {
+      await api.uploadInvoiceDocument(invoiceId, file)
+      await cargar()
+      onChanged()
+    } catch (e) {
+      setDocError(e instanceof Error ? e.message : 'No se pudo subir el documento')
+    } finally {
+      setSubiendo(false)
     }
   }
 
@@ -326,6 +345,35 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
                 </button>
               </div>
 
+              {/* ── Documento SII ── */}
+              <div className="inv-section-title">Documento SII (PDF)</div>
+              {docError && <div className="inv-alert">{docError}</div>}
+              <input
+                type="file"
+                accept="application/pdf"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) subirDocumento(f); e.target.value = '' }}
+              />
+              {inv?.sii_document_name ? (
+                <div className="inv-doc-row">
+                  <span className="inv-doc-badge">✓ {inv.sii_document_name}</span>
+                  <button className="inv-btn" onClick={() => api.downloadInvoiceDocument(invoiceId)} disabled={subiendo}>
+                    Descargar
+                  </button>
+                  <button className="inv-btn" onClick={() => fileInputRef.current?.click()} disabled={subiendo}>
+                    Reemplazar
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <button className="inv-btn is-primary" onClick={() => fileInputRef.current?.click()} disabled={subiendo}>
+                    {subiendo ? 'Subiendo…' : 'Subir PDF SII'}
+                  </button>
+                  <span className="inv-doc-hint"> · Requerido para emitir la factura</span>
+                </div>
+              )}
+
               {inv?.factoring && (
                 <>
                   <div className="inv-section-title">Factoring</div>
@@ -394,6 +442,7 @@ function NuevaFactura({ quotationId, onClose, onCreated }: NuevaFacturaProps) {
   const [items, setItems] = useState([{ description: '', quantity: 1, unit_price: 0 }])
   const [clients, setClients] = useState<{ id: string; name: string }[]>([])
   const [quotacionInfo, setQuotacionInfo] = useState<string | null>(null)
+  const [cuota, setCuota] = useState<{ max: number; current: number; totalConIva: number } | null>(null)
   const [cargandoQ, setCargandoQ] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -409,6 +458,11 @@ function NuevaFactura({ quotationId, onClose, onCreated }: NuevaFacturaProps) {
       setClientId(q.client_id)
       const label = `${q.correlative}${q.ref ? ` — ${q.ref}` : ''}`
       setQuotacionInfo(label)
+      setCuota({
+        max: q.invoice_count_max ?? 1,
+        current: q.invoice_count ?? 0,
+        totalConIva: q.total_con_iva ?? 0,
+      })
       setItems([{
         description: `Cotización ${label}`,
         quantity: 1,
@@ -433,6 +487,20 @@ function NuevaFactura({ quotationId, onClose, onCreated }: NuevaFacturaProps) {
     const validItems = items.filter(it => it.description.trim())
     if (validItems.length === 0) { setError('Agrega al menos un ítem con descripción'); return }
 
+    // Validación de cuota de facturas (pre-vuelo, antes de llamar a la API)
+    if (cuota && quotationId) {
+      if (cuota.current >= cuota.max) {
+        setError(`Esta cotización solo permite ${cuota.max} factura${cuota.max > 1 ? 's' : ''}. Ya tiene ${cuota.current}.`)
+        return
+      }
+      const totalNueva = validItems.reduce((s, it) => s + (Number(it.quantity) || 1) * (Number(it.unit_price) || 0), 0)
+      if (totalNueva > cuota.totalConIva + 0.01) {
+        const saldo = Math.max(0, cuota.totalConIva)
+        setError(`El monto de la factura supera el total de la cotización. Saldo disponible: ${clp(saldo)}.`)
+        return
+      }
+    }
+
     setGuardando(true)
     setError(null)
     try {
@@ -451,7 +519,12 @@ function NuevaFactura({ quotationId, onClose, onCreated }: NuevaFacturaProps) {
       })
       onCreated()
     } catch (e: any) {
-      if (e?.status === 409) {
+      const errCode = e?.data?.error
+      if (errCode === 'invoice_cap_exceeded') {
+        setError(e?.data?.message ?? 'Límite de facturas alcanzado para esta cotización.')
+      } else if (errCode === 'invoice_amount_exceeded') {
+        setError(e?.data?.message ?? 'El monto supera el saldo disponible de la cotización.')
+      } else if (e?.status === 409) {
         setError(`El N° de Factura "${number.trim()}" ya existe. Usa otro número.`)
       } else {
         setError(e instanceof Error ? e.message : 'No se pudo crear la factura')
@@ -477,6 +550,15 @@ function NuevaFactura({ quotationId, onClose, onCreated }: NuevaFacturaProps) {
             {quotacionInfo && (
               <div className="inv-quotacion-link">
                 Vinculada a cotización: <strong>{quotacionInfo}</strong>
+              </div>
+            )}
+
+            {cuota && (
+              <div className={`inv-cuota-banner${cuota.current >= cuota.max ? ' is-blocked' : ''}`}>
+                {cuota.current >= cuota.max
+                  ? `Límite alcanzado: ${cuota.current} de ${cuota.max} factura${cuota.max > 1 ? 's' : ''} emitidas.`
+                  : `Factura ${cuota.current + 1} de ${cuota.max} · Saldo disponible: ${clp(cuota.totalConIva)}`
+                }
               </div>
             )}
 

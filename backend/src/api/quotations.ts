@@ -9,10 +9,11 @@ import {
   quotationUpdateSchema,
   quotationStatusSchema,
   quotationDuplicateSchema,
+  quotationBillingSplitSchema,
 } from '../schemas/quotations'
 import { decodeCursor, buildPage } from '../utils/pagination'
 
-const VALID_STATUSES = ['Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada']
+const VALID_STATUSES = ['Borrador', 'Emitida', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada', 'Cerrada']
 const VALID_OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
 const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins']
 const TERM_TYPES = ['scope', 'exclusion', 'commercial']
@@ -481,6 +482,8 @@ export const createQuotationsRouter = (pool: Pool) => {
                 COALESCE(vt.costo_neto, 0) AS costo_neto,
                 COALESCE(vt.venta_neta, 0) AS venta_neta,
                 COALESCE(vt.beneficio_bruto, 0) AS beneficio_bruto,
+                COALESCE(vt.venta_neta, 0) * (1 + COALESCE(q.iva_pct, 19) / 100.0) AS total_con_iva,
+                q.invoice_count_max,
                 COALESCE(inv.invoice_count, 0)::int AS invoice_count
            FROM quotations q
            LEFT JOIN clients c ON c.id = q.client_id
@@ -490,6 +493,7 @@ export const createQuotationsRouter = (pool: Pool) => {
             SELECT quotation_id, COUNT(*)::int AS invoice_count
               FROM invoices
              WHERE deleted_at IS NULL AND quotation_id IS NOT NULL
+               AND status <> 'cancelled'
              GROUP BY quotation_id
           ) inv ON inv.quotation_id = q.id
           WHERE q.deleted_at IS NULL
@@ -738,7 +742,7 @@ export const createQuotationsRouter = (pool: Pool) => {
     }
   })
 
-  const LOCKED_STATUSES = ['Adjudicada', 'Perdida', 'Anulada']
+  const LOCKED_STATUSES = ['Adjudicada', 'Perdida', 'Anulada', 'Cerrada']
 
   router.put(
     '/:id',
@@ -929,6 +933,34 @@ export const createQuotationsRouter = (pool: Pool) => {
   const statusValidation = validate({ params: uuidParams('id'), body: quotationStatusSchema })
   router.patch('/:id/status', roleMiddleware('admin', 'manager'), statusValidation, updateStatus)
   router.put('/:id/status', roleMiddleware('admin', 'manager'), statusValidation, updateStatus)
+
+  // Configuración del número máximo de facturas para una cotización Adjudicada.
+  // Solo se puede modificar mientras la cotización siga en estado Adjudicada.
+  router.patch(
+    '/:id/billing-split',
+    roleMiddleware('admin', 'manager'),
+    validate({ params: uuidParams('id'), body: quotationBillingSplitSchema }),
+    async (req: AuthRequest, res) => {
+      const quotationId = paramString(req.params.id)
+      try {
+        const result = await pool.query(
+          `UPDATE quotations
+              SET invoice_count_max = $1, updated_at = NOW()
+            WHERE id = $2
+              AND deleted_at IS NULL
+              AND status = 'Adjudicada'
+            RETURNING id, invoice_count_max`,
+          [req.body.invoice_count_max, quotationId]
+        )
+        if (result.rows.length === 0)
+          return res.status(404).json({ error: 'Quotation not found or not Adjudicada' })
+        return res.json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Update billing split error', { error: error.message, quotationId })
+        return res.status(500).json({ error: 'Failed to update billing split' })
+      }
+    }
+  )
 
   router.post(
     '/:id/duplicate',

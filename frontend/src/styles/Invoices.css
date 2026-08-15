@@ -488,3 +488,45 @@
   border-color: #fca5a5;
   margin-top: 0;
 }
+
+/* ── Documento SII ────────────────────────────────────────────────────────── */
+
+.inv-doc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.inv-doc-badge {
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.inv-doc-hint {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* ── Banner de cuota en NuevaFactura ─────────────────────────────────────── */
+
+.inv-cuota-banner {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: #1d4ed8;
+  margin-bottom: 12px;
+}
+
+.inv-cuota-banner.is-blocked {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}

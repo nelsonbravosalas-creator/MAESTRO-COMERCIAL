@@ -245,6 +245,8 @@ function toMasterQuotation(q: any): MasterQuotation {
     show_uf_equivalent: Boolean(q.show_uf_equivalent),
     show_usd_equivalent: Boolean(q.show_usd_equivalent),
     invoice_count: Number(q.invoice_count) || 0,
+    invoice_count_max: Number(q.invoice_count_max) || 1,
+    total_con_iva: Number(q.total_con_iva) || 0,
   }
 }
 
@@ -351,6 +353,8 @@ export interface Invoice {
   is_factored: boolean
   factoring_company: string | null
   factoring_type: string | null
+  sii_document_name: string | null
+  sii_document_size: number | null
 }
 
 export interface InvoicePayment {
@@ -648,6 +652,41 @@ export const api = {
     put<Invoice>(`/api/invoices/${invoiceId}/factoring`, data),
   deleteFactoring: (invoiceId: string) =>
     del<{ success: boolean }>(`/api/invoices/${invoiceId}/factoring`),
+
+  // Sube el PDF SII de una factura. Convierte el File a base64 JSON para no
+  // necesitar multipart (sin dependencias adicionales en el backend).
+  uploadInvoiceDocument: (id: string, file: File): Promise<Invoice> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = async () => {
+        try {
+          const base64 = (reader.result as string).split(',')[1]
+          resolve(await post<Invoice>(`/api/invoices/${id}/document`, { data: base64, name: file.name, size: file.size }))
+        } catch (e) { reject(e) }
+      }
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'))
+      reader.readAsDataURL(file)
+    }),
+
+  // Descarga el PDF SII y lo dispara como descarga del navegador.
+  downloadInvoiceDocument: async (id: string): Promise<void> => {
+    const token = localStorage.getItem('authToken')
+    const res = await fetch(`/api/invoices/${id}/document`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error('No se pudo descargar el documento')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'documento.pdf'
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+
+  // Configura cuántas facturas puede emitir una cotización Adjudicada (1 o 2).
+  updateQuotationBillingSplit: (id: string, invoice_count_max: number) =>
+    patch<{ id: string; invoice_count_max: number }>(`/api/quotations/${id}/billing-split`, { invoice_count_max }),
 
   // ── Dashboard ───────────────────────────────────────────────
   getKPIs: () => get<Record<string, unknown>>('/api/dashboard/kpis'),

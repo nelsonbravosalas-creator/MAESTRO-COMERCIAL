@@ -9,6 +9,7 @@ import {
   invoiceStatusSchema,
   invoiceFollowUpSchema,
   invoiceListQuerySchema,
+  invoiceDocumentSchema,
   paymentCreateSchema,
   factoringUpsertSchema,
   TERM_DAYS,
@@ -121,6 +122,66 @@ export const createInvoicesRouter = (pool: Pool) => {
     }
   })
 
+  // ── Documento SII (PDF) ───────────────────────────────────────────────────
+  // Estos endpoints deben ir ANTES de GET /:id para evitar que Express
+  // interprete "document" como el parámetro :id.
+
+  router.post(
+    '/:id/document',
+    validate({ params: uuidParams('id'), body: invoiceDocumentSchema }),
+    async (req: AuthRequest, res) => {
+      const { data, name, size } = req.body
+      let buffer: Buffer
+      try {
+        buffer = Buffer.from(data, 'base64')
+      } catch {
+        return res.status(400).json({ error: 'Datos base64 inválidos' })
+      }
+      if (buffer.length > 10 * 1024 * 1024)
+        return res.status(400).json({ error: 'El archivo supera los 10 MB permitidos' })
+      try {
+        const result = await pool.query(
+          `UPDATE invoices
+              SET sii_document      = $1,
+                  sii_document_name = $2,
+                  sii_document_size = $3,
+                  status = CASE WHEN status = 'draft' THEN 'issued'::invoice_status ELSE status END,
+                  updated_at = NOW()
+            WHERE id = $4 AND deleted_at IS NULL
+            RETURNING id, status, sii_document_name, sii_document_size`,
+          [buffer, name, size, req.params.id]
+        )
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
+        return res.json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Upload invoice document error', { error: error.message, invoiceId: req.params.id })
+        return res.status(500).json({ error: 'Failed to upload document' })
+      }
+    }
+  )
+
+  router.get(
+    '/:id/document',
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      try {
+        const row = await pool.query(
+          `SELECT sii_document, sii_document_name FROM invoices WHERE id = $1 AND deleted_at IS NULL`,
+          [req.params.id]
+        )
+        if (row.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
+        if (!row.rows[0].sii_document) return res.status(404).json({ error: 'Sin documento adjunto' })
+        const name = row.rows[0].sii_document_name ?? 'documento.pdf'
+        res.setHeader('Content-Type', 'application/pdf')
+        res.setHeader('Content-Disposition', `attachment; filename="${name}"`)
+        return res.send(row.rows[0].sii_document)
+      } catch (error: any) {
+        logger.error('Download invoice document error', { error: error.message, invoiceId: req.params.id })
+        return res.status(500).json({ error: 'Failed to download document' })
+      }
+    }
+  )
+
   router.get('/:id', validate({ params: uuidParams('id') }), async (req: AuthRequest, res) => {
     try {
       const invoice = await pool.query(
@@ -193,6 +254,54 @@ export const createInvoicesRouter = (pool: Pool) => {
       const term = payment_term || 'dias_30'
 
       await db.query('BEGIN')
+
+      // ── Validaciones de facturación por cotización ──────────────────────
+      if (quotation_id) {
+        const [capRow, totalsRow, countRow] = await Promise.all([
+          db.query(
+            `SELECT invoice_count_max FROM quotations WHERE id = $1 AND deleted_at IS NULL`,
+            [quotation_id]
+          ),
+          db.query(
+            `SELECT venta_neta, iva_pct FROM v_quotation_totals WHERE quotation_id = $1`,
+            [quotation_id]
+          ),
+          db.query(
+            `SELECT COUNT(*)::int AS cnt, COALESCE(SUM(total_amount), 0) AS total_emitido
+               FROM invoices
+              WHERE quotation_id = $1 AND status <> 'cancelled' AND deleted_at IS NULL`,
+            [quotation_id]
+          ),
+        ])
+        if (!capRow.rows.length) {
+          await db.query('ROLLBACK')
+          return res.status(404).json({ error: 'Cotización no encontrada' })
+        }
+        const cap = capRow.rows[0].invoice_count_max
+        const existingCount = countRow.rows[0].cnt
+        const existingTotal = Number(countRow.rows[0].total_emitido)
+        const venta = Number(totalsRow.rows[0]?.venta_neta ?? 0)
+        const qIvaPct = Number(totalsRow.rows[0]?.iva_pct ?? 19)
+        const totalConIva = venta * (1 + qIvaPct / 100)
+
+        if (existingCount >= cap) {
+          await db.query('ROLLBACK')
+          return res.status(409).json({
+            error: 'invoice_cap_exceeded',
+            message: `Esta cotización solo permite ${cap} factura${cap > 1 ? 's' : ''}. Ya tiene ${existingCount} emitida${existingCount > 1 ? 's' : ''}.`,
+          })
+        }
+        if (existingTotal + totalAmount > totalConIva + 0.01) {
+          await db.query('ROLLBACK')
+          const remaining = Math.max(0, totalConIva - existingTotal)
+          return res.status(409).json({
+            error: 'invoice_amount_exceeded',
+            message: `El monto supera el saldo disponible de la cotización ($${remaining.toLocaleString('es-CL')}).`,
+            remaining,
+          })
+        }
+      }
+
       const invoice = await db.query(
         `INSERT INTO invoices
           (project_id, quotation_id, client_id, number, date, payment_term, due_date,
@@ -365,6 +474,37 @@ export const createInvoicesRouter = (pool: Pool) => {
               WHERE id = $1 AND status <> 'cancelled'`,
             [req.params.id]
           )
+
+          // ── Auto-cierre de cotización cuando todas sus facturas están pagadas ──
+          try {
+            const invRow = await pool.query(
+              `SELECT quotation_id FROM invoices WHERE id = $1`,
+              [req.params.id]
+            )
+            const qid = invRow.rows[0]?.quotation_id
+            if (qid) {
+              const pending = await pool.query(
+                `SELECT COUNT(*)::int AS n
+                   FROM invoices
+                  WHERE quotation_id = $1
+                    AND status NOT IN ('paid', 'cancelled')
+                    AND deleted_at IS NULL`,
+                [qid]
+              )
+              if (Number(pending.rows[0]?.n ?? 1) === 0) {
+                await pool.query(
+                  `UPDATE quotations
+                      SET status = 'Cerrada', updated_at = NOW()
+                    WHERE id = $1 AND status = 'Adjudicada'`,
+                  [qid]
+                )
+                logger.info('Auto-closed quotation after full payment', { quotationId: qid })
+              }
+            }
+          } catch (autoErr) {
+            logger.error('Auto-close quotation error', autoErr)
+            // Non-fatal: no rompe la respuesta del pago
+          }
         }
 
         return res.status(201).json(result.rows[0])

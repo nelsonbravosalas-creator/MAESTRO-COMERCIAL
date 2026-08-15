@@ -168,6 +168,7 @@
 .q-status-sel.st-adjudicada { background: #dcfce7; color: #15803d; }
 .q-status-sel.st-perdida    { background: #fee2e2; color: #b91c1c; }
 .q-status-sel.st-anulada    { background: #f1f5f9; color: #64748b; }
+.q-status-sel.st-cerrada    { background: #d1fae5; color: #065f46; }
 
 .q-opstate-sel { font-size: 0.76rem; font-weight: 400; min-width: 160px; }
 

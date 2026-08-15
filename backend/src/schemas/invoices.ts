@@ -78,6 +78,15 @@ export const factoringUpsertSchema = z.object({
   observations: optionalStr(1000),
 })
 
+// Upload del PDF SII. El campo data es el contenido base64 del archivo;
+// el backend lo decodifica y lo almacena como BYTEA. El upload transiciona
+// la factura de 'draft' a 'issued'.
+export const invoiceDocumentSchema = z.object({
+  data: z.string().min(1),
+  name: z.string().trim().min(1).max(255),
+  size: z.coerce.number().int().positive().max(10 * 1024 * 1024),
+})
+
 // Filtros del listado. `state` corresponde a payment_state de v_invoice_balance.
 export const invoiceListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(500),

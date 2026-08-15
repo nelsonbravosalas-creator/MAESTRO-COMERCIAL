@@ -588,6 +588,7 @@ export const useMaestro = create<MaestroState>()(
           usd,
           show_uf_equivalent: false,
           show_usd_equivalent: false,
+          invoice_count: 0,
         }
         set(s => ({
           quotations: [...s.quotations, draft],

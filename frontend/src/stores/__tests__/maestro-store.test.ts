@@ -90,6 +90,7 @@ function makeQuotation(overrides: Partial<MasterQuotation> = {}): MasterQuotatio
     usd: 950,
     show_uf_equivalent: false,
     show_usd_equivalent: false,
+    invoice_count: 0,
   }
   return { ...base, ...overrides }
 }

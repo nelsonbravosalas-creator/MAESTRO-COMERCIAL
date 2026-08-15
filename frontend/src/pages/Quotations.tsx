@@ -146,8 +146,6 @@ function QuotationsList({
     try {
       const totals = calcTotals(q)
       const venta = totals.venta > 0 ? totals.venta : (q.total ?? 0)
-      const ivaPct = q.iva ?? 19
-      const ivaAmount = Math.round(venta * (ivaPct / 100))
       await api.createInvoice({
         quotation_id: q.id,
         client_id: q.client_id,

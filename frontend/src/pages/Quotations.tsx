@@ -11,7 +11,7 @@ import {
 import { CategoryId, QuoteStatus, OperState, CatalogItemUI } from '../types'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { usePermissions } from '../hooks/usePermissions'
-import { ApiError } from '../api/api'
+import api, { ApiError } from '../api/api'
 import { downloadDocx } from '../utils/docxExport'
 import { downloadHtml } from '../utils/htmlExport'
 import { downloadPdfFromElement } from '../utils/pdfExport'
@@ -45,6 +45,8 @@ export async function reportSaveError(err: unknown, reloadActive: () => Promise<
     err instanceof Error ? err.message : 'No se pudo guardar la cotización. Verifica tu conexión.'
   )
 }
+
+export const LOCKED_STATUSES: QuoteStatus[] = ['Adjudicada', 'Perdida', 'Anulada']
 
 export const STATUS_META: Record<QuoteStatus, { label: string; cls: string }> = {
   Borrador: { label: 'Borrador', cls: 'st-borrador' },
@@ -102,9 +104,11 @@ const buildImportPreview = (payload: any, fileName: string): ImportPreview => {
 function QuotationsList({
   onEdit,
   onNavigateToMaintenance,
+  onNavigateToInvoices,
 }: {
   onEdit: () => void
   onNavigateToMaintenance?: () => void
+  onNavigateToInvoices?: () => void
 }) {
   const {
     quotations: allQuotations,
@@ -117,6 +121,7 @@ function QuotationsList({
     setStatus,
     setOperState,
     activeId,
+    loadData,
   } = useMaestro()
   // Los contratos de mantención viven en su propia sección ("Mantenciones"),
   // no en este listado de cotizaciones de proyecto.
@@ -124,7 +129,7 @@ function QuotationsList({
     () => allQuotations.filter(q => q.kind !== 'maintenance'),
     [allQuotations]
   )
-  const { canDeleteQuotation, canChangeQuotationStatus } = usePermissions()
+  const { canDeleteQuotation, canChangeQuotationStatus, canCreateInvoice, role } = usePermissions()
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [confirm, setConfirm] = useState<string | null>(null)
@@ -133,6 +138,37 @@ function QuotationsList({
   const [importResult, setImportResult] = useState<any | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
+  const [creatingInvoice, setCreatingInvoice] = useState<string | null>(null)
+
+  const handleCreateInvoice = async (q: (typeof quotations)[0]) => {
+    if (creatingInvoice) return
+    setCreatingInvoice(q.id)
+    try {
+      const totals = calcTotals(q)
+      const venta = totals.venta > 0 ? totals.venta : (q.total ?? 0)
+      const ivaPct = q.iva ?? 19
+      const ivaAmount = Math.round(venta * (ivaPct / 100))
+      await api.createInvoice({
+        quotation_id: q.id,
+        client_id: q.client_id,
+        date: new Date().toISOString().slice(0, 10),
+        items: [
+          {
+            description: `Cotización ${q.correlative}${q.ref ? ` — ${q.ref}` : ''}`,
+            quantity: 1,
+            unit_price: venta,
+          },
+        ],
+      })
+      await loadData()
+      onNavigateToInvoices?.()
+    } catch {
+      window.alert('No se pudo crear la factura. Intenta nuevamente.')
+    } finally {
+      setCreatingInvoice(null)
+    }
+  }
+
   const elaboratedBy = useMemo(() => {
     try {
       const user = localStorage.getItem('user')
@@ -315,6 +351,7 @@ function QuotationsList({
                 <th>Estado</th>
                 <th>Op. Estado</th>
                 <th className="text-right">Neto CLP</th>
+                <th className="text-center">Factura</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -372,37 +409,64 @@ function QuotationsList({
                       </select>
                     </td>
                     <td className="text-right q-total">{fmtCLP.format(venta)}</td>
+                    <td className="text-center">
+                      {q.status === 'Adjudicada' && canCreateInvoice && (
+                        <button
+                          className="btn-invoice"
+                          title={q.invoice_count > 0 ? `Crear nueva factura (${q.invoice_count} existente${q.invoice_count > 1 ? 's' : ''})` : 'Crear factura'}
+                          onClick={() => handleCreateInvoice(q)}
+                          disabled={creatingInvoice === q.id}
+                        >
+                          {creatingInvoice === q.id ? <span className="btn-spinner" /> : '🧾'}
+                          {q.invoice_count > 0 && (
+                            <span className="invoice-badge">{q.invoice_count}</span>
+                          )}
+                        </button>
+                      )}
+                    </td>
                     <td>
                       <div className="q-row-actions">
-                        <button
-                          className="btn-icon"
-                          title="Editar"
-                          onClick={() => handleEdit(q.id)}
-                        >
-                          ✎
-                        </button>
-                        <button
-                          className="btn-icon"
-                          title="Duplicar"
-                          onClick={() => handleDuplicate(q.id)}
-                        >
-                          ⧉
-                        </button>
-                        <button
-                          className="btn-icon btn-icon-version"
-                          title="Nueva versión (mismo N°, para reestudiar margen)"
-                          onClick={() => handleNewVersion(q.id)}
-                        >
-                          V+
-                        </button>
-                        {canDeleteQuotation && (
+                        {LOCKED_STATUSES.includes(q.status) && role !== 'admin' ? (
                           <button
-                            className="btn-icon btn-danger"
-                            title="Eliminar"
-                            onClick={() => setConfirm(q.id)}
+                            className="btn-icon"
+                            title="Ver (solo lectura)"
+                            onClick={() => handleEdit(q.id)}
                           >
-                            ✕
+                            👁
                           </button>
+                        ) : (
+                          <>
+                            <button
+                              className="btn-icon"
+                              title="Editar"
+                              onClick={() => handleEdit(q.id)}
+                            >
+                              ✎
+                            </button>
+                            <button
+                              className="btn-icon"
+                              title="Duplicar"
+                              onClick={() => handleDuplicate(q.id)}
+                            >
+                              ⧉
+                            </button>
+                            <button
+                              className="btn-icon btn-icon-version"
+                              title="Nueva versión (mismo N°, para reestudiar margen)"
+                              onClick={() => handleNewVersion(q.id)}
+                            >
+                              V+
+                            </button>
+                            {canDeleteQuotation && (
+                              <button
+                                className="btn-icon btn-danger"
+                                title="Eliminar"
+                                onClick={() => setConfirm(q.id)}
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
@@ -958,9 +1022,12 @@ export function CosteoRow({ catId }: { catId: CategoryId }) {
 export function TabCosteo() {
   const { patchActive, saveActive, reloadActive } = useMaestro()
   const q = useActiveQuotation()
+  const { role } = usePermissions()
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'ok' | 'offline'>('idle')
 
   if (!q) return null
+
+  const isLocked = LOCKED_STATUSES.includes(q.status) && role !== 'admin'
 
   const cats: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
   const totals = calcTotals(q)
@@ -992,6 +1059,11 @@ export function TabCosteo() {
 
   return (
     <div className="tab-costeo">
+      {isLocked && (
+        <div className="locked-banner">
+          ⚠ Esta cotización está <strong>{q.status}</strong> y no puede ser modificada.
+        </div>
+      )}
       {/* Config strip */}
       <div className="costeo-config">
         <div className="costeo-config-field">
@@ -1047,7 +1119,8 @@ export function TabCosteo() {
           type="button"
           className={`btn-save-quote${saveState === 'ok' ? ' btn-save-ok' : saveState === 'offline' ? ' btn-save-warn' : ''}`}
           onClick={handleSave}
-          disabled={saveState === 'saving'}
+          disabled={saveState === 'saving' || isLocked}
+          title={isLocked ? `El estado "${q.status}" no permite modificaciones` : undefined}
         >
           {saveLabel}
         </button>
@@ -1203,6 +1276,7 @@ export const fmtDateLong = (d: string) =>
 function TabCotizacion() {
   const q = useActiveQuotation()
   const { clients, saveActive, reloadActive } = useMaestro()
+  const { role } = usePermissions()
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -1226,6 +1300,7 @@ function TabCotizacion() {
 
   if (!q) return null
 
+  const isLocked = LOCKED_STATUSES.includes(q.status) && role !== 'admin'
   const client = clients.find(c => c.id === q.client_id)
   const totals = calcTotals(q)
   const iva = totals.venta * (q.iva / 100)
@@ -1307,9 +1382,20 @@ function TabCotizacion() {
         </div>
       )}
 
+      {isLocked && (
+        <div className="locked-banner no-print">
+          ⚠ Esta cotización está <strong>{q.status}</strong> y no puede ser modificada.
+        </div>
+      )}
+
       {/* Action toolbar */}
       <div className="coti-toolbar no-print">
-        <button className="btn-act btn-act-save" onClick={handleSave} disabled={saving}>
+        <button
+          className="btn-act btn-act-save"
+          onClick={handleSave}
+          disabled={saving || isLocked}
+          title={isLocked ? `El estado "${q.status}" no permite modificaciones` : undefined}
+        >
           {saving ? <span className="btn-spinner" /> : <span>💾</span>}
           {saving ? 'Guardando…' : 'Guardar cambios'}
         </button>
@@ -1493,9 +1579,10 @@ function TabCotizacion() {
 
 // ── Main Quotations ────────────────────────────────────────────────────────────
 
-export const Quotations: React.FC<{ onNavigateToMaintenance?: () => void }> = ({
-  onNavigateToMaintenance,
-}) => {
+export const Quotations: React.FC<{
+  onNavigateToMaintenance?: () => void
+  onNavigateToInvoices?: () => void
+}> = ({ onNavigateToMaintenance, onNavigateToInvoices }) => {
   const [view, setView] = useState<'list' | 'edit'>('list')
   const [syncing, setSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'ok' | 'err'>('idle')
@@ -1537,7 +1624,7 @@ export const Quotations: React.FC<{ onNavigateToMaintenance?: () => void }> = ({
   return (
     <div className="quotations-root">
       {view === 'list' ? (
-        <QuotationsList onEdit={goEdit} onNavigateToMaintenance={onNavigateToMaintenance} />
+        <QuotationsList onEdit={goEdit} onNavigateToMaintenance={onNavigateToMaintenance} onNavigateToInvoices={onNavigateToInvoices} />
       ) : (
         <div className="q-editor">
           {/* Editor header */}

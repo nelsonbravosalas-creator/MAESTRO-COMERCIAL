@@ -395,4 +395,5 @@ export interface MasterQuotation {
   usd: number
   show_uf_equivalent: boolean
   show_usd_equivalent: boolean
+  invoice_count: number
 }

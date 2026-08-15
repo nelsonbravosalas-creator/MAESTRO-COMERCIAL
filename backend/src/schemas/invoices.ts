@@ -29,6 +29,7 @@ export const invoiceItemSchema = z.object({
 
 export const invoiceCreateSchema = z.object({
   project_id: uuid.nullish(),
+  quotation_id: uuid.nullish(),
   client_id: uuid,
   number: optionalStr(50),
   date: isoDateStr.nullish(),

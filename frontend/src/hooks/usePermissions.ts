@@ -26,6 +26,7 @@ export function usePermissions() {
     canDeleteClient: isAdmin,
     canDeleteInvoice: isAdmin,
     canChangeInvoiceStatus: isManagerOrAbove,
+    canCreateInvoice: isManagerOrAbove,
     canEditCatalog: isManagerOrAbove,
     canDeleteCatalogItem: isAdmin,
     canEditConfig: isAdmin,

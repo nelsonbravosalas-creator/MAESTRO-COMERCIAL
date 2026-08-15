@@ -161,6 +161,7 @@ export const createInvoicesRouter = (pool: Pool) => {
     try {
       const {
         project_id,
+        quotation_id,
         client_id,
         number,
         date,
@@ -192,13 +193,14 @@ export const createInvoicesRouter = (pool: Pool) => {
       await db.query('BEGIN')
       const invoice = await db.query(
         `INSERT INTO invoices
-          (project_id, client_id, number, date, payment_term, due_date,
+          (project_id, quotation_id, client_id, number, date, payment_term, due_date,
            net_amount, tax_amount, total_amount, status, doc_type,
            credits_invoice_id, observations, follow_up_date, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10, $11, $12, $13, $14)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11, $12, $13, $14, $15)
          RETURNING *`,
         [
           project_id || null,
+          quotation_id || null,
           client_id,
           invoiceNumber,
           invoiceDate,

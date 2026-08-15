@@ -1616,3 +1616,66 @@
   font-size: 0.85rem;
   padding: 3px 0;
 }
+
+/* ── Locked state banner ─────────────────────────────────────────────────── */
+.locked-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  color: #92400e;
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+}
+
+.locked-banner strong {
+  font-weight: 600;
+}
+
+/* ── Botón de facturación en lista ──────────────────────────────────────── */
+.btn-invoice {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #334155;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-invoice:hover:not(:disabled) {
+  background: #f0fdf4;
+  border-color: #16a34a;
+}
+
+.btn-invoice:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.invoice-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+}

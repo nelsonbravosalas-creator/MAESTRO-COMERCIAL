@@ -229,7 +229,7 @@ function App() {
       <main className="app-main authenticated">
         <Suspense fallback={<PageLoading />}>
           {currentPage === 'dashboard'   && <Dashboard />}
-          {currentPage === 'quotations'  && <Quotations onNavigateToMaintenance={() => nav('maintenance')} />}
+          {currentPage === 'quotations'  && <Quotations onNavigateToMaintenance={() => nav('maintenance')} onNavigateToInvoices={() => nav('invoices')} />}
           {currentPage === 'maintenance' && <Maintenance />}
           {currentPage === 'clients'     && <Clients />}
           {currentPage === 'catalogo'    && <Catalogo />}

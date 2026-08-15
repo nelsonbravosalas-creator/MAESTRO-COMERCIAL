@@ -244,6 +244,7 @@ function toMasterQuotation(q: any): MasterQuotation {
     usd: Number(q.usd_value) || 0,
     show_uf_equivalent: Boolean(q.show_uf_equivalent),
     show_usd_equivalent: Boolean(q.show_usd_equivalent),
+    invoice_count: Number(q.invoice_count) || 0,
   }
 }
 
@@ -387,6 +388,7 @@ export interface InvoiceSummary {
 
 export interface InvoiceCreatePayload {
   project_id?: string | null
+  quotation_id?: string | null
   client_id: string
   number?: string
   date: string

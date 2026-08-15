@@ -480,11 +480,18 @@ export const createQuotationsRouter = (pool: Pool) => {
                 cc.name AS contact_name,
                 COALESCE(vt.costo_neto, 0) AS costo_neto,
                 COALESCE(vt.venta_neta, 0) AS venta_neta,
-                COALESCE(vt.beneficio_bruto, 0) AS beneficio_bruto
+                COALESCE(vt.beneficio_bruto, 0) AS beneficio_bruto,
+                COALESCE(inv.invoice_count, 0)::int AS invoice_count
            FROM quotations q
            LEFT JOIN clients c ON c.id = q.client_id
            LEFT JOIN client_contacts cc ON cc.id = q.contact_id
           LEFT JOIN v_quotation_totals vt ON vt.quotation_id = q.id
+          LEFT JOIN (
+            SELECT quotation_id, COUNT(*)::int AS invoice_count
+              FROM invoices
+             WHERE deleted_at IS NULL AND quotation_id IS NOT NULL
+             GROUP BY quotation_id
+          ) inv ON inv.quotation_id = q.id
           WHERE q.deleted_at IS NULL
             AND ($2::timestamptz IS NULL OR (q.created_at, q.id) < ($2::timestamptz, $3::uuid))
           ORDER BY q.created_at DESC, q.id DESC
@@ -731,6 +738,8 @@ export const createQuotationsRouter = (pool: Pool) => {
     }
   })
 
+  const LOCKED_STATUSES = ['Adjudicada', 'Perdida', 'Anulada']
+
   router.put(
     '/:id',
     validate({ params: uuidParams('id'), body: quotationUpdateSchema }),
@@ -739,6 +748,25 @@ export const createQuotationsRouter = (pool: Pool) => {
       const quotationId = paramString(req.params.id)
       try {
         const body = req.body as any
+
+        // Bloquear edición si la cotización está en estado final y el usuario no es admin
+        if (req.user?.role !== 'admin') {
+          const statusCheck = await pool.query(
+            'SELECT status FROM quotations WHERE id = $1 AND deleted_at IS NULL',
+            [quotationId]
+          )
+          if (statusCheck.rows.length === 0) {
+            db.release()
+            return res.status(404).json({ error: 'Quotation not found' })
+          }
+          if (LOCKED_STATUSES.includes(statusCheck.rows[0].status)) {
+            db.release()
+            return res.status(403).json({
+              error: 'Forbidden',
+              message: `Esta cotización está ${statusCheck.rows[0].status} y no puede ser modificada.`,
+            })
+          }
+        }
 
         const expectedVersion = Number(body.version) || 1
 

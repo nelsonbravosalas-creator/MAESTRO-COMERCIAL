@@ -4,9 +4,13 @@ exports.shorthands = undefined
 exports.up = pgm => {
   pgm.noTransaction()
   pgm.sql(`
-    CREATE TYPE IF NOT EXISTS loss_reason AS ENUM (
-      'precio','competidor','sin_presupuesto','timing','no_ejecutado','otro'
-    );
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'loss_reason') THEN
+        CREATE TYPE loss_reason AS ENUM (
+          'precio','competidor','sin_presupuesto','timing','no_ejecutado','otro'
+        );
+      END IF;
+    END $$;
     ALTER TABLE quotations
       ADD COLUMN IF NOT EXISTS loss_reason loss_reason,
       ADD COLUMN IF NOT EXISTS loss_competitor TEXT,

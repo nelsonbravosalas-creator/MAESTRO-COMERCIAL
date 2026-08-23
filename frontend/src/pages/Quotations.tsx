@@ -34,9 +34,11 @@ export async function reportSaveError(err: unknown, reloadActive: () => Promise<
     return
   }
   if (err instanceof ApiError && err.status === 400) {
-    const details = (err.data as any)?.details as Array<{ path: string; message: string }> | undefined
+    const details = (err.data as any)?.details as
+      Array<{ path: string; message: string }> | undefined
     const extra = details?.length
-      ? '\n\nCampos inválidos:\n' + details.map(d => `• ${d.path || 'body'}: ${d.message}`).join('\n')
+      ? '\n\nCampos inválidos:\n' +
+        details.map(d => `• ${d.path || 'body'}: ${d.message}`).join('\n')
       : ''
     window.alert(err.message + extra)
     return
@@ -103,12 +105,12 @@ const buildImportPreview = (payload: any, fileName: string): ImportPreview => {
 // ── Modal de motivo de pérdida ────────────────────────────────────────────────
 
 const LOSS_REASONS = [
-  { value: 'precio',           label: 'Precio / Tarifa' },
-  { value: 'competidor',       label: 'Competidor' },
-  { value: 'sin_presupuesto',  label: 'Sin presupuesto (cliente)' },
-  { value: 'timing',           label: 'Timing / Oportunidad' },
-  { value: 'no_ejecutado',     label: 'Proyecto no ejecutado' },
-  { value: 'otro',             label: 'Otro' },
+  { value: 'precio', label: 'Precio / Tarifa' },
+  { value: 'competidor', label: 'Competidor' },
+  { value: 'sin_presupuesto', label: 'Sin presupuesto (cliente)' },
+  { value: 'timing', label: 'Timing / Oportunidad' },
+  { value: 'no_ejecutado', label: 'Proyecto no ejecutado' },
+  { value: 'otro', label: 'Otro' },
 ]
 
 function LossReasonModal({
@@ -119,7 +121,11 @@ function LossReasonModal({
 }: {
   quotationId: string
   correlative: string
-  onConfirm: (data: { loss_reason: string; loss_competitor: string; loss_notes: string }) => Promise<void>
+  onConfirm: (data: {
+    loss_reason: string
+    loss_competitor: string
+    loss_notes: string
+  }) => Promise<void>
   onClose: () => void
 }) {
   const [reason, setReason] = React.useState('')
@@ -129,8 +135,12 @@ function LossReasonModal({
   const [error, setError] = React.useState<string | null>(null)
 
   const handleConfirm = async () => {
-    if (!reason) { setError('Selecciona un motivo de pérdida'); return }
-    setGuardando(true); setError(null)
+    if (!reason) {
+      setError('Selecciona un motivo de pérdida')
+      return
+    }
+    setGuardando(true)
+    setError(null)
     try {
       await onConfirm({ loss_reason: reason, loss_competitor: competitor, loss_notes: notes })
       onClose()
@@ -140,8 +150,21 @@ function LossReasonModal({
     }
   }
 
-  const lbl: React.CSSProperties = { display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: 4 }
-  const inp: React.CSSProperties = { width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box' }
+  const lbl: React.CSSProperties = {
+    display: 'block',
+    fontSize: '0.82rem',
+    fontWeight: 600,
+    color: '#475569',
+    marginBottom: 4,
+  }
+  const inp: React.CSSProperties = {
+    width: '100%',
+    padding: '7px 10px',
+    borderRadius: 6,
+    border: '1px solid #cbd5e1',
+    fontSize: '0.9rem',
+    boxSizing: 'border-box',
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -150,30 +173,59 @@ function LossReasonModal({
         <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.85rem' }}>
           {correlative} — ¿Por qué se perdió esta cotización?
         </p>
-        {error && <div className="inv-alert" style={{ marginBottom: 12 }}>{error}</div>}
+        {error && (
+          <div className="inv-alert" style={{ marginBottom: 12 }}>
+            {error}
+          </div>
+        )}
 
         <div style={{ marginBottom: 14 }}>
           <label style={lbl}>Motivo de pérdida *</label>
-          <select value={reason} onChange={e => setReason(e.target.value)} style={inp} disabled={guardando}>
+          <select
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            style={inp}
+            disabled={guardando}
+          >
             <option value="">— Selecciona un motivo —</option>
-            {LOSS_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+            {LOSS_REASONS.map(r => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
           </select>
         </div>
 
         {reason === 'competidor' && (
           <div style={{ marginBottom: 14 }}>
             <label style={lbl}>Competidor (opcional)</label>
-            <input type="text" value={competitor} onChange={e => setCompetitor(e.target.value)} style={inp} placeholder="Nombre del competidor" maxLength={200} disabled={guardando} />
+            <input
+              type="text"
+              value={competitor}
+              onChange={e => setCompetitor(e.target.value)}
+              style={inp}
+              placeholder="Nombre del competidor"
+              maxLength={200}
+              disabled={guardando}
+            />
           </div>
         )}
 
         <div style={{ marginBottom: 20 }}>
           <label style={lbl}>Observaciones (opcional)</label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} style={{ ...inp, minHeight: 70, resize: 'vertical', fontFamily: 'inherit' }} maxLength={2000} disabled={guardando} />
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            style={{ ...inp, minHeight: 70, resize: 'vertical', fontFamily: 'inherit' }}
+            maxLength={2000}
+            disabled={guardando}
+          />
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button className="inv-btn" onClick={onClose} disabled={guardando}>Cancelar</button>
+          <button className="inv-btn" onClick={onClose} disabled={guardando}>
+            Cancelar
+          </button>
           <button className="inv-btn is-danger" onClick={handleConfirm} disabled={guardando}>
             {guardando ? 'Guardando…' : 'Confirmar pérdida'}
           </button>
@@ -186,7 +238,11 @@ function LossReasonModal({
 // ── Panel de actividad ────────────────────────────────────────────────────────
 
 const ACTIVITY_ICONS: Record<string, string> = {
-  llamada: '📞', reunion: '🤝', correo: '✉️', nota_interna: '📝', otro: '💬'
+  llamada: '📞',
+  reunion: '🤝',
+  correo: '✉️',
+  nota_interna: '📝',
+  otro: '💬',
 }
 
 function ActivityPanel({ quotationId }: { quotationId: string }) {
@@ -197,28 +253,52 @@ function ActivityPanel({ quotationId }: { quotationId: string }) {
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
-    api.getActivities(quotationId).then(d => setActivities(d.activities)).catch(() => {})
+    api
+      .getActivities(quotationId)
+      .then(d => setActivities(d.activities))
+      .catch(() => {})
   }, [quotationId])
 
   const handleAdd = async () => {
     if (!content.trim()) return
-    setSaving(true); setError(null)
+    setSaving(true)
+    setError(null)
     try {
       const act = await api.createActivity(quotationId, { activity_type: type, content })
       setActivities(prev => [act, ...prev])
       setContent('')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al guardar')
-    } finally { setSaving(false) }
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <div style={{ padding: '16px 0' }}>
-      <h4 style={{ margin: '0 0 12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <h4
+        style={{
+          margin: '0 0 12px',
+          fontSize: '0.85rem',
+          color: '#475569',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        }}
+      >
         Actividad
       </h4>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <select value={type} onChange={e => setType(e.target.value)} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.82rem' }}>
+        <select
+          value={type}
+          onChange={e => setType(e.target.value)}
+          style={{
+            padding: '6px 8px',
+            borderRadius: 6,
+            border: '1px solid #cbd5e1',
+            fontSize: '0.82rem',
+          }}
+        >
           <option value="nota_interna">📝 Nota</option>
           <option value="llamada">📞 Llamada</option>
           <option value="reunion">🤝 Reunión</option>
@@ -229,31 +309,78 @@ function ActivityPanel({ quotationId }: { quotationId: string }) {
           value={content}
           onChange={e => setContent(e.target.value)}
           placeholder="Registra una actividad o nota..."
-          style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+          style={{
+            flex: 1,
+            padding: '6px 10px',
+            borderRadius: 6,
+            border: '1px solid #cbd5e1',
+            fontSize: '0.85rem',
+          }}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleAdd()}
           maxLength={5000}
           disabled={saving}
         />
-        <button className="inv-btn is-primary" onClick={handleAdd} disabled={saving || !content.trim()}>
+        <button
+          className="inv-btn is-primary"
+          onClick={handleAdd}
+          disabled={saving || !content.trim()}
+        >
           {saving ? '…' : 'Agregar'}
         </button>
       </div>
-      {error && <div className="inv-alert" style={{ marginBottom: 8 }}>{error}</div>}
-      <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {activities.length === 0
-          ? <p style={{ color: '#94a3b8', fontSize: '0.82rem', textAlign: 'center', padding: '12px 0' }}>Sin actividad registrada</p>
-          : activities.map(act => (
-            <div key={act.id} style={{ display: 'flex', gap: 8, padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, fontSize: '0.82rem' }}>
+      {error && (
+        <div className="inv-alert" style={{ marginBottom: 8 }}>
+          {error}
+        </div>
+      )}
+      <div
+        style={{
+          maxHeight: 240,
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        {activities.length === 0 ? (
+          <p
+            style={{
+              color: '#94a3b8',
+              fontSize: '0.82rem',
+              textAlign: 'center',
+              padding: '12px 0',
+            }}
+          >
+            Sin actividad registrada
+          </p>
+        ) : (
+          activities.map(act => (
+            <div
+              key={act.id}
+              style={{
+                display: 'flex',
+                gap: 8,
+                padding: '8px 10px',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: 6,
+                fontSize: '0.82rem',
+              }}
+            >
               <span style={{ fontSize: '1rem' }}>{ACTIVITY_ICONS[act.activity_type] ?? '💬'}</span>
               <div style={{ flex: 1 }}>
                 <span style={{ color: '#e2e8f0' }}>{act.content}</span>
                 <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 2 }}>
-                  {new Date(act.created_at).toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  {new Date(act.created_at).toLocaleString('es-CL', {
+                    day: '2-digit',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
                 </div>
               </div>
             </div>
           ))
-        }
+        )}
       </div>
     </div>
   )
@@ -292,7 +419,11 @@ function BillingConfigModal({
         <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.9rem' }}>
           ¿Cuántas facturas se emitirán para esta cotización?
         </p>
-        {error && <div className="inv-alert" style={{ marginBottom: 12 }}>{error}</div>}
+        {error && (
+          <div className="inv-alert" style={{ marginBottom: 12 }}>
+            {error}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
           {([1, 2] as const).map(n => (
             <button
@@ -306,7 +437,9 @@ function BillingConfigModal({
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button className="inv-btn" onClick={onClose} disabled={guardando}>Cancelar</button>
+          <button className="inv-btn" onClick={onClose} disabled={guardando}>
+            Cancelar
+          </button>
           <button className="inv-btn is-primary" onClick={handleConfirm} disabled={guardando}>
             {guardando ? 'Guardando…' : 'Confirmar'}
           </button>
@@ -337,6 +470,7 @@ function QuotationsList({
     importQuotation,
     setStatus,
     setOperState,
+    applyInvoiceCreated,
     activeId,
   } = useMaestro()
   // Los contratos de mantención viven en su propia sección ("Mantenciones"),
@@ -356,9 +490,54 @@ function QuotationsList({
   const [importing, setImporting] = useState(false)
   const [billingModal, setBillingModal] = useState<string | null>(null)
   const [lossModal, setLossModal] = useState<string | null>(null)
+  const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set())
 
-  const handleGoToInvoices = (q: (typeof quotations)[0]) => {
-    onNavigateToInvoices?.(q.id)
+  // Saldo neto con IVA que le queda por facturar a la cotización. Usa los
+  // mismos campos que ya valida el backend (invoices.ts POST /) para que el
+  // botón y el servidor cuenten la misma historia.
+  const remainingBalance = (q: (typeof quotations)[0]) =>
+    Math.max(0, (q.total_con_iva || 0) - (q.invoiced_total || 0))
+
+  const handleGenerateInvoice = async (q: (typeof quotations)[0]) => {
+    const remaining = remainingBalance(q)
+    if (remaining <= 0.01) {
+      onNavigateToInvoices?.(q.id)
+      return
+    }
+    setGeneratingIds(prev => new Set(prev).add(q.id))
+    try {
+      const remainingNeto = remaining / (1 + (q.iva || 19) / 100)
+      const invoice = await api.createInvoice({
+        quotation_id: q.id,
+        client_id: q.client_id,
+        date: new Date().toISOString().slice(0, 10),
+        payment_term: 'dias_30',
+        doc_type: 'factura_afecta',
+        items: [
+          {
+            description: `Cotización ${q.correlative}`,
+            quantity: 1,
+            unit_price: remainingNeto,
+          },
+        ],
+      })
+      applyInvoiceCreated(q.id, Number(invoice.total_amount) || 0)
+      onNavigateToInvoices?.(q.id)
+    } catch (err) {
+      const message =
+        err instanceof ApiError && (err.data as any)?.message
+          ? (err.data as any).message
+          : err instanceof Error
+            ? err.message
+            : 'No se pudo generar la factura'
+      window.alert(message)
+    } finally {
+      setGeneratingIds(prev => {
+        const next = new Set(prev)
+        next.delete(q.id)
+        return next
+      })
+    }
   }
 
   const handleStatusChange = (qid: string, newStatus: QuoteStatus) => {
@@ -582,15 +761,37 @@ function QuotationsList({
                     <td className="q-date">
                       {fmtDate(q.date)}
                       {q.status === 'Enviada' && q.follow_up_date && (
-                        <div style={{ fontSize: '0.7rem', marginTop: 2, color: new Date(q.follow_up_date) <= new Date() ? '#dc2626' : '#d97706' }}>
+                        <div
+                          style={{
+                            fontSize: '0.7rem',
+                            marginTop: 2,
+                            color: new Date(q.follow_up_date) <= new Date() ? '#dc2626' : '#d97706',
+                          }}
+                        >
                           📅 {fmtDate(q.follow_up_date)}
                         </div>
                       )}
-                      {q.status === 'Enviada' && !q.follow_up_date && q.valid_until && (() => {
-                        const diff = Math.ceil((new Date(q.valid_until).getTime() - Date.now()) / 86400000)
-                        if (diff <= 7) return <div style={{ fontSize: '0.7rem', color: diff <= 3 ? '#dc2626' : '#d97706', marginTop: 2 }}>⚠ Vence en {diff}d</div>
-                        return null
-                      })()}
+                      {q.status === 'Enviada' &&
+                        !q.follow_up_date &&
+                        q.valid_until &&
+                        (() => {
+                          const diff = Math.ceil(
+                            (new Date(q.valid_until).getTime() - Date.now()) / 86400000
+                          )
+                          if (diff <= 7)
+                            return (
+                              <div
+                                style={{
+                                  fontSize: '0.7rem',
+                                  color: diff <= 3 ? '#dc2626' : '#d97706',
+                                  marginTop: 2,
+                                }}
+                              >
+                                ⚠ Vence en {diff}d
+                              </div>
+                            )
+                          return null
+                        })()}
                     </td>
                     <td>
                       <select
@@ -610,7 +811,16 @@ function QuotationsList({
                         ))}
                       </select>
                       {(q.status as string) === 'En revisión' && (
-                        <div style={{ fontSize: '0.7rem', marginTop: 2, color: '#d97706', fontWeight: 600 }}>⏳ Pendiente aprobación</div>
+                        <div
+                          style={{
+                            fontSize: '0.7rem',
+                            marginTop: 2,
+                            color: '#d97706',
+                            fontWeight: 600,
+                          }}
+                        >
+                          ⏳ Pendiente aprobación
+                        </div>
                       )}
                     </td>
                     <td>
@@ -629,18 +839,30 @@ function QuotationsList({
                     </td>
                     <td className="text-right q-total">{fmtCLP.format(venta)}</td>
                     <td className="text-center">
-                      {(q.status === 'Adjudicada' || q.status === 'Cerrada') && canCreateInvoice && (
-                        <button
-                          className="btn-invoice"
-                          title={`Ir a facturación (${q.invoice_count}/${q.invoice_count_max} factura${q.invoice_count_max > 1 ? 's' : ''})`}
-                          onClick={() => handleGoToInvoices(q)}
-                        >
-                          🧾
-                          {q.invoice_count > 0 && (
-                            <span className="invoice-badge">{q.invoice_count}</span>
-                          )}
-                        </button>
-                      )}
+                      {(q.status === 'Adjudicada' || q.status === 'Cerrada') &&
+                        canCreateInvoice &&
+                        (() => {
+                          const remaining = remainingBalance(q)
+                          const generating = generatingIds.has(q.id)
+                          const title = generating
+                            ? 'Generando factura…'
+                            : remaining > 0.01
+                              ? `Generar factura (saldo ${fmtCLP.format(remaining)})`
+                              : `Ver facturas (${q.invoice_count} emitida${q.invoice_count > 1 ? 's' : ''})`
+                          return (
+                            <button
+                              className="btn-invoice"
+                              title={title}
+                              disabled={generating}
+                              onClick={() => handleGenerateInvoice(q)}
+                            >
+                              🧾
+                              {q.invoice_count > 0 && (
+                                <span className="invoice-badge">{q.invoice_count}</span>
+                              )}
+                            </button>
+                          )
+                        })()}
                     </td>
                     <td>
                       <div className="q-row-actions">
@@ -659,7 +881,12 @@ function QuotationsList({
                                 className="btn-icon"
                                 title="Aprobar cotización"
                                 style={{ color: '#059669' }}
-                                onClick={() => api.approveQuotation(q.id).then(() => setStatus(q.id, 'Emitida')).catch(() => {})}
+                                onClick={() =>
+                                  api
+                                    .approveQuotation(q.id)
+                                    .then(() => setStatus(q.id, 'Emitida'))
+                                    .catch(() => {})
+                                }
                               >
                                 ✓
                               </button>
@@ -867,27 +1094,28 @@ function QuotationsList({
         </div>
       )}
 
-      {lossModal && (() => {
-        const q = quotations.find(x => x.id === lossModal)
-        if (!q) return null
-        return (
-          <LossReasonModal
-            quotationId={lossModal}
-            correlative={q.correlative}
-            onConfirm={async (data) => {
-              await api.updateQuotationLoss(lossModal, data)
-              setStatus(lossModal, 'Perdida')
-              setLossModal(null)
-            }}
-            onClose={() => setLossModal(null)}
-          />
-        )
-      })()}
+      {lossModal &&
+        (() => {
+          const q = quotations.find(x => x.id === lossModal)
+          if (!q) return null
+          return (
+            <LossReasonModal
+              quotationId={lossModal}
+              correlative={q.correlative}
+              onConfirm={async data => {
+                await api.updateQuotationLoss(lossModal, data)
+                setStatus(lossModal, 'Perdida')
+                setLossModal(null)
+              }}
+              onClose={() => setLossModal(null)}
+            />
+          )
+        })()}
 
       {billingModal && (
         <BillingConfigModal
           quotationId={billingModal}
-          onConfirm={async (count) => {
+          onConfirm={async count => {
             await api.updateQuotationBillingSplit(billingModal, count)
             setBillingModal(null)
           }}
@@ -1880,7 +2108,11 @@ export const Quotations: React.FC<{
   return (
     <div className="quotations-root">
       {view === 'list' ? (
-        <QuotationsList onEdit={goEdit} onNavigateToMaintenance={onNavigateToMaintenance} onNavigateToInvoices={onNavigateToInvoices} />
+        <QuotationsList
+          onEdit={goEdit}
+          onNavigateToMaintenance={onNavigateToMaintenance}
+          onNavigateToInvoices={onNavigateToInvoices}
+        />
       ) : (
         <div className="q-editor">
           {/* Editor header */}

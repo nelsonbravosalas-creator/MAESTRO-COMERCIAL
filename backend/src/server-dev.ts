@@ -607,11 +607,26 @@ app.delete('/api/clients/:cid/contacts/:id', requireAuth, (req: Request, res: Re
 app.get('/api/quotations', requireAuth, (_req: Request, res: Response) => {
   const list = db.quotations
     .filter((q: any) => !q.deleted_at)
-    .map((q: any) => ({
-      ...q,
-      client_name: db.clients.find((c: any) => c.id === q.client_id)?.name || null,
-      totals: calcQuotationTotals(q.id),
-    }))
+    .map((q: any) => {
+      const totals = calcQuotationTotals(q.id)
+      const invoicesForQ = db.invoices.filter(
+        (i: any) => i.quotation_id === q.id && !i.deleted_at && i.status !== 'cancelled'
+      )
+      return {
+        ...q,
+        client_name: db.clients.find((c: any) => c.id === q.client_id)?.name || null,
+        totals,
+        // Espejo de los campos top-level que expone el backend real
+        // (backend/src/api/quotations.ts) — el frontend los lee así, no
+        // anidados bajo `totals`.
+        total_con_iva: totals?.total_con_iva ?? 0,
+        invoice_count: invoicesForQ.length,
+        invoiced_total: invoicesForQ.reduce(
+          (s: number, i: any) => s + (Number(i.total_amount) || 0),
+          0
+        ),
+      }
+    })
     .sort((a: any, b: any) => b.date.localeCompare(a.date))
   // El backend real pagina por cursor (ver buildPage en backend/src/utils/pagination.ts)
   // y frontend/src/api/api.ts's getAllPages() espera esa forma {data, next_cursor,
@@ -1135,6 +1150,7 @@ app.get('/api/invoices/:id', requireAuth, (req: Request, res: Response) => {
 app.post('/api/invoices', requireAuth, (req: AuthReq, res: Response) => {
   const {
     project_id,
+    quotation_id,
     client_id,
     number,
     date,
@@ -1177,6 +1193,7 @@ app.post('/api/invoices', requireAuth, (req: AuthReq, res: Response) => {
   const invoice = {
     id: uid(),
     project_id: project_id || null,
+    quotation_id: quotation_id || null,
     client_id,
     number: invNumber,
     date: invoiceDate,

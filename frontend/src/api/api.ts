@@ -253,6 +253,7 @@ function toMasterQuotation(q: any): MasterQuotation {
     invoice_count: Number(q.invoice_count) || 0,
     invoice_count_max: Number(q.invoice_count_max) || 1,
     total_con_iva: Number(q.total_con_iva) || 0,
+    invoiced_total: Number(q.invoiced_total) || 0,
     oc_number: q.oc_number ?? null,
     oc_date: q.oc_date ?? null,
     oc_conditions: q.oc_conditions ?? null,
@@ -301,9 +302,15 @@ function fromMasterQuotation(q: MasterQuotation) {
   }
 
   const terms: any[] = [
-    ...q.scope.filter(c => c?.trim()).map((c, i) => ({ term_type: 'scope', content: c, sort_order: i })),
-    ...q.exclusions.filter(c => c?.trim()).map((c, i) => ({ term_type: 'exclusion', content: c, sort_order: i })),
-    ...q.commercial.filter(c => c?.trim()).map((c, i) => ({ term_type: 'commercial', content: c, sort_order: i })),
+    ...q.scope
+      .filter(c => c?.trim())
+      .map((c, i) => ({ term_type: 'scope', content: c, sort_order: i })),
+    ...q.exclusions
+      .filter(c => c?.trim())
+      .map((c, i) => ({ term_type: 'exclusion', content: c, sort_order: i })),
+    ...q.commercial
+      .filter(c => c?.trim())
+      .map((c, i) => ({ term_type: 'commercial', content: c, sort_order: i })),
   ]
 
   return {
@@ -684,8 +691,16 @@ export const api = {
       reader.onload = async () => {
         try {
           const base64 = (reader.result as string).split(',')[1]
-          resolve(await post<Invoice>(`/api/invoices/${id}/document`, { data: base64, name: file.name, size: file.size }))
-        } catch (e) { reject(e) }
+          resolve(
+            await post<Invoice>(`/api/invoices/${id}/document`, {
+              data: base64,
+              name: file.name,
+              size: file.size,
+            })
+          )
+        } catch (e) {
+          reject(e)
+        }
       }
       reader.onerror = () => reject(new Error('No se pudo leer el archivo'))
       reader.readAsDataURL(file)
@@ -702,28 +717,38 @@ export const api = {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'documento.pdf'
+    a.download =
+      res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'documento.pdf'
     a.click()
     URL.revokeObjectURL(url)
   },
 
   // Configura cuántas facturas puede emitir una cotización Adjudicada (1 o 2).
   updateQuotationBillingSplit: (id: string, invoice_count_max: number) =>
-    patch<{ id: string; invoice_count_max: number }>(`/api/quotations/${id}/billing-split`, { invoice_count_max }),
+    patch<{ id: string; invoice_count_max: number }>(`/api/quotations/${id}/billing-split`, {
+      invoice_count_max,
+    }),
 
   // ── Pérdida ─────────────────────────────────────────────────────────────────
-  updateQuotationLoss: (id: string, data: { loss_reason: string; loss_competitor?: string | null; loss_notes?: string | null }) =>
-    patch<{ id: string }>(`/api/quotations/${id}/loss`, data),
+  updateQuotationLoss: (
+    id: string,
+    data: { loss_reason: string; loss_competitor?: string | null; loss_notes?: string | null }
+  ) => patch<{ id: string }>(`/api/quotations/${id}/loss`, data),
 
   // ── Seguimiento ──────────────────────────────────────────────────────────────
   updateFollowUpDate: (id: string, follow_up_date: string | null) =>
-    patch<{ id: string; follow_up_date: string | null }>(`/api/quotations/${id}/follow-up`, { follow_up_date }),
+    patch<{ id: string; follow_up_date: string | null }>(`/api/quotations/${id}/follow-up`, {
+      follow_up_date,
+    }),
 
   // ── Milestones ───────────────────────────────────────────────────────────────
   getMilestones: (id: string) =>
     get<{ milestones: InvoiceMilestone[] }>(`/api/quotations/${id}/milestones`),
-  saveMilestone: (id: string, invoiceNumber: 1 | 2, data: { description: string; pct_of_total?: number | null }) =>
-    put<InvoiceMilestone>(`/api/quotations/${id}/milestones/${invoiceNumber}`, data),
+  saveMilestone: (
+    id: string,
+    invoiceNumber: 1 | 2,
+    data: { description: string; pct_of_total?: number | null }
+  ) => put<InvoiceMilestone>(`/api/quotations/${id}/milestones/${invoiceNumber}`, data),
   deleteMilestone: (id: string, invoiceNumber: 1 | 2) =>
     del<{ ok: boolean }>(`/api/quotations/${id}/milestones/${invoiceNumber}`),
 
@@ -732,23 +757,25 @@ export const api = {
     get<{ activities: QuotationActivity[] }>(`/api/quotations/${id}/activities`),
   createActivity: (id: string, data: { activity_type: string; content: string }) =>
     post<QuotationActivity>(`/api/quotations/${id}/activities`, data),
-  deleteActivity: (activityId: string) =>
-    del<{ ok: boolean }>(`/api/activities/${activityId}`),
+  deleteActivity: (activityId: string) => del<{ ok: boolean }>(`/api/activities/${activityId}`),
 
   // ── Version diff ─────────────────────────────────────────────────────────────
-  getVersionDiff: (id: string) =>
-    get<{ versions: any[] }>(`/api/quotations/${id}/version-diff`),
+  getVersionDiff: (id: string) => get<{ versions: any[] }>(`/api/quotations/${id}/version-diff`),
 
   // ── Aprobación ────────────────────────────────────────────────────────────────
   approveQuotation: (id: string, approval_notes?: string | null) =>
-    post<{ id: string; status: string; approved_at: string }>(`/api/quotations/${id}/approve`, { approval_notes }),
+    post<{ id: string; status: string; approved_at: string }>(`/api/quotations/${id}/approve`, {
+      approval_notes,
+    }),
 
   // ── Dashboard ───────────────────────────────────────────────
   getKPIs: () => get<Record<string, unknown>>('/api/dashboard/kpis'),
   getAging: () => get<{ aging: AgingTramo[]; timestamp: string }>('/api/dashboard/aging'),
   getCartera: () => get<{ cartera: CarteraData; timestamp: string }>('/api/dashboard/cartera'),
-  getCycleTimes: () => get<{ cycle_times: CycleTimes; timestamp: string }>('/api/dashboard/cycle-times'),
-  getMarginAnalysis: () => get<{ analysis: MarginAnalysisRow[]; timestamp: string }>('/api/dashboard/margin-analysis'),
+  getCycleTimes: () =>
+    get<{ cycle_times: CycleTimes; timestamp: string }>('/api/dashboard/cycle-times'),
+  getMarginAnalysis: () =>
+    get<{ analysis: MarginAnalysisRow[]; timestamp: string }>('/api/dashboard/margin-analysis'),
 }
 
 export default api

@@ -19,7 +19,16 @@ import {
 } from '../schemas/quotations'
 import { decodeCursor, buildPage } from '../utils/pagination'
 
-const VALID_STATUSES = ['Borrador', 'Emitida', 'En revisión', 'Enviada', 'Perdida', 'Adjudicada', 'Anulada', 'Cerrada']
+const VALID_STATUSES = [
+  'Borrador',
+  'Emitida',
+  'En revisión',
+  'Enviada',
+  'Perdida',
+  'Adjudicada',
+  'Anulada',
+  'Cerrada',
+]
 const VALID_OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
 const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins']
 const TERM_TYPES = ['scope', 'exclusion', 'commercial']
@@ -490,13 +499,15 @@ export const createQuotationsRouter = (pool: Pool) => {
                 COALESCE(vt.beneficio_bruto, 0) AS beneficio_bruto,
                 COALESCE(vt.venta_neta, 0) * (1 + COALESCE(q.iva_pct, 19) / 100.0) AS total_con_iva,
                 q.invoice_count_max,
-                COALESCE(inv.invoice_count, 0)::int AS invoice_count
+                COALESCE(inv.invoice_count, 0)::int AS invoice_count,
+                COALESCE(inv.invoiced_total, 0) AS invoiced_total
            FROM quotations q
            LEFT JOIN clients c ON c.id = q.client_id
            LEFT JOIN client_contacts cc ON cc.id = q.contact_id
           LEFT JOIN v_quotation_totals vt ON vt.quotation_id = q.id
           LEFT JOIN (
-            SELECT quotation_id, COUNT(*)::int AS invoice_count
+            SELECT quotation_id, COUNT(*)::int AS invoice_count,
+                   COALESCE(SUM(total_amount), 0) AS invoiced_total
               FROM invoices
              WHERE deleted_at IS NULL AND quotation_id IS NOT NULL
                AND status <> 'cancelled'
@@ -1045,7 +1056,8 @@ export const createQuotationsRouter = (pool: Pool) => {
     async (req: AuthRequest, res) => {
       const id = paramString(req.params.id)
       const num = parseInt(paramString(req.params.num), 10)
-      if (num < 1 || num > 2) return res.status(400).json({ error: 'invoice_number must be 1 or 2' })
+      if (num < 1 || num > 2)
+        return res.status(400).json({ error: 'invoice_number must be 1 or 2' })
       try {
         const result = await pool.query(
           `INSERT INTO quotation_invoice_milestones (quotation_id, invoice_number, description, pct_of_total)

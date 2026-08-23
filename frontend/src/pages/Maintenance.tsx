@@ -24,10 +24,38 @@ import { downloadDocx } from '../utils/docxExport'
 import { downloadHtml } from '../utils/htmlExport'
 import { downloadPdfFromElement } from '../utils/pdfExport'
 import { buildQuotationValuationRows } from '../utils/quotationRows'
+import { ApiError, api } from '../api/api'
 
 // ── Master List ────────────────────────────────────────────────────────────────
 
-function MaintenanceList({ onEdit }: { onEdit: () => void }) {
+// Cuántos períodos de facturación ya deberían haberse generado desde el
+// inicio de vigencia del contrato hasta hoy, contra cuántas facturas ya
+// existen. > 0 significa que hay al menos un período vencido sin facturar.
+function pendingPeriods(q: {
+  contract_start_date: string | null
+  frequency: MtcFrequency | null
+  visits_per_year: number | null
+  invoice_count: number
+}): number | null {
+  if (!q.contract_start_date || !q.frequency) return null
+  const periodMonths = 12 / (q.visits_per_year || VISITS_PER_YEAR[q.frequency])
+  const start = new Date(`${q.contract_start_date}T00:00:00`)
+  const now = new Date()
+  const monthsElapsed =
+    (now.getFullYear() - start.getFullYear()) * 12 +
+    (now.getMonth() - start.getMonth()) +
+    (now.getDate() >= start.getDate() ? 0 : -1)
+  const periodsElapsed = Math.max(0, Math.floor(monthsElapsed / periodMonths) + 1)
+  return periodsElapsed - (q.invoice_count || 0)
+}
+
+function MaintenanceList({
+  onEdit,
+  onNavigateToInvoices,
+}: {
+  onEdit: () => void
+  onNavigateToInvoices?: (quotationId: string) => void
+}) {
   const {
     quotations: allQuotations,
     newDraft,
@@ -36,6 +64,7 @@ function MaintenanceList({ onEdit }: { onEdit: () => void }) {
     createVersion,
     deleteQuote,
     setStatus,
+    applyInvoiceCreated,
     activeId,
   } = useMaestro()
   // Solo contratos de mantención — las cotizaciones de proyecto viven en su
@@ -44,10 +73,53 @@ function MaintenanceList({ onEdit }: { onEdit: () => void }) {
     () => allQuotations.filter(q => q.kind === 'maintenance'),
     [allQuotations]
   )
-  const { canDeleteQuotation, canChangeQuotationStatus } = usePermissions()
+  const { canDeleteQuotation, canChangeQuotationStatus, canCreateInvoice } = usePermissions()
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [confirm, setConfirm] = useState<string | null>(null)
+  const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set())
+
+  const handleGenerateInvoice = async (q: (typeof quotations)[0]) => {
+    const pending = pendingPeriods(q)
+    if (!pending || pending <= 0) {
+      onNavigateToInvoices?.(q.id)
+      return
+    }
+    setGeneratingIds(prev => new Set(prev).add(q.id))
+    try {
+      const totals = calcTotals(q)
+      const invoice = await api.createInvoice({
+        quotation_id: q.id,
+        client_id: q.client_id,
+        date: new Date().toISOString().slice(0, 10),
+        payment_term: 'dias_30',
+        doc_type: 'factura_afecta',
+        items: [
+          {
+            description: `Visita mantención ${q.correlative} — período ${(q.invoice_count || 0) + 1}`,
+            quantity: 1,
+            unit_price: totals.venta,
+          },
+        ],
+      })
+      applyInvoiceCreated(q.id, Number(invoice.total_amount) || 0)
+      onNavigateToInvoices?.(q.id)
+    } catch (err) {
+      const message =
+        err instanceof ApiError && (err.data as any)?.message
+          ? (err.data as any).message
+          : err instanceof Error
+            ? err.message
+            : 'No se pudo generar la factura'
+      window.alert(message)
+    } finally {
+      setGeneratingIds(prev => {
+        const next = new Set(prev)
+        next.delete(q.id)
+        return next
+      })
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -150,6 +222,7 @@ function MaintenanceList({ onEdit }: { onEdit: () => void }) {
                 <th className="text-right">Valor Anual</th>
                 <th>Vigencia desde</th>
                 <th>Estado</th>
+                <th className="text-center">Factura</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -192,6 +265,34 @@ function MaintenanceList({ onEdit }: { onEdit: () => void }) {
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td className="text-center">
+                      {q.status === 'Adjudicada' &&
+                        canCreateInvoice &&
+                        (() => {
+                          const pending = pendingPeriods(q)
+                          const generating = generatingIds.has(q.id)
+                          const title = generating
+                            ? 'Generando factura…'
+                            : pending === null
+                              ? 'Define fecha de inicio de vigencia y frecuencia primero'
+                              : pending > 0
+                                ? `Generar factura (${pending} período${pending > 1 ? 's' : ''} pendiente${pending > 1 ? 's' : ''})`
+                                : `Ver facturas (${q.invoice_count} emitida${q.invoice_count > 1 ? 's' : ''})`
+                          return (
+                            <button
+                              className="btn-invoice"
+                              title={title}
+                              disabled={generating || pending === null}
+                              onClick={() => handleGenerateInvoice(q)}
+                            >
+                              🧾
+                              {q.invoice_count > 0 && (
+                                <span className="invoice-badge">{q.invoice_count}</span>
+                              )}
+                            </button>
+                          )
+                        })()}
                     </td>
                     <td>
                       <div className="q-row-actions">
@@ -831,7 +932,9 @@ function TabDocumentoMtc() {
 
 // ── Main Maintenance ───────────────────────────────────────────────────────────
 
-export const Maintenance: React.FC = () => {
+export const Maintenance: React.FC<{ onNavigateToInvoices?: (quotationId: string) => void }> = ({
+  onNavigateToInvoices,
+}) => {
   const [view, setView] = useState<'list' | 'edit'>('list')
   const [activeTab, setActiveTab] = useState<'base' | 'costeo' | 'doc'>('base')
   const [syncing, setSyncing] = useState(false)
@@ -874,7 +977,7 @@ export const Maintenance: React.FC = () => {
   return (
     <div className="quotations-root">
       {view === 'list' ? (
-        <MaintenanceList onEdit={goEdit} />
+        <MaintenanceList onEdit={goEdit} onNavigateToInvoices={onNavigateToInvoices} />
       ) : (
         <div className="q-editor">
           <div className="q-editor-header">

@@ -6,7 +6,8 @@
 // ── Enums ─────────────────────────────────────────────────────
 export type UserRole = 'admin' | 'manager' | 'user'
 export type CategoryId = 'mo' | 'log' | 'mat' | 'rep' | 'ins'
-export type QuoteStatus = 'Borrador' | 'Emitida' | 'Enviada' | 'Perdida' | 'Adjudicada' | 'Anulada' | 'Cerrada'
+export type QuoteStatus =
+  'Borrador' | 'Emitida' | 'Enviada' | 'Perdida' | 'Adjudicada' | 'Anulada' | 'Cerrada'
 export type OperState = 'Pendiente de ejecución' | 'En ejecución' | 'Terminada'
 export type ProjectStatus = 'planning' | 'in_progress' | 'completed' | 'paused' | 'cancelled'
 export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'cancelled'
@@ -398,6 +399,7 @@ export interface MasterQuotation {
   invoice_count: number
   invoice_count_max: number
   total_con_iva: number
+  invoiced_total: number
   // OC (Orden de Compra) u otro medio de aceptación formal del cliente
   oc_number: string | null
   oc_date: string | null

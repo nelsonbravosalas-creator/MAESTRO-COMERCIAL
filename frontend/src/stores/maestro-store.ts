@@ -316,6 +316,9 @@ interface MaestroState {
   deleteQuote: (id: string) => Promise<void>
   setStatus: (id: string, s: QuoteStatus) => Promise<void>
   setOperState: (id: string, s: OperState) => Promise<void>
+  // Refleja localmente que se generó una factura para una cotización, sin
+  // esperar un refetch completo (ver botón "generar factura" en Quotations/Maintenance).
+  applyInvoiceCreated: (quotationId: string, totalAmount: number) => void
   importQuotations: (qs: MasterQuotation[]) => void
   importQuotation: (payload: unknown) => Promise<ImportQuotationResult>
 
@@ -591,6 +594,7 @@ export const useMaestro = create<MaestroState>()(
           invoice_count: 0,
           invoice_count_max: 1,
           total_con_iva: 0,
+          invoiced_total: 0,
           oc_number: null,
           oc_date: null,
           oc_conditions: null,
@@ -675,6 +679,20 @@ export const useMaestro = create<MaestroState>()(
         } catch {
           /* offline */
         }
+      },
+
+      applyInvoiceCreated: (quotationId, totalAmount) => {
+        set(s => ({
+          quotations: s.quotations.map(q =>
+            q.id === quotationId
+              ? {
+                  ...q,
+                  invoice_count: (q.invoice_count || 0) + 1,
+                  invoiced_total: (q.invoiced_total || 0) + totalAmount,
+                }
+              : q
+          ),
+        }))
       },
 
       setOperState: async (id, operState) => {

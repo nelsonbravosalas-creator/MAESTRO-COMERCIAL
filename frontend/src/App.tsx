@@ -5,14 +5,14 @@ import { useMaestro } from './stores/maestro-store'
 import { useProjects } from './stores/projects-store'
 import { api } from './api/api'
 
-const Quotations  = lazy(() => import('./pages/Quotations'))
+const Quotations = lazy(() => import('./pages/Quotations'))
 const Maintenance = lazy(() => import('./pages/Maintenance'))
-const Dashboard   = lazy(() => import('./pages/Dashboard'))
-const Clients     = lazy(() => import('./pages/Clients'))
-const Catalogo    = lazy(() => import('./pages/Catalogo'))
-const Projects    = lazy(() => import('./pages/Projects'))
-const Logistica   = lazy(() => import('./pages/Logistica'))
-const Invoices    = lazy(() => import('./pages/Invoices'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Clients = lazy(() => import('./pages/Clients'))
+const Catalogo = lazy(() => import('./pages/Catalogo'))
+const Projects = lazy(() => import('./pages/Projects'))
+const Logistica = lazy(() => import('./pages/Logistica'))
+const Invoices = lazy(() => import('./pages/Invoices'))
 
 function PageLoading() {
   return <div className="page-placeholder">Cargando…</div>
@@ -119,27 +119,68 @@ function NavSyncButton() {
       disabled={phase === 'syncing'}
       title={title}
     >
-      <span className={phase === 'syncing' ? 'nav-sync-spin' : ''} style={{ display: 'inline-flex' }}>
+      <span
+        className={phase === 'syncing' ? 'nav-sync-spin' : ''}
+        style={{ display: 'inline-flex' }}
+      >
         {phase === 'idle' && (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 4v6h6" /><path d="M23 20v-6h-6" />
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M1 4v6h6" />
+            <path d="M23 20v-6h-6" />
             <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10" />
             <path d="M3.51 15a9 9 0 0 0 14.85 3.36L23 14" />
           </svg>
         )}
         {phase === 'syncing' && (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          >
             <path d="M12 2a10 10 0 1 0 10 10" />
           </svg>
         )}
         {phase === 'done' && (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <polyline points="20 6 9 17 4 12" />
           </svg>
         )}
         {phase === 'error' && (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
         )}
       </span>
@@ -150,8 +191,14 @@ function NavSyncButton() {
 
 // ── App ────────────────────────────────────────────────────────────
 type Page =
-  | 'dashboard' | 'quotations' | 'maintenance' | 'clients'
-  | 'catalogo'  | 'projects'   | 'logistica'   | 'invoices'
+  | 'dashboard'
+  | 'quotations'
+  | 'maintenance'
+  | 'clients'
+  | 'catalogo'
+  | 'projects'
+  | 'logistica'
+  | 'invoices'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -203,17 +250,31 @@ function App() {
         </div>
 
         <nav className="header-nav">
-          <button type="button" className={cls('dashboard')}   onClick={() => nav('dashboard')}>Dashboard</button>
-          <button type="button" className={cls('quotations')}  onClick={() => nav('quotations')}>Cotizaciones</button>
-          <button type="button" className={cls('maintenance')} onClick={() => nav('maintenance')}>Mantenciones</button>
-          <button type="button" className={cls('clients')}     onClick={() => nav('clients')}>Clientes</button>
-          <button type="button" className={cls('catalogo')}    onClick={() => nav('catalogo')}>Maestro de Precios</button>
-          <button type="button" className={cls('projects')}    onClick={() => nav('projects')}>
+          <button type="button" className={cls('dashboard')} onClick={() => nav('dashboard')}>
+            Dashboard
+          </button>
+          <button type="button" className={cls('quotations')} onClick={() => nav('quotations')}>
+            Cotizaciones
+          </button>
+          <button type="button" className={cls('maintenance')} onClick={() => nav('maintenance')}>
+            Mantenciones
+          </button>
+          <button type="button" className={cls('clients')} onClick={() => nav('clients')}>
+            Clientes
+          </button>
+          <button type="button" className={cls('catalogo')} onClick={() => nav('catalogo')}>
+            Maestro de Precios
+          </button>
+          <button type="button" className={cls('projects')} onClick={() => nav('projects')}>
             Proyectos
             {criticalCount > 0 && <span className="nav-badge">{criticalCount}</span>}
           </button>
-          <button type="button" className={cls('logistica')}   onClick={() => nav('logistica')}>Logística</button>
-          <button type="button" className={cls('invoices')}    onClick={() => nav('invoices')}>Facturas</button>
+          <button type="button" className={cls('logistica')} onClick={() => nav('logistica')}>
+            Logística
+          </button>
+          <button type="button" className={cls('invoices')} onClick={() => nav('invoices')}>
+            Facturas
+          </button>
         </nav>
 
         <div className="header-right">
@@ -223,20 +284,42 @@ function App() {
             <span className="user-name">{user?.name || 'Usuario'}</span>
             <span className={`user-role ${user?.role || 'user'}`}>{user?.role || 'user'}</span>
           </div>
-          <button type="button" className="btn-logout" onClick={handleLogout}>Salir</button>
+          <button type="button" className="btn-logout" onClick={handleLogout}>
+            Salir
+          </button>
         </div>
       </header>
 
       <main className="app-main authenticated">
         <Suspense fallback={<PageLoading />}>
-          {currentPage === 'dashboard'   && <Dashboard />}
-          {currentPage === 'quotations'  && <Quotations onNavigateToMaintenance={() => nav('maintenance')} onNavigateToInvoices={(qid) => { setInvoicesQuotationId(qid); nav('invoices') }} />}
-          {currentPage === 'maintenance' && <Maintenance />}
-          {currentPage === 'clients'     && <Clients />}
-          {currentPage === 'catalogo'    && <Catalogo />}
-          {currentPage === 'projects'    && <Projects />}
-          {currentPage === 'logistica'   && <Logistica />}
-          {currentPage === 'invoices'    && <Invoices initialQuotationId={invoicesQuotationId} onConsumeQuotationId={() => setInvoicesQuotationId(undefined)} />}
+          {currentPage === 'dashboard' && <Dashboard />}
+          {currentPage === 'quotations' && (
+            <Quotations
+              onNavigateToMaintenance={() => nav('maintenance')}
+              onNavigateToInvoices={qid => {
+                setInvoicesQuotationId(qid)
+                nav('invoices')
+              }}
+            />
+          )}
+          {currentPage === 'maintenance' && (
+            <Maintenance
+              onNavigateToInvoices={qid => {
+                setInvoicesQuotationId(qid)
+                nav('invoices')
+              }}
+            />
+          )}
+          {currentPage === 'clients' && <Clients />}
+          {currentPage === 'catalogo' && <Catalogo />}
+          {currentPage === 'projects' && <Projects />}
+          {currentPage === 'logistica' && <Logistica />}
+          {currentPage === 'invoices' && (
+            <Invoices
+              initialQuotationId={invoicesQuotationId}
+              onConsumeQuotationId={() => setInvoicesQuotationId(undefined)}
+            />
+          )}
         </Suspense>
       </main>
     </div>

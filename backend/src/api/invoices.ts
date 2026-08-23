@@ -154,7 +154,10 @@ export const createInvoicesRouter = (pool: Pool) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
         return res.json(result.rows[0])
       } catch (error: any) {
-        logger.error('Upload invoice document error', { error: error.message, invoiceId: req.params.id })
+        logger.error('Upload invoice document error', {
+          error: error.message,
+          invoiceId: req.params.id,
+        })
         return res.status(500).json({ error: 'Failed to upload document' })
       }
     }
@@ -170,13 +173,17 @@ export const createInvoicesRouter = (pool: Pool) => {
           [req.params.id]
         )
         if (row.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
-        if (!row.rows[0].sii_document) return res.status(404).json({ error: 'Sin documento adjunto' })
+        if (!row.rows[0].sii_document)
+          return res.status(404).json({ error: 'Sin documento adjunto' })
         const name = row.rows[0].sii_document_name ?? 'documento.pdf'
         res.setHeader('Content-Type', 'application/pdf')
         res.setHeader('Content-Disposition', `attachment; filename="${name}"`)
         return res.send(row.rows[0].sii_document)
       } catch (error: any) {
-        logger.error('Download invoice document error', { error: error.message, invoiceId: req.params.id })
+        logger.error('Download invoice document error', {
+          error: error.message,
+          invoiceId: req.params.id,
+        })
         return res.status(500).json({ error: 'Failed to download document' })
       }
     }
@@ -256,16 +263,20 @@ export const createInvoicesRouter = (pool: Pool) => {
       await db.query('BEGIN')
 
       // ── Validaciones de facturación por cotización ──────────────────────
+      // Las mantenciones (kind='maintenance') son contratos de cobro periódico
+      // e indefinido: invoice_count_max y el total de la cotización (que ahí
+      // representa el valor de UNA visita, no el contrato completo) no aplican
+      // como tope. Solo las cotizaciones de venta única (kind='project')
+      // quedan limitadas por cupo/saldo.
       if (quotation_id) {
         const [capRow, totalsRow, countRow] = await Promise.all([
           db.query(
-            `SELECT invoice_count_max FROM quotations WHERE id = $1 AND deleted_at IS NULL`,
+            `SELECT invoice_count_max, kind FROM quotations WHERE id = $1 AND deleted_at IS NULL`,
             [quotation_id]
           ),
-          db.query(
-            `SELECT venta_neta, iva_pct FROM v_quotation_totals WHERE quotation_id = $1`,
-            [quotation_id]
-          ),
+          db.query(`SELECT venta_neta, iva_pct FROM v_quotation_totals WHERE quotation_id = $1`, [
+            quotation_id,
+          ]),
           db.query(
             `SELECT COUNT(*)::int AS cnt, COALESCE(SUM(total_amount), 0) AS total_emitido
                FROM invoices
@@ -277,28 +288,30 @@ export const createInvoicesRouter = (pool: Pool) => {
           await db.query('ROLLBACK')
           return res.status(404).json({ error: 'Cotización no encontrada' })
         }
-        const cap = capRow.rows[0].invoice_count_max
-        const existingCount = countRow.rows[0].cnt
-        const existingTotal = Number(countRow.rows[0].total_emitido)
-        const venta = Number(totalsRow.rows[0]?.venta_neta ?? 0)
-        const qIvaPct = Number(totalsRow.rows[0]?.iva_pct ?? 19)
-        const totalConIva = venta * (1 + qIvaPct / 100)
+        if (capRow.rows[0].kind !== 'maintenance') {
+          const cap = capRow.rows[0].invoice_count_max
+          const existingCount = countRow.rows[0].cnt
+          const existingTotal = Number(countRow.rows[0].total_emitido)
+          const venta = Number(totalsRow.rows[0]?.venta_neta ?? 0)
+          const qIvaPct = Number(totalsRow.rows[0]?.iva_pct ?? 19)
+          const totalConIva = venta * (1 + qIvaPct / 100)
 
-        if (existingCount >= cap) {
-          await db.query('ROLLBACK')
-          return res.status(409).json({
-            error: 'invoice_cap_exceeded',
-            message: `Esta cotización solo permite ${cap} factura${cap > 1 ? 's' : ''}. Ya tiene ${existingCount} emitida${existingCount > 1 ? 's' : ''}.`,
-          })
-        }
-        if (existingTotal + totalAmount > totalConIva + 0.01) {
-          await db.query('ROLLBACK')
-          const remaining = Math.max(0, totalConIva - existingTotal)
-          return res.status(409).json({
-            error: 'invoice_amount_exceeded',
-            message: `El monto supera el saldo disponible de la cotización ($${remaining.toLocaleString('es-CL')}).`,
-            remaining,
-          })
+          if (existingCount >= cap) {
+            await db.query('ROLLBACK')
+            return res.status(409).json({
+              error: 'invoice_cap_exceeded',
+              message: `Esta cotización solo permite ${cap} factura${cap > 1 ? 's' : ''}. Ya tiene ${existingCount} emitida${existingCount > 1 ? 's' : ''}.`,
+            })
+          }
+          if (existingTotal + totalAmount > totalConIva + 0.01) {
+            await db.query('ROLLBACK')
+            const remaining = Math.max(0, totalConIva - existingTotal)
+            return res.status(409).json({
+              error: 'invoice_amount_exceeded',
+              message: `El monto supera el saldo disponible de la cotización ($${remaining.toLocaleString('es-CL')}).`,
+              remaining,
+            })
+          }
         }
       }
 
@@ -477,10 +490,9 @@ export const createInvoicesRouter = (pool: Pool) => {
 
           // ── Auto-cierre de cotización cuando todas sus facturas están pagadas ──
           try {
-            const invRow = await pool.query(
-              `SELECT quotation_id FROM invoices WHERE id = $1`,
-              [req.params.id]
-            )
+            const invRow = await pool.query(`SELECT quotation_id FROM invoices WHERE id = $1`, [
+              req.params.id,
+            ])
             const qid = invRow.rows[0]?.quotation_id
             if (qid) {
               const pending = await pool.query(

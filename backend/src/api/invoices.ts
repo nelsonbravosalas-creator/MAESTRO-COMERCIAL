@@ -377,17 +377,19 @@ export const createInvoicesRouter = (pool: Pool) => {
     validate({ params: uuidParams('id'), body: invoiceFollowUpSchema }),
     async (req: AuthRequest, res) => {
       try {
-        const { observations, follow_up_date, due_date, payment_term } = req.body
+        const { number, observations, follow_up_date, due_date, payment_term } = req.body
         const result = await pool.query(
           `UPDATE invoices
-              SET observations   = COALESCE($1, observations),
-                  follow_up_date = COALESCE($2, follow_up_date),
-                  due_date       = COALESCE($3, due_date),
-                  payment_term   = COALESCE($4, payment_term),
+              SET number         = COALESCE($1, number),
+                  observations   = COALESCE($2, observations),
+                  follow_up_date = COALESCE($3, follow_up_date),
+                  due_date       = COALESCE($4, due_date),
+                  payment_term   = COALESCE($5, payment_term),
                   updated_at     = NOW()
-            WHERE id = $5 AND deleted_at IS NULL
+            WHERE id = $6 AND deleted_at IS NULL
             RETURNING *`,
           [
+            number || null,
             observations ?? null,
             follow_up_date ?? null,
             due_date ?? null,
@@ -398,6 +400,11 @@ export const createInvoicesRouter = (pool: Pool) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' })
         return res.json(result.rows[0])
       } catch (error: any) {
+        if (error.code === '23505')
+          return res.status(409).json({
+            error: 'invoice_number_exists',
+            message: `El N° de factura "${req.body.number}" ya está en uso.`,
+          })
         logger.error('Update invoice follow-up error', {
           error: error.message,
           invoiceId: req.params.id,

@@ -365,6 +365,7 @@ export type InvoicePaymentState =
 export interface Invoice {
   id: string
   number: string
+  status: 'draft' | 'issued' | 'paid' | 'cancelled'
   client_id: string
   client_name: string | null
   quotation_id: string | null
@@ -435,6 +436,7 @@ export interface InvoiceCreatePayload {
 }
 
 export interface InvoiceFollowUpPayload {
+  number?: string | null
   observations: string | null
   follow_up_date: string | null
   due_date?: string | null

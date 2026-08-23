@@ -48,8 +48,11 @@ export const invoiceStatusSchema = z.object({
 })
 
 // Seguimiento de cobranza: lo que el usuario edita a diario sin tocar el
-// documento tributario en sí.
+// documento tributario en sí. `number` es la excepción: el folio real del SII
+// no se conoce al generar el borrador (se autogenera uno provisorio), así que
+// se permite corregirlo aquí una vez que el usuario lo tenga a mano.
 export const invoiceFollowUpSchema = z.object({
+  number: optionalStr(50),
   observations: optionalStr(2000),
   follow_up_date: isoDateStr.nullish(),
   due_date: isoDateStr.nullish(),
@@ -84,7 +87,11 @@ export const factoringUpsertSchema = z.object({
 export const invoiceDocumentSchema = z.object({
   data: z.string().min(1),
   name: z.string().trim().min(1).max(255),
-  size: z.coerce.number().int().positive().max(10 * 1024 * 1024),
+  size: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(10 * 1024 * 1024),
 })
 
 // Filtros del listado. `state` corresponde a payment_state de v_invoice_balance.

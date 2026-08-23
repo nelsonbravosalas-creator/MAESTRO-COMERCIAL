@@ -1223,7 +1223,8 @@ app.post('/api/invoices', requireAuth, (req: AuthReq, res: Response) => {
 app.patch('/api/invoices/:id/follow-up', requireAuth, (req: Request, res: Response) => {
   const inv = db.invoices.find((i: any) => i.id === req.params.id && !i.deleted_at)
   if (!inv) return res.status(404).json({ error: 'Factura no encontrada' })
-  const { observations, follow_up_date, due_date, payment_term } = req.body
+  const { number, observations, follow_up_date, due_date, payment_term } = req.body
+  if (number) inv.number = number
   if (observations !== undefined) inv.observations = observations
   if (follow_up_date !== undefined) inv.follow_up_date = follow_up_date
   if (due_date !== undefined) inv.due_date = due_date

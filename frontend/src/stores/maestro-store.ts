@@ -319,6 +319,16 @@ interface MaestroState {
   // Refleja localmente que se generó una factura para una cotización, sin
   // esperar un refetch completo (ver botón "generar factura" en Quotations/Maintenance).
   applyInvoiceCreated: (quotationId: string, totalAmount: number) => void
+  // Refleja localmente los datos de OC recién guardados (ver OcModal).
+  applyOcUpdate: (
+    quotationId: string,
+    data: {
+      oc_number: string | null
+      oc_date: string | null
+      oc_conditions: string | null
+      oc_document_name?: string | null
+    }
+  ) => void
   importQuotations: (qs: MasterQuotation[]) => void
   importQuotation: (payload: unknown) => Promise<ImportQuotationResult>
 
@@ -689,6 +699,25 @@ export const useMaestro = create<MaestroState>()(
                   ...q,
                   invoice_count: (q.invoice_count || 0) + 1,
                   invoiced_total: (q.invoiced_total || 0) + totalAmount,
+                }
+              : q
+          ),
+        }))
+      },
+
+      applyOcUpdate: (quotationId, data) => {
+        set(s => ({
+          quotations: s.quotations.map(q =>
+            q.id === quotationId
+              ? {
+                  ...q,
+                  oc_number: data.oc_number,
+                  oc_date: data.oc_date,
+                  oc_conditions: data.oc_conditions,
+                  oc_document_name:
+                    data.oc_document_name !== undefined
+                      ? data.oc_document_name
+                      : q.oc_document_name,
                 }
               : q
           ),

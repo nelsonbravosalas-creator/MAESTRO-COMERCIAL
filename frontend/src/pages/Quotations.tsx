@@ -235,6 +235,153 @@ function LossReasonModal({
   )
 }
 
+// ── Modal de OC (Orden de Compra) / aceptación del cliente ───────────────────
+
+export function OcModal({
+  quotationId,
+  correlative,
+  initial,
+  onSaved,
+  onClose,
+}: {
+  quotationId: string
+  correlative: string
+  initial: {
+    oc_number: string | null
+    oc_date: string | null
+    oc_conditions: string | null
+    oc_document_name: string | null
+  }
+  onSaved: (data: {
+    oc_number: string | null
+    oc_date: string | null
+    oc_conditions: string | null
+    oc_document_name?: string | null
+  }) => void
+  onClose: () => void
+}) {
+  const [numero, setNumero] = React.useState(initial.oc_number ?? '')
+  const [fecha, setFecha] = React.useState(initial.oc_date ?? '')
+  const [condiciones, setCondiciones] = React.useState(initial.oc_conditions ?? '')
+  const [file, setFile] = React.useState<File | null>(null)
+  const [guardando, setGuardando] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  const handleConfirm = async () => {
+    setGuardando(true)
+    setError(null)
+    try {
+      const data = await api.updateQuotationOc(quotationId, {
+        oc_number: numero.trim() || null,
+        oc_date: fecha || null,
+        oc_conditions: condiciones.trim() || null,
+      })
+      let oc_document_name = initial.oc_document_name
+      if (file) {
+        const docRes = await api.uploadQuotationOcDocument(quotationId, file)
+        oc_document_name = docRes.oc_document_name
+      }
+      onSaved({ ...data, oc_document_name })
+      onClose()
+    } catch (e) {
+      const apiMessage =
+        e instanceof ApiError && (e.data as any)?.message ? (e.data as any).message : undefined
+      setError(apiMessage || (e instanceof Error ? e.message : 'No se pudo guardar la OC'))
+      setGuardando(false)
+    }
+  }
+
+  const lbl: React.CSSProperties = {
+    display: 'block',
+    fontSize: '0.82rem',
+    fontWeight: 600,
+    color: '#475569',
+    marginBottom: 4,
+  }
+  const inp: React.CSSProperties = {
+    width: '100%',
+    padding: '7px 10px',
+    borderRadius: 6,
+    border: '1px solid #cbd5e1',
+    fontSize: '0.9rem',
+    boxSizing: 'border-box',
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-confirm" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+        <h3 style={{ margin: '0 0 4px' }}>Orden de Compra / Aceptación</h3>
+        <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.85rem' }}>{correlative}</p>
+        {error && (
+          <div className="inv-alert" style={{ marginBottom: 12 }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}>
+            <label style={lbl}>N° de OC</label>
+            <input
+              type="text"
+              value={numero}
+              onChange={e => setNumero(e.target.value)}
+              style={inp}
+              placeholder="Ej: 4500123"
+              maxLength={100}
+              disabled={guardando}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={lbl}>Fecha</label>
+            <input
+              type="date"
+              value={fecha}
+              onChange={e => setFecha(e.target.value)}
+              style={inp}
+              disabled={guardando}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={lbl}>Condiciones (opcional)</label>
+          <textarea
+            value={condiciones}
+            onChange={e => setCondiciones(e.target.value)}
+            style={{ ...inp, minHeight: 70, resize: 'vertical', fontFamily: 'inherit' }}
+            maxLength={5000}
+            disabled={guardando}
+          />
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={lbl}>Documento (opcional)</label>
+          <input
+            type="file"
+            accept="application/pdf,image/*"
+            onChange={e => setFile(e.target.files?.[0] ?? null)}
+            disabled={guardando}
+          />
+          {initial.oc_document_name && !file && (
+            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 4 }}>
+              Ya adjunto: {initial.oc_document_name}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="inv-btn" onClick={onClose} disabled={guardando}>
+            Cancelar
+          </button>
+          <button className="inv-btn is-primary" onClick={handleConfirm} disabled={guardando}>
+            {guardando ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Panel de actividad ────────────────────────────────────────────────────────
 
 const ACTIVITY_ICONS: Record<string, string> = {
@@ -471,6 +618,7 @@ function QuotationsList({
     setStatus,
     setOperState,
     applyInvoiceCreated,
+    applyOcUpdate,
     activeId,
   } = useMaestro()
   // Los contratos de mantención viven en su propia sección ("Mantenciones"),
@@ -490,6 +638,7 @@ function QuotationsList({
   const [importing, setImporting] = useState(false)
   const [billingModal, setBillingModal] = useState<string | null>(null)
   const [lossModal, setLossModal] = useState<string | null>(null)
+  const [ocModal, setOcModal] = useState<string | null>(null)
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set())
 
   // Saldo neto con IVA que le queda por facturar a la cotización. Usa los
@@ -734,6 +883,7 @@ function QuotationsList({
                 <th>Estado</th>
                 <th>Op. Estado</th>
                 <th className="text-right">Neto CLP</th>
+                <th className="text-center">OC</th>
                 <th className="text-center">Factura</th>
                 <th>Acciones</th>
               </tr>
@@ -838,6 +988,18 @@ function QuotationsList({
                       </select>
                     </td>
                     <td className="text-right q-total">{fmtCLP.format(venta)}</td>
+                    <td className="text-center">
+                      {(q.status === 'Adjudicada' || q.status === 'Cerrada') &&
+                        canChangeQuotationStatus && (
+                          <button
+                            className={`btn-invoice ${q.oc_number ? 'is-oc-complete' : 'is-oc-missing'}`}
+                            title={q.oc_number ? `OC ${q.oc_number}` : 'Falta registrar OC'}
+                            onClick={() => setOcModal(q.id)}
+                          >
+                            📋
+                          </button>
+                        )}
+                    </td>
                     <td className="text-center">
                       {(q.status === 'Adjudicada' || q.status === 'Cerrada') &&
                         canCreateInvoice &&
@@ -1108,6 +1270,26 @@ function QuotationsList({
                 setLossModal(null)
               }}
               onClose={() => setLossModal(null)}
+            />
+          )
+        })()}
+
+      {ocModal &&
+        (() => {
+          const q = quotations.find(x => x.id === ocModal)
+          if (!q) return null
+          return (
+            <OcModal
+              quotationId={ocModal}
+              correlative={q.correlative}
+              initial={{
+                oc_number: q.oc_number,
+                oc_date: q.oc_date,
+                oc_conditions: q.oc_conditions,
+                oc_document_name: q.oc_document_name,
+              }}
+              onSaved={data => applyOcUpdate(ocModal, data)}
+              onClose={() => setOcModal(null)}
             />
           )
         })()}

@@ -731,6 +731,63 @@ export const api = {
       invoice_count_max,
     }),
 
+  // ── OC (Orden de Compra) / aceptación del cliente ────────────────────────────
+  updateQuotationOc: (
+    id: string,
+    data: { oc_number?: string | null; oc_date?: string | null; oc_conditions?: string | null }
+  ) =>
+    patch<{
+      id: string
+      oc_number: string | null
+      oc_date: string | null
+      oc_conditions: string | null
+    }>(`/api/quotations/${id}/oc`, data),
+
+  // Sube el documento de OC. Mismo patrón que uploadInvoiceDocument (base64,
+  // sin multipart).
+  uploadQuotationOcDocument: (
+    id: string,
+    file: File
+  ): Promise<{ id: string; oc_document_name: string | null }> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = async () => {
+        try {
+          const base64 = (reader.result as string).split(',')[1]
+          resolve(
+            await post<{ id: string; oc_document_name: string | null }>(
+              `/api/quotations/${id}/oc-document`,
+              {
+                data: base64,
+                name: file.name,
+                size: file.size,
+              }
+            )
+          )
+        } catch (e) {
+          reject(e)
+        }
+      }
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'))
+      reader.readAsDataURL(file)
+    }),
+
+  // Descarga el documento de OC y lo dispara como descarga del navegador.
+  downloadQuotationOcDocument: async (id: string): Promise<void> => {
+    const token = localStorage.getItem('authToken')
+    const res = await fetch(`/api/quotations/${id}/oc-document`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error('No se pudo descargar el documento')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'oc.pdf'
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+
   // ── Pérdida ─────────────────────────────────────────────────────────────────
   updateQuotationLoss: (
     id: string,

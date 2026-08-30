@@ -706,6 +706,11 @@ app.post('/api/quotations', requireAuth, (req: AuthReq, res: Response) => {
       show_uf_equivalent: Boolean(show_uf_equivalent),
       show_usd_equivalent: Boolean(show_usd_equivalent),
       usd_value: Number(usd_value) || Number(cfg('dolar_value')) || 950,
+      // OC (Orden de Compra) / aceptación del cliente: se completa después,
+      // vía PATCH /api/quotations/:id/oc — nunca al crear.
+      oc_number: null,
+      oc_date: null,
+      oc_conditions: null,
     }
     db.quotations.push(quotation)
 
@@ -922,6 +927,21 @@ app.patch('/api/quotations/:id/status', requireAuth, (req: Request, res: Respons
   q.updated_at = now()
   saveDB(db)
   res.json({ id: q.id, status: q.status, oper_state: q.oper_state })
+})
+
+// OC (Orden de Compra) / aceptación del cliente. No sube ni baja el
+// documento adjunto: este backend de desarrollo tampoco soporta ese flujo
+// para el PDF SII de facturas, así que se mantiene la misma omisión acá.
+app.patch('/api/quotations/:id/oc', requireAuth, (req: Request, res: Response) => {
+  const q = db.quotations.find((q: any) => q.id === req.params.id && !q.deleted_at)
+  if (!q) return res.status(404).json({ error: 'Cotización no encontrada' })
+  const { oc_number, oc_date, oc_conditions } = req.body
+  if (oc_number !== undefined) q.oc_number = oc_number || null
+  if (oc_date !== undefined) q.oc_date = oc_date || null
+  if (oc_conditions !== undefined) q.oc_conditions = oc_conditions || null
+  q.updated_at = now()
+  saveDB(db)
+  res.json({ id: q.id, oc_number: q.oc_number, oc_date: q.oc_date, oc_conditions: q.oc_conditions })
 })
 
 app.post('/api/quotations/:id/duplicate', requireAuth, (req: AuthReq, res: Response) => {

@@ -16,6 +16,8 @@ import {
   quotationActivitySchema,
   quotationVersionReasonSchema,
   quotationApprovalSchema,
+  quotationOcSchema,
+  quotationOcDocumentSchema,
 } from '../schemas/quotations'
 import { decodeCursor, buildPage } from '../utils/pagination'
 
@@ -1006,6 +1008,98 @@ export const createQuotationsRouter = (pool: Pool) => {
       } catch (error: any) {
         logger.error('Update loss reason error', { error: error.message, id })
         return res.status(500).json({ error: 'Failed to update loss reason' })
+      }
+    }
+  )
+
+  // ── OC (Orden de Compra) / aceptación del cliente ─────────────────────────
+  // Nunca bloquea Adjudicada: se completa cuando el usuario tenga el dato,
+  // en cualquier momento del ciclo.
+  router.patch(
+    '/:id/oc',
+    roleMiddleware('admin', 'manager'),
+    validate({ params: uuidParams('id'), body: quotationOcSchema }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      const { oc_number, oc_date, oc_conditions } = req.body
+      try {
+        const result = await pool.query(
+          `UPDATE quotations
+              SET oc_number     = $1,
+                  oc_date       = $2,
+                  oc_conditions = $3,
+                  updated_at    = NOW()
+            WHERE id = $4 AND deleted_at IS NULL
+            RETURNING id, oc_number, oc_date, oc_conditions`,
+          [oc_number ?? null, oc_date ?? null, oc_conditions ?? null, id]
+        )
+        if (!result.rows.length) return res.status(404).json({ error: 'Quotation not found' })
+        return res.json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Update OC error', { error: error.message, id })
+        return res.status(500).json({ error: 'Failed to update OC' })
+      }
+    }
+  )
+
+  // Documento de OC (PDF/imagen). Mismo patrón que /:id/document en
+  // invoices.ts, sin la transición de estado (acá no hay un estado de
+  // documento que cambiar).
+  router.post(
+    '/:id/oc-document',
+    roleMiddleware('admin', 'manager'),
+    validate({ params: uuidParams('id'), body: quotationOcDocumentSchema }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      const { data, name, size } = req.body
+      let buffer: Buffer
+      try {
+        buffer = Buffer.from(data, 'base64')
+      } catch {
+        return res.status(400).json({ error: 'Datos base64 inválidos' })
+      }
+      if (buffer.length > 10 * 1024 * 1024)
+        return res.status(400).json({ error: 'El archivo supera los 10 MB permitidos' })
+      try {
+        const result = await pool.query(
+          `UPDATE quotations
+              SET oc_document      = $1,
+                  oc_document_name = $2,
+                  oc_document_size = $3,
+                  updated_at       = NOW()
+            WHERE id = $4 AND deleted_at IS NULL
+            RETURNING id, oc_document_name, oc_document_size`,
+          [buffer, name, size, id]
+        )
+        if (!result.rows.length) return res.status(404).json({ error: 'Quotation not found' })
+        return res.json(result.rows[0])
+      } catch (error: any) {
+        logger.error('Upload OC document error', { error: error.message, id })
+        return res.status(500).json({ error: 'Failed to upload OC document' })
+      }
+    }
+  )
+
+  router.get(
+    '/:id/oc-document',
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      const id = paramString(req.params.id)
+      try {
+        const row = await pool.query(
+          `SELECT oc_document, oc_document_name FROM quotations WHERE id = $1 AND deleted_at IS NULL`,
+          [id]
+        )
+        if (!row.rows.length) return res.status(404).json({ error: 'Quotation not found' })
+        if (!row.rows[0].oc_document)
+          return res.status(404).json({ error: 'Sin documento adjunto' })
+        const name = row.rows[0].oc_document_name ?? 'oc.pdf'
+        res.setHeader('Content-Type', 'application/pdf')
+        res.setHeader('Content-Disposition', `attachment; filename="${name}"`)
+        return res.send(row.rows[0].oc_document)
+      } catch (error: any) {
+        logger.error('Download OC document error', { error: error.message, id })
+        return res.status(500).json({ error: 'Failed to download OC document' })
       }
     }
   )

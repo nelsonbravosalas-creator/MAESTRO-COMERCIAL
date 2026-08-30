@@ -18,6 +18,7 @@ import {
   reportSaveError,
   TabCosteo,
   EditableList,
+  OcModal,
 } from './Quotations'
 import { usePermissions } from '../hooks/usePermissions'
 import { downloadDocx } from '../utils/docxExport'
@@ -65,6 +66,7 @@ function MaintenanceList({
     deleteQuote,
     setStatus,
     applyInvoiceCreated,
+    applyOcUpdate,
     activeId,
   } = useMaestro()
   // Solo contratos de mantención — las cotizaciones de proyecto viven en su
@@ -77,6 +79,7 @@ function MaintenanceList({
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [confirm, setConfirm] = useState<string | null>(null)
+  const [ocModal, setOcModal] = useState<string | null>(null)
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set())
 
   const handleGenerateInvoice = async (q: (typeof quotations)[0]) => {
@@ -222,6 +225,7 @@ function MaintenanceList({
                 <th className="text-right">Valor Anual</th>
                 <th>Vigencia desde</th>
                 <th>Estado</th>
+                <th className="text-center">OC</th>
                 <th className="text-center">Factura</th>
                 <th>Acciones</th>
               </tr>
@@ -265,6 +269,17 @@ function MaintenanceList({
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td className="text-center">
+                      {q.status === 'Adjudicada' && canChangeQuotationStatus && (
+                        <button
+                          className={`btn-invoice ${q.oc_number ? 'is-oc-complete' : 'is-oc-missing'}`}
+                          title={q.oc_number ? `OC ${q.oc_number}` : 'Falta registrar OC'}
+                          onClick={() => setOcModal(q.id)}
+                        >
+                          📋
+                        </button>
+                      )}
                     </td>
                     <td className="text-center">
                       {q.status === 'Adjudicada' &&
@@ -352,6 +367,26 @@ function MaintenanceList({
           </div>
         </div>
       )}
+
+      {ocModal &&
+        (() => {
+          const q = quotations.find(x => x.id === ocModal)
+          if (!q) return null
+          return (
+            <OcModal
+              quotationId={ocModal}
+              correlative={q.correlative}
+              initial={{
+                oc_number: q.oc_number,
+                oc_date: q.oc_date,
+                oc_conditions: q.oc_conditions,
+                oc_document_name: q.oc_document_name,
+              }}
+              onSaved={data => applyOcUpdate(ocModal, data)}
+              onClose={() => setOcModal(null)}
+            />
+          )
+        })()}
     </div>
   )
 }

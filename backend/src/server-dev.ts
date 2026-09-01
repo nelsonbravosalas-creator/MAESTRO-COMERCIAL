@@ -1206,7 +1206,9 @@ app.post('/api/invoices', requireAuth, (req: AuthReq, res: Response) => {
   const iva_pct = Number(cfg('iva_pct')) || 19
   const tax_amount = doc_type === 'factura_exenta' ? 0 : net_amount * (iva_pct / 100)
   const total_amount = net_amount + tax_amount
-  const invNumber = number || `F-${String(db.invoices.length + 1).padStart(6, '0')}`
+  // Sin folio autogenerado: si no se ingresa a mano, queda null ("Pendiente
+  // N° X" es solo una etiqueta de UI en el frontend).
+  const invNumber = number || null
   const invoiceDate = date || new Date().toISOString().slice(0, 10)
   const term = payment_term || 'dias_30'
 

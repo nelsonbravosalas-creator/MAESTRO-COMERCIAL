@@ -364,7 +364,9 @@ export type InvoicePaymentState =
 
 export interface Invoice {
   id: string
-  number: string
+  // null = "Pendiente" (folio real del SII aún no ingresado a mano). El
+  // texto "Pendiente N° X" es solo una etiqueta de UI, no se guarda así.
+  number: string | null
   status: 'draft' | 'issued' | 'paid' | 'cancelled'
   client_id: string
   client_name: string | null
@@ -723,6 +725,17 @@ export const api = {
       res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'documento.pdf'
     a.click()
     URL.revokeObjectURL(url)
+  },
+
+  // Igual que downloadInvoiceDocument pero devuelve el Blob en vez de
+  // disparar la descarga — lo usa el modal de vista previa inline.
+  getInvoiceDocumentBlob: async (id: string): Promise<Blob> => {
+    const token = localStorage.getItem('authToken')
+    const res = await fetch(`/api/invoices/${id}/document`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error('No se pudo cargar el documento')
+    return res.blob()
   },
 
   // Configura cuántas facturas puede emitir una cotización Adjudicada (1 o 2).

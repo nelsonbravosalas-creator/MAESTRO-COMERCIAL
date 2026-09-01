@@ -256,7 +256,9 @@ export const createInvoicesRouter = (pool: Pool) => {
       // configuración global.
       const taxAmount = doc_type === 'factura_exenta' ? 0 : netAmount * (ivaPct / 100)
       const totalAmount = netAmount + taxAmount
-      const invoiceNumber = number || `F-${String(Date.now()).slice(-6)}`
+      // Sin folio autogenerado: si no se ingresa a mano, queda NULL
+      // ("Pendiente N° X" es solo una etiqueta de UI, ver migración 0018).
+      const invoiceNumber = number || null
       const invoiceDate = date || new Date().toISOString().slice(0, 10)
       const term = payment_term || 'dias_30'
 

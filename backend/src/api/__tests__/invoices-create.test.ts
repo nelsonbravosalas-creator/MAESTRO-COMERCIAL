@@ -127,3 +127,36 @@ describe('POST /api/invoices — validación de cupo/saldo por cotización', () 
     expect(res.body.quotation_id).toBe(QUOTATION_ID)
   })
 })
+
+describe('POST /api/invoices — folio del SII', () => {
+  const quotation = {
+    kind: 'maintenance' as const,
+    invoice_count_max: 1,
+    existingCount: 0,
+    existingTotalEmitido: 0,
+    ventaNeta: 100000,
+    ivaPct: 19,
+  }
+
+  it('no rellena un folio inventado cuando no se manda number — queda null ("Pendiente")', async () => {
+    const { app } = buildApp(quotation)
+    const res = await request(app)
+      .post('/api/invoices')
+      .set('Authorization', authHeader())
+      .send(basePayload)
+
+    expect(res.status).toBe(201)
+    expect(res.body.number).toBeNull()
+  })
+
+  it('respeta el número cuando sí se ingresa a mano', async () => {
+    const { app } = buildApp(quotation)
+    const res = await request(app)
+      .post('/api/invoices')
+      .set('Authorization', authHeader())
+      .send({ ...basePayload, number: '1204' })
+
+    expect(res.status).toBe(201)
+    expect(res.body.number).toBe('1204')
+  })
+})

@@ -222,8 +222,8 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
                 value={numero}
                 onChange={e => setNumero(e.target.value)}
                 disabled={inv?.status === 'paid' || inv?.status === 'cancelled' || guardandoNumero}
-                placeholder="N° de factura"
-                title="N° de Factura (folio real del SII, se puede corregir a mano)"
+                placeholder="Pendiente — ingresa el folio real"
+                title="N° de Factura (folio real del SII, se ingresa a mano)"
                 style={{
                   width: 140,
                   fontWeight: 600,
@@ -813,6 +813,78 @@ function NuevaFactura({ quotationId, onClose, onCreated }: NuevaFacturaProps) {
   )
 }
 
+// ── Vista previa del PDF SII ──────────────────────────────────────────────────
+
+function PdfPreviewModal({
+  invoiceId,
+  number,
+  documentName,
+  onClose,
+}: {
+  invoiceId: string
+  number: string | null
+  documentName: string | null
+  onClose: () => void
+}) {
+  const [url, setUrl] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let objectUrl: string | null = null
+    let cancelled = false
+    api
+      .getInvoiceDocumentBlob(invoiceId)
+      .then(blob => {
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(blob)
+        setUrl(objectUrl)
+      })
+      .catch(e => {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'No se pudo cargar el documento')
+      })
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [invoiceId])
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="inv-modal" style={{ maxWidth: 820 }} onClick={e => e.stopPropagation()}>
+        <div className="inv-modal-header">
+          <h2>{documentName ?? `Factura ${number ?? ''}`}</h2>
+          <button className="btn-modal-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="inv-modal-body">
+          {error && <div className="inv-alert">{error}</div>}
+          {!error && !url && <div className="inv-loading">Cargando documento…</div>}
+          {url && (
+            <iframe
+              title="Vista previa PDF SII"
+              src={url}
+              style={{ width: '100%', height: '70vh', border: 'none' }}
+            />
+          )}
+        </div>
+        <div className="inv-modal-footer">
+          <button className="inv-btn" onClick={onClose}>
+            Cerrar
+          </button>
+          <button
+            className="inv-btn is-primary"
+            onClick={() => api.downloadInvoiceDocument(invoiceId)}
+            disabled={!url}
+          >
+            Descargar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Página ────────────────────────────────────────────────────────────────────
 
 export default function Invoices({
@@ -830,6 +902,7 @@ export default function Invoices({
   const [error, setError] = useState<string | null>(null)
   const [detalle, setDetalle] = useState<string | null>(null)
   const [nuevaFactura, setNuevaFactura] = useState<{ quotationId?: string } | null>(null)
+  const [pdfPreview, setPdfPreview] = useState<Invoice | null>(null)
 
   // Si se llega desde cotizaciones, abrir el modal de creación automáticamente
   useEffect(() => {
@@ -953,62 +1026,90 @@ export default function Invoices({
                 <th style={{ textAlign: 'right' }}>Saldo</th>
                 <th>Estado</th>
                 <th>Seguimiento</th>
+                <th className="text-center">PDF</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {visibles.map(f => {
-                const saldo = Number(f.balance ?? 0)
-                return (
-                  <tr key={f.id}>
-                    <td>
-                      <span className="inv-num">{f.number}</span>
-                      {f.is_factored && (
-                        <span className="inv-tag-factoring">
-                          {f.factoring_type === 'confirming' ? 'CONF' : 'FACT'}
+              {(() => {
+                let pendienteCounter = 0
+                return visibles.map(f => {
+                  const saldo = Number(f.balance ?? 0)
+                  if (!f.number) pendienteCounter += 1
+                  const numeroLabel = f.number ?? `Pendiente N° ${pendienteCounter}`
+                  return (
+                    <tr key={f.id}>
+                      <td>
+                        <span className={`inv-num${!f.number ? ' inv-num-pending' : ''}`}>
+                          {numeroLabel}
                         </span>
-                      )}
-                    </td>
-                    <td>
-                      {f.quotation_correlative ? (
-                        <span className="inv-quotacion-ref">{f.quotation_correlative}</span>
-                      ) : (
-                        <span className="inv-empty-cell">—</span>
-                      )}
-                    </td>
-                    <td>{f.client_name ?? '—'}</td>
-                    <td>{fecha(f.date)}</td>
-                    <td>
-                      {fecha(f.due_date)}
-                      {(f.days_overdue ?? 0) > 0 && saldo > 0 && (
-                        <span className="inv-mora">+{f.days_overdue}d</span>
-                      )}
-                    </td>
-                    <td className="inv-money">{clp(f.total_amount)}</td>
-                    <td className="inv-money">{clp(f.paid_amount)}</td>
-                    <td className={`inv-money ${saldo > 0 ? 'is-pending' : 'is-zero'}`}>
-                      {clp(saldo)}
-                    </td>
-                    <td>
-                      <span className={`inv-badge ${f.payment_state ?? 'al_dia'}`}>
-                        {ESTADO_LABEL[(f.payment_state ?? 'al_dia') as PaymentState]}
-                      </span>
-                    </td>
-                    <td>{fecha(f.follow_up_date)}</td>
-                    <td>
-                      <div className="inv-actions">
-                        <button className="inv-btn is-primary" onClick={() => setDetalle(f.id)}>
-                          Gestionar
+                        {f.is_factored && (
+                          <span className="inv-tag-factoring">
+                            {f.factoring_type === 'confirming' ? 'CONF' : 'FACT'}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {f.quotation_correlative ? (
+                          <span className="inv-quotacion-ref">{f.quotation_correlative}</span>
+                        ) : (
+                          <span className="inv-empty-cell">—</span>
+                        )}
+                      </td>
+                      <td>{f.client_name ?? '—'}</td>
+                      <td>{fecha(f.date)}</td>
+                      <td>
+                        {fecha(f.due_date)}
+                        {(f.days_overdue ?? 0) > 0 && saldo > 0 && (
+                          <span className="inv-mora">+{f.days_overdue}d</span>
+                        )}
+                      </td>
+                      <td className="inv-money">{clp(f.total_amount)}</td>
+                      <td className="inv-money">{clp(f.paid_amount)}</td>
+                      <td className={`inv-money ${saldo > 0 ? 'is-pending' : 'is-zero'}`}>
+                        {clp(saldo)}
+                      </td>
+                      <td>
+                        <span className={`inv-badge ${f.payment_state ?? 'al_dia'}`}>
+                          {ESTADO_LABEL[(f.payment_state ?? 'al_dia') as PaymentState]}
+                        </span>
+                      </td>
+                      <td>{fecha(f.follow_up_date)}</td>
+                      <td className="text-center">
+                        <button
+                          className={`inv-clip-btn ${f.sii_document_name ? 'is-complete' : 'is-missing'}`}
+                          title={f.sii_document_name ? f.sii_document_name : 'Sin PDF SII adjunto'}
+                          onClick={() =>
+                            f.sii_document_name ? setPdfPreview(f) : setDetalle(f.id)
+                          }
+                        >
+                          📎
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
+                      </td>
+                      <td>
+                        <div className="inv-actions">
+                          <button className="inv-btn is-primary" onClick={() => setDetalle(f.id)}>
+                            Gestionar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              })()}
             </tbody>
           </table>
         )}
       </div>
+
+      {pdfPreview && (
+        <PdfPreviewModal
+          invoiceId={pdfPreview.id}
+          number={pdfPreview.number}
+          documentName={pdfPreview.sii_document_name}
+          onClose={() => setPdfPreview(null)}
+        />
+      )}
 
       {detalle && (
         <DetalleFactura

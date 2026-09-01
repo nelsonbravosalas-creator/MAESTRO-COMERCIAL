@@ -371,7 +371,10 @@ CREATE TABLE invoices (
   id           UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id   UUID           REFERENCES projects(id) ON DELETE SET NULL,
   client_id    UUID           NOT NULL REFERENCES clients(id),
-  number       TEXT           NOT NULL,
+  -- NULL = "Pendiente" (folio real del SII aún no ingresado a mano; ver
+  -- migración 0018). El placeholder numerado ("Pendiente N° X") es solo de
+  -- UI, calculado en el frontend, nunca se guarda acá.
+  number       TEXT,
   date         DATE           NOT NULL DEFAULT CURRENT_DATE,
   payment_term payment_term   NOT NULL DEFAULT 'dias_30',
   due_date     DATE,

@@ -32,6 +32,7 @@ interface DB {
   app_config: any[]
   users: any[]
   catalog_items: any[]
+  electrical_catalog_items: any[]
   clients: any[]
   client_contacts: any[]
   quotations: any[]
@@ -53,6 +54,7 @@ const EMPTY_DB: DB = {
   app_config: [],
   users: [],
   catalog_items: [],
+  electrical_catalog_items: [],
   clients: [],
   client_contacts: [],
   quotations: [],
@@ -382,7 +384,7 @@ app.get('/api/catalog', requireAuth, (_req: Request, res: Response) => {
     .filter((i: any) => i.is_active !== false)
     .sort((a: any, b: any) => a.sort_order - b.sort_order)
 
-  const grouped: Record<string, any[]> = { mo: [], log: [], mat: [], rep: [], ins: [] }
+  const grouped: Record<string, any[]> = { mo: [], log: [], mat: [], rep: [], ins: [], mec: [] }
   items.forEach((i: any) => {
     if (grouped[i.category_id]) grouped[i.category_id].push(i)
   })
@@ -443,6 +445,68 @@ app.delete('/api/catalog/:id', requireAuth, requireRole('admin'), (req: Request,
   saveDB(db)
   res.json({ message: 'Item desactivado' })
 })
+
+// ────────────────────────────────────────────────────────────
+// CATÁLOGO — MATERIALES ELÉCTRICOS (tabla propia, sin category_id)
+// ────────────────────────────────────────────────────────────
+app.get('/api/electrical-catalog', requireAuth, (_req: Request, res: Response) => {
+  const items = db.electrical_catalog_items
+    .filter((i: any) => i.is_active !== false)
+    .sort((a: any, b: any) => a.sort_order - b.sort_order)
+  res.json(items)
+})
+
+app.post(
+  '/api/electrical-catalog',
+  requireAuth,
+  requireRole('admin', 'manager'),
+  (req: AuthReq, res: Response) => {
+    const { description, unit_name, unit_price, sort_order } = req.body
+    if (!description || !unit_name)
+      return res.status(400).json({ error: 'description y unit_name son requeridos' })
+
+    const item = {
+      id: uid(),
+      description,
+      unit_name,
+      unit_price: Number(unit_price) || 0,
+      is_active: true,
+      sort_order: Number(sort_order) || 0,
+      created_at: now(),
+      updated_at: now(),
+    }
+    db.electrical_catalog_items.push(item)
+    saveDB(db)
+    res.status(201).json(item)
+  }
+)
+
+app.put(
+  '/api/electrical-catalog/:id',
+  requireAuth,
+  requireRole('admin', 'manager'),
+  (req: Request, res: Response) => {
+    const item = db.electrical_catalog_items.find((i: any) => i.id === req.params.id)
+    if (!item) return res.status(404).json({ error: 'Item no encontrado' })
+    Object.assign(item, { ...req.body, id: item.id, updated_at: now() })
+    saveDB(db)
+    res.json(item)
+  }
+)
+
+app.delete(
+  '/api/electrical-catalog/:id',
+  requireAuth,
+  requireRole('admin'),
+  (req: Request, res: Response) => {
+    const item = db.electrical_catalog_items.find((i: any) => i.id === req.params.id)
+    if (!item) return res.status(404).json({ error: 'Item no encontrado' })
+    item.is_active = false
+    item.updated_at = now()
+    saveDB(db)
+    res.json({ message: 'Item desactivado' })
+  }
+)
 
 // ────────────────────────────────────────────────────────────
 // CLIENTES

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { uuid, optionalStr, money, isoDateStr } from './common'
 
-const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins'] as const
+const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele'] as const
 const STATUSES = [
   'Borrador',
   'Emitida',

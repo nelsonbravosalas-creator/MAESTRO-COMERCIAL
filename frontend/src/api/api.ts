@@ -173,6 +173,16 @@ function normalizeContacts(contacts: MasterContact[] | undefined): MasterContact
   return valid.map((ct, i) => ({ ...ct, is_primary: i === primaryIdx }))
 }
 
+// "Materiales Eléctricos" vive en su propia tabla, sin category_id.
+function fromElectricalItemUI(i: CatalogItemUI, sortOrder = 0) {
+  return {
+    description: i.desc,
+    unit_name: i.unidad,
+    unit_price: i.price,
+    sort_order: sortOrder,
+  }
+}
+
 function toMasterClient(c: any): MasterClient {
   const contacts: MasterContact[] = (c.contacts ?? []).map(toMasterContact)
   const primary: Partial<MasterContact> = contacts.find(ct => ct.is_primary) ?? contacts[0] ?? {}
@@ -202,7 +212,7 @@ function toMasterQuotation(q: any): MasterQuotation {
   const catMap: Record<string, any> = {}
   for (const qc of q.categories ?? []) catMap[qc.category_id] = qc
 
-  const catIds: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
+  const catIds: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele']
 
   const defaultCatMeta: Record<CategoryId, { label: string; color: string }> = {
     mo: { label: 'Mano de Obra Especializada', color: '#1e293b' },
@@ -210,9 +220,19 @@ function toMasterQuotation(q: any): MasterQuotation {
     mat: { label: 'Provisión de Materiales', color: '#1e3a8a' },
     rep: { label: 'Suministro Equipos o Repuestos', color: '#312e81' },
     ins: { label: 'Insumos Industriales y Gases', color: '#164e63' },
+    mec: { label: 'Materiales Mecánico', color: '#7c2d12' },
+    ele: { label: 'Materiales Eléctricos', color: '#a16207' },
   }
 
-  const defaultMargins: Record<string, number> = { mo: 35, log: 30, mat: 30, rep: 30, ins: 30 }
+  const defaultMargins: Record<string, number> = {
+    mo: 35,
+    log: 30,
+    mat: 30,
+    rep: 30,
+    ins: 30,
+    mec: 30,
+    ele: 30,
+  }
 
   const categories: CostCategory[] = catIds.map(cid => {
     const qc = catMap[cid]
@@ -229,7 +249,15 @@ function toMasterQuotation(q: any): MasterQuotation {
   })
 
   // Reconstruir items desde quotation_line_items
-  const items: Record<CategoryId, CostItem[]> = { mo: [], log: [], mat: [], rep: [], ins: [] }
+  const items: Record<CategoryId, CostItem[]> = {
+    mo: [],
+    log: [],
+    mat: [],
+    rep: [],
+    ins: [],
+    mec: [],
+    ele: [],
+  }
   for (const li of q.line_items ?? []) {
     const cid = li.category_id as CategoryId
     if (!items[cid]) items[cid] = []
@@ -560,6 +588,24 @@ export const api = {
   },
 
   deleteCatalogItem: (id: string) => del(`/api/catalog/${id}`),
+
+  // ── Catálogo — Materiales Eléctricos (tabla propia) ──────────
+  getElectricalCatalog: async (): Promise<CatalogItemUI[]> => {
+    const raw: any[] = await get('/api/electrical-catalog')
+    return raw.map(toCatalogItemUI)
+  },
+
+  createElectricalItem: async (item: CatalogItemUI, sortOrder = 0) => {
+    const raw: any = await post('/api/electrical-catalog', fromElectricalItemUI(item, sortOrder))
+    return toCatalogItemUI(raw)
+  },
+
+  updateElectricalItem: async (id: string, item: CatalogItemUI) => {
+    const raw: any = await put(`/api/electrical-catalog/${id}`, fromElectricalItemUI(item))
+    return toCatalogItemUI(raw)
+  },
+
+  deleteElectricalItem: (id: string) => del(`/api/electrical-catalog/${id}`),
 
   // ── Clientes ────────────────────────────────────────────────
   getClients: async (): Promise<MasterClient[]> => {

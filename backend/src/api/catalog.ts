@@ -6,10 +6,10 @@ import { validate } from '../middleware/validate'
 import { uuidParams } from '../schemas/common'
 import { catalogItemSchema } from '../schemas/catalog'
 
-const CATEGORIES = ['mo', 'log', 'mat', 'rep', 'ins']
+const CATEGORIES = ['mo', 'log', 'mat', 'rep', 'ins', 'mec']
 
 const groupedCatalog = (rows: any[]) => {
-  const grouped: Record<string, any[]> = { mo: [], log: [], mat: [], rep: [], ins: [] }
+  const grouped: Record<string, any[]> = { mo: [], log: [], mat: [], rep: [], ins: [], mec: [] }
   for (const row of rows) {
     if (grouped[row.category_id]) grouped[row.category_id].push(row)
   }

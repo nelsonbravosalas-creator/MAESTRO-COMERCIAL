@@ -32,7 +32,7 @@ const VALID_STATUSES = [
   'Cerrada',
 ]
 const VALID_OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
-const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins']
+const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele']
 const TERM_TYPES = ['scope', 'exclusion', 'commercial']
 const CATEGORY_LABELS: Record<string, string> = {
   mo: 'Mano de Obra Especializada',
@@ -40,6 +40,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   mat: 'Provision de Materiales',
   rep: 'Suministro Equipos o Repuestos',
   ins: 'Insumos Industriales y Gases',
+  mec: 'Materiales Mecanico',
+  ele: 'Materiales Electricos',
 }
 const CATEGORY_COLORS: Record<string, string> = {
   mo: '#1e293b',
@@ -47,6 +49,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   mat: '#1e3a8a',
   rep: '#312e81',
   ins: '#164e63',
+  mec: '#7c2d12',
+  ele: '#a16207',
 }
 
 const VALID_KINDS = ['project', 'maintenance']

@@ -9,27 +9,33 @@ import ProjectsGantt from './ProjectsGantt'
 
 // ── Category labels ───────────────────────────────────────────
 const CATEGORY_LABELS: Record<CategoryId, string> = {
-  mo:  'Mano de Obra',
+  mo: 'Mano de Obra',
   log: 'Logística',
   mat: 'Materiales',
   rep: 'Repuestos/Equipos',
   ins: 'Insumos',
+  mec: 'Materiales Mecánico',
+  ele: 'Materiales Eléctricos',
 }
 
 // ── Status labels/helpers ─────────────────────────────────────
 const STATUS_LABELS: Record<ProjectFull['status'], string> = {
-  planning:    'Planificación',
+  planning: 'Planificación',
   in_progress: 'En Ejecución',
-  completed:   'Completado',
-  paused:      'Pausado',
-  cancelled:   'Cancelado',
+  completed: 'Completado',
+  paused: 'Pausado',
+  cancelled: 'Cancelado',
 }
 
 const STATUS_LIST = Object.keys(STATUS_LABELS) as ProjectFull['status'][]
 
 // ── Currency formatter ────────────────────────────────────────
 const fmtCLP = (n: number) =>
-  new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n)
+  new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: 'CLP',
+    maximumFractionDigits: 0,
+  }).format(n)
 
 // ── Helpers ───────────────────────────────────────────────────
 const isCritical = (p: ProjectFull) => {
@@ -65,18 +71,24 @@ function CreateModal({ clients, onClose, onCreate }: CreateModalProps) {
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const handleSubmit = async () => {
-    if (!form.name.trim()) { setError('El nombre es requerido'); return }
-    if (!form.client_id)   { setError('El cliente es requerido'); return }
+    if (!form.name.trim()) {
+      setError('El nombre es requerido')
+      return
+    }
+    if (!form.client_id) {
+      setError('El cliente es requerido')
+      return
+    }
     setSaving(true)
     setError('')
     try {
       await onCreate({
-        name:       form.name.trim(),
-        client_id:  form.client_id,
+        name: form.name.trim(),
+        client_id: form.client_id,
         start_date: form.start_date || null,
-        end_date:   form.end_date   || null,
-        budget:     Number(form.budget) || 0,
-        status:     form.status,
+        end_date: form.end_date || null,
+        budget: Number(form.budget) || 0,
+        status: form.status,
       })
       onClose()
     } catch (err: any) {
@@ -87,49 +99,101 @@ function CreateModal({ clients, onClose, onCreate }: CreateModalProps) {
   }
 
   return (
-    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    <div
+      className="modal-overlay"
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
       <div className="modal">
         <div className="modal-header">
           <h3>Nuevo Proyecto</h3>
-          <button type="button" className="btn-icon" onClick={onClose}>✕</button>
+          <button type="button" className="btn-icon" onClick={onClose}>
+            ✕
+          </button>
         </div>
         <div className="modal-body">
           {error && <div style={{ color: '#ef4444', fontSize: '0.875rem' }}>{error}</div>}
           <div className="form-group">
             <label className="form-label">Nombre del Proyecto *</label>
-            <input className="form-control" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ej: Instalación HVAC Planta Norte" />
+            <input
+              className="form-control"
+              value={form.name}
+              onChange={e => set('name', e.target.value)}
+              placeholder="Ej: Instalación HVAC Planta Norte"
+            />
           </div>
           <div className="form-group">
             <label className="form-label">Cliente *</label>
-            <select className="form-select" value={form.client_id} onChange={e => set('client_id', e.target.value)}>
+            <select
+              className="form-select"
+              value={form.client_id}
+              onChange={e => set('client_id', e.target.value)}
+            >
               <option value="">— Seleccionar cliente —</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
           <div className="overview-grid">
             <div className="form-group">
               <label className="form-label">Fecha Inicio</label>
-              <input type="date" className="form-control" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
+              <input
+                type="date"
+                className="form-control"
+                value={form.start_date}
+                onChange={e => set('start_date', e.target.value)}
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Fecha Término</label>
-              <input type="date" className="form-control" value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+              <input
+                type="date"
+                className="form-control"
+                value={form.end_date}
+                onChange={e => set('end_date', e.target.value)}
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Presupuesto (CLP)</label>
-              <input type="number" className="form-control" value={form.budget} onChange={e => set('budget', e.target.value)} placeholder="0" min="0" />
+              <input
+                type="number"
+                className="form-control"
+                value={form.budget}
+                onChange={e => set('budget', e.target.value)}
+                placeholder="0"
+                min="0"
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Estado</label>
-              <select className="form-select" value={form.status} onChange={e => set('status', e.target.value as ProjectFull['status'])}>
-                {STATUS_LIST.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+              <select
+                className="form-select"
+                value={form.status}
+                onChange={e => set('status', e.target.value as ProjectFull['status'])}
+              >
+                {STATUS_LIST.map(s => (
+                  <option key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
         </div>
         <div className="modal-footer">
-          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
-          <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSubmit}
+            disabled={saving}
+          >
             {saving ? 'Guardando…' : 'Crear Proyecto'}
           </button>
         </div>
@@ -148,24 +212,24 @@ interface OverviewTabProps {
 function OverviewTab({ project }: OverviewTabProps) {
   const { updateProject } = useProjects()
   const [form, setForm] = useState({
-    name:         project.name,
-    status:       project.status,
-    start_date:   project.start_date ?? '',
-    end_date:     project.end_date   ?? '',
-    budget:       String(project.budget),
+    name: project.name,
+    status: project.status,
+    start_date: project.start_date ?? '',
+    end_date: project.end_date ?? '',
+    budget: String(project.budget),
     progress_pct: String(project.progress_pct),
   })
   const [saving, setSaving] = useState(false)
-  const [saved,  setSaved]  = useState(false)
+  const [saved, setSaved] = useState(false)
 
   // Sync when project changes
   useEffect(() => {
     setForm({
-      name:         project.name,
-      status:       project.status,
-      start_date:   project.start_date ?? '',
-      end_date:     project.end_date   ?? '',
-      budget:       String(project.budget),
+      name: project.name,
+      status: project.status,
+      start_date: project.start_date ?? '',
+      end_date: project.end_date ?? '',
+      budget: String(project.budget),
       progress_pct: String(project.progress_pct),
     })
   }, [project.id])
@@ -176,11 +240,11 @@ function OverviewTab({ project }: OverviewTabProps) {
     setSaving(true)
     try {
       await updateProject(project.id, {
-        name:         form.name,
-        status:       form.status as ProjectFull['status'],
-        start_date:   form.start_date || null,
-        end_date:     form.end_date   || null,
-        budget:       Number(form.budget) || 0,
+        name: form.name,
+        status: form.status as ProjectFull['status'],
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
+        budget: Number(form.budget) || 0,
         progress_pct: Math.max(0, Math.min(100, Number(form.progress_pct) || 0)),
       })
       setSaved(true)
@@ -192,7 +256,7 @@ function OverviewTab({ project }: OverviewTabProps) {
   }
 
   const critical = isCritical(project)
-  const pct      = Number(form.progress_pct) || 0
+  const pct = Number(form.progress_pct) || 0
 
   return (
     <div>
@@ -203,7 +267,9 @@ function OverviewTab({ project }: OverviewTabProps) {
         </div>
         <div className="metric-card">
           <div className="metric-label">Gasto Real</div>
-          <div className={`metric-value ${project.gasto_real > project.budget && project.budget > 0 ? 'danger' : ''}`}>
+          <div
+            className={`metric-value ${project.gasto_real > project.budget && project.budget > 0 ? 'danger' : ''}`}
+          >
             {fmtCLP(project.gasto_real)}
           </div>
         </div>
@@ -220,38 +286,96 @@ function OverviewTab({ project }: OverviewTabProps) {
       </div>
 
       {critical && (
-        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: '0.5rem', padding: '0.75rem 1rem', marginBottom: '1rem', color: '#ef4444', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div
+          style={{
+            background: 'rgba(239,68,68,0.1)',
+            border: '1px solid #ef4444',
+            borderRadius: '0.5rem',
+            padding: '0.75rem 1rem',
+            marginBottom: '1rem',
+            color: '#ef4444',
+            fontSize: '0.875rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
           <span className="critical-dot" />
-          Proyecto crítico: {project.budget > 0 && project.gasto_real > project.budget ? 'presupuesto excedido' : ''}{project.budget > 0 && project.gasto_real > project.budget && !!project.end_date && project.end_date < new Date().toISOString().slice(0,10) ? ' · ' : ''}{!!project.end_date && project.end_date < new Date().toISOString().slice(0,10) ? 'fecha de término vencida' : ''}
+          Proyecto crítico:{' '}
+          {project.budget > 0 && project.gasto_real > project.budget ? 'presupuesto excedido' : ''}
+          {project.budget > 0 &&
+          project.gasto_real > project.budget &&
+          !!project.end_date &&
+          project.end_date < new Date().toISOString().slice(0, 10)
+            ? ' · '
+            : ''}
+          {!!project.end_date && project.end_date < new Date().toISOString().slice(0, 10)
+            ? 'fecha de término vencida'
+            : ''}
         </div>
       )}
 
       <div className="overview-grid">
         <div className="form-group full-width">
           <label className="form-label">Nombre del Proyecto</label>
-          <input className="form-control" value={form.name} onChange={e => patch('name', e.target.value)} />
+          <input
+            className="form-control"
+            value={form.name}
+            onChange={e => patch('name', e.target.value)}
+          />
         </div>
         <div className="form-group">
           <label className="form-label">Estado</label>
-          <select className="form-select" value={form.status} onChange={e => patch('status', e.target.value)}>
-            {STATUS_LIST.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+          <select
+            className="form-select"
+            value={form.status}
+            onChange={e => patch('status', e.target.value)}
+          >
+            {STATUS_LIST.map(s => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
           </select>
         </div>
         <div className="form-group">
           <label className="form-label">Avance (%)</label>
-          <input type="number" className="form-control" value={form.progress_pct} onChange={e => patch('progress_pct', e.target.value)} min="0" max="100" />
+          <input
+            type="number"
+            className="form-control"
+            value={form.progress_pct}
+            onChange={e => patch('progress_pct', e.target.value)}
+            min="0"
+            max="100"
+          />
         </div>
         <div className="form-group">
           <label className="form-label">Fecha Inicio</label>
-          <input type="date" className="form-control" value={form.start_date} onChange={e => patch('start_date', e.target.value)} />
+          <input
+            type="date"
+            className="form-control"
+            value={form.start_date}
+            onChange={e => patch('start_date', e.target.value)}
+          />
         </div>
         <div className="form-group">
           <label className="form-label">Fecha Término</label>
-          <input type="date" className="form-control" value={form.end_date} onChange={e => patch('end_date', e.target.value)} />
+          <input
+            type="date"
+            className="form-control"
+            value={form.end_date}
+            onChange={e => patch('end_date', e.target.value)}
+          />
         </div>
         <div className="form-group">
           <label className="form-label">Presupuesto (CLP)</label>
-          <input type="number" className="form-control" value={form.budget} onChange={e => patch('budget', e.target.value)} min="0" />
+          <input
+            type="number"
+            className="form-control"
+            value={form.budget}
+            onChange={e => patch('budget', e.target.value)}
+            min="0"
+          />
         </div>
       </div>
 
@@ -262,7 +386,9 @@ function OverviewTab({ project }: OverviewTabProps) {
             style={{ width: `${Math.min(100, pct)}%` }}
           />
         </div>
-        <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.25rem' }}>{pct}% completado</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+          {pct}% completado
+        </div>
       </div>
 
       <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
@@ -288,19 +414,24 @@ interface CostForm {
   category_id: CategoryId | ''
 }
 
-const emptyCostForm = (): CostForm => ({ description: '', quantity: '1', unit_price: '0', category_id: '' })
+const emptyCostForm = (): CostForm => ({
+  description: '',
+  quantity: '1',
+  unit_price: '0',
+  category_id: '',
+})
 
 function CostosTab({ project }: CostosTabProps) {
   const { addCost, updateCost, deleteCost } = useProjects()
   const costs = project.costs ?? []
 
-  const [newCost, setNewCost]       = useState<CostForm>(emptyCostForm())
-  const [editId, setEditId]         = useState<string | null>(null)
-  const [editForm, setEditForm]     = useState<CostForm>(emptyCostForm())
+  const [newCost, setNewCost] = useState<CostForm>(emptyCostForm())
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<CostForm>(emptyCostForm())
   const [addingCost, setAddingCost] = useState(false)
-  const [saving, setSaving]         = useState(false)
+  const [saving, setSaving] = useState(false)
 
-  const patchNew  = (k: keyof CostForm, v: string) => setNewCost(f => ({ ...f, [k]: v }))
+  const patchNew = (k: keyof CostForm, v: string) => setNewCost(f => ({ ...f, [k]: v }))
   const patchEdit = (k: keyof CostForm, v: string) => setEditForm(f => ({ ...f, [k]: v }))
 
   const handleAdd = async () => {
@@ -309,8 +440,8 @@ function CostosTab({ project }: CostosTabProps) {
     try {
       await addCost(project.id, {
         description: newCost.description.trim(),
-        quantity:    Number(newCost.quantity) || 1,
-        unit_price:  Number(newCost.unit_price) || 0,
+        quantity: Number(newCost.quantity) || 1,
+        unit_price: Number(newCost.unit_price) || 0,
         category_id: (newCost.category_id as CategoryId) || null,
       })
       setNewCost(emptyCostForm())
@@ -327,8 +458,8 @@ function CostosTab({ project }: CostosTabProps) {
     setEditId(costId)
     setEditForm({
       description: c.description,
-      quantity:    String(c.quantity),
-      unit_price:  String(c.unit_price),
+      quantity: String(c.quantity),
+      unit_price: String(c.unit_price),
       category_id: c.category_id ?? '',
     })
   }
@@ -339,8 +470,8 @@ function CostosTab({ project }: CostosTabProps) {
     try {
       await updateCost(project.id, editId, {
         description: editForm.description.trim(),
-        quantity:    Number(editForm.quantity) || 1,
-        unit_price:  Number(editForm.unit_price) || 0,
+        quantity: Number(editForm.quantity) || 1,
+        unit_price: Number(editForm.unit_price) || 0,
         category_id: (editForm.category_id as CategoryId) || null,
       })
       setEditId(null)
@@ -361,7 +492,11 @@ function CostosTab({ project }: CostosTabProps) {
     <div>
       <div className="section-header">
         <span className="section-title">Costos de Ejecución ({costs.length})</span>
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => setAddingCost(v => !v)}>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={() => setAddingCost(v => !v)}
+        >
           {addingCost ? 'Cancelar' : '+ Agregar Costo'}
         </button>
       </div>
@@ -370,28 +505,56 @@ function CostosTab({ project }: CostosTabProps) {
         <div className="add-cost-bar" style={{ marginBottom: '1rem' }}>
           <div className="form-group" style={{ flex: 2, minWidth: 160 }}>
             <label className="form-label">Descripción *</label>
-            <input className="form-control" value={newCost.description} onChange={e => patchNew('description', e.target.value)} placeholder="Descripción del costo" />
+            <input
+              className="form-control"
+              value={newCost.description}
+              onChange={e => patchNew('description', e.target.value)}
+              placeholder="Descripción del costo"
+            />
           </div>
           <div className="form-group" style={{ width: 80 }}>
             <label className="form-label">Cant.</label>
-            <input type="number" className="form-control" value={newCost.quantity} onChange={e => patchNew('quantity', e.target.value)} min="0" />
+            <input
+              type="number"
+              className="form-control"
+              value={newCost.quantity}
+              onChange={e => patchNew('quantity', e.target.value)}
+              min="0"
+            />
           </div>
           <div className="form-group" style={{ width: 120 }}>
             <label className="form-label">Precio Unit.</label>
-            <input type="number" className="form-control" value={newCost.unit_price} onChange={e => patchNew('unit_price', e.target.value)} min="0" />
+            <input
+              type="number"
+              className="form-control"
+              value={newCost.unit_price}
+              onChange={e => patchNew('unit_price', e.target.value)}
+              min="0"
+            />
           </div>
           <div className="form-group" style={{ width: 140 }}>
             <label className="form-label">Categoría</label>
-            <select className="form-select" value={newCost.category_id} onChange={e => patchNew('category_id', e.target.value)}>
+            <select
+              className="form-select"
+              value={newCost.category_id}
+              onChange={e => patchNew('category_id', e.target.value)}
+            >
               <option value="">— Sin categoría —</option>
               {(Object.keys(CATEGORY_LABELS) as CategoryId[]).map(k => (
-                <option key={k} value={k}>{CATEGORY_LABELS[k]}</option>
+                <option key={k} value={k}>
+                  {CATEGORY_LABELS[k]}
+                </option>
               ))}
             </select>
           </div>
           <div className="form-group" style={{ justifyContent: 'flex-end' }}>
             <label className="form-label">&nbsp;</label>
-            <button type="button" className="btn btn-primary btn-sm" onClick={handleAdd} disabled={saving || !newCost.description.trim()}>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={handleAdd}
+              disabled={saving || !newCost.description.trim()}
+            >
               {saving ? '…' : 'Agregar'}
             </button>
           </div>
@@ -423,45 +586,103 @@ function CostosTab({ project }: CostosTabProps) {
               return (
                 <tr key={c.id} className={isEditing ? 'editing' : ''}>
                   <td>
-                    {isEditing
-                      ? <input className="inline-input" value={editForm.description} onChange={e => patchEdit('description', e.target.value)} style={{ minWidth: 160 }} />
-                      : c.description}
+                    {isEditing ? (
+                      <input
+                        className="inline-input"
+                        value={editForm.description}
+                        onChange={e => patchEdit('description', e.target.value)}
+                        style={{ minWidth: 160 }}
+                      />
+                    ) : (
+                      c.description
+                    )}
                   </td>
                   <td>
-                    {isEditing
-                      ? (
-                        <select className="inline-select" value={editForm.category_id} onChange={e => patchEdit('category_id', e.target.value)}>
-                          <option value="">—</option>
-                          {(Object.keys(CATEGORY_LABELS) as CategoryId[]).map(k => (
-                            <option key={k} value={k}>{CATEGORY_LABELS[k]}</option>
-                          ))}
-                        </select>
-                      )
-                      : (c.category_id ? CATEGORY_LABELS[c.category_id] : <span className="text-muted">—</span>)}
+                    {isEditing ? (
+                      <select
+                        className="inline-select"
+                        value={editForm.category_id}
+                        onChange={e => patchEdit('category_id', e.target.value)}
+                      >
+                        <option value="">—</option>
+                        {(Object.keys(CATEGORY_LABELS) as CategoryId[]).map(k => (
+                          <option key={k} value={k}>
+                            {CATEGORY_LABELS[k]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : c.category_id ? (
+                      CATEGORY_LABELS[c.category_id]
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
                   </td>
                   <td className="number-cell">
-                    {isEditing
-                      ? <input type="number" className="inline-input" value={editForm.quantity} onChange={e => patchEdit('quantity', e.target.value)} style={{ width: 70 }} />
-                      : c.quantity.toLocaleString('es-CL')}
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        className="inline-input"
+                        value={editForm.quantity}
+                        onChange={e => patchEdit('quantity', e.target.value)}
+                        style={{ width: 70 }}
+                      />
+                    ) : (
+                      c.quantity.toLocaleString('es-CL')
+                    )}
                   </td>
                   <td className="number-cell">
-                    {isEditing
-                      ? <input type="number" className="inline-input" value={editForm.unit_price} onChange={e => patchEdit('unit_price', e.target.value)} style={{ width: 100 }} />
-                      : fmtCLP(c.unit_price)}
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        className="inline-input"
+                        value={editForm.unit_price}
+                        onChange={e => patchEdit('unit_price', e.target.value)}
+                        style={{ width: 100 }}
+                      />
+                    ) : (
+                      fmtCLP(c.unit_price)
+                    )}
                   </td>
                   <td className="number-cell">{fmtCLP(c.quantity * c.unit_price)}</td>
                   <td className="actions-cell">
                     {isEditing ? (
                       <>
-                        <button type="button" className="btn-icon" onClick={handleUpdate} disabled={saving} title="Guardar">✓</button>
-                        {' '}
-                        <button type="button" className="btn-icon" onClick={() => setEditId(null)} title="Cancelar">✕</button>
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          onClick={handleUpdate}
+                          disabled={saving}
+                          title="Guardar"
+                        >
+                          ✓
+                        </button>{' '}
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          onClick={() => setEditId(null)}
+                          title="Cancelar"
+                        >
+                          ✕
+                        </button>
                       </>
                     ) : (
                       <>
-                        <button type="button" className="btn-icon" onClick={() => startEdit(c.id)} title="Editar">✎</button>
-                        {' '}
-                        <button type="button" className="btn-icon danger" onClick={() => handleDelete(c.id)} title="Eliminar">🗑</button>
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          onClick={() => startEdit(c.id)}
+                          title="Editar"
+                        >
+                          ✎
+                        </button>{' '}
+                        <button
+                          type="button"
+                          className="btn-icon danger"
+                          onClick={() => handleDelete(c.id)}
+                          title="Eliminar"
+                        >
+                          🗑
+                        </button>
                       </>
                     )}
                   </td>
@@ -472,18 +693,35 @@ function CostosTab({ project }: CostosTabProps) {
           {costs.length > 0 && (
             <tfoot>
               <tr>
-                <td colSpan={4} style={{ textAlign: 'right', color: '#94a3b8', fontSize: '0.875rem' }}>Total Costos</td>
+                <td
+                  colSpan={4}
+                  style={{ textAlign: 'right', color: '#94a3b8', fontSize: '0.875rem' }}
+                >
+                  Total Costos
+                </td>
                 <td className="number-cell">{fmtCLP(total)}</td>
                 <td />
               </tr>
               <tr>
-                <td colSpan={4} style={{ textAlign: 'right', color: '#94a3b8', fontSize: '0.875rem' }}>Presupuesto</td>
+                <td
+                  colSpan={4}
+                  style={{ textAlign: 'right', color: '#94a3b8', fontSize: '0.875rem' }}
+                >
+                  Presupuesto
+                </td>
                 <td className="number-cell">{fmtCLP(project.budget)}</td>
                 <td />
               </tr>
               <tr>
-                <td colSpan={4} style={{ textAlign: 'right', color: '#94a3b8', fontSize: '0.875rem' }}>Saldo</td>
-                <td className={`number-cell ${project.saldo < 0 ? 'text-danger' : 'text-success'}`}>{fmtCLP(project.saldo)}</td>
+                <td
+                  colSpan={4}
+                  style={{ textAlign: 'right', color: '#94a3b8', fontSize: '0.875rem' }}
+                >
+                  Saldo
+                </td>
+                <td className={`number-cell ${project.saldo < 0 ? 'text-danger' : 'text-success'}`}>
+                  {fmtCLP(project.saldo)}
+                </td>
                 <td />
               </tr>
             </tfoot>
@@ -505,7 +743,7 @@ function EquipoTab({ project }: EquipoTabProps) {
   const { assignUser, removeAssignment } = useProjects()
   const [userId, setUserId] = useState('')
   const [adding, setAdding] = useState(false)
-  const [error,  setError]  = useState('')
+  const [error, setError] = useState('')
   const assignments = project.assignments ?? []
 
   const handleAdd = async () => {
@@ -547,22 +785,42 @@ function EquipoTab({ project }: EquipoTabProps) {
               <div className="team-member-name">{a.name || '—'}</div>
               <div className="team-member-email">{a.email || a.user_id}</div>
             </div>
-            <button type="button" className="btn-icon danger btn-sm" onClick={() => handleRemove(a.user_id)} title="Remover">✕</button>
+            <button
+              type="button"
+              className="btn-icon danger btn-sm"
+              onClick={() => handleRemove(a.user_id)}
+              title="Remover"
+            >
+              ✕
+            </button>
           </div>
         ))}
       </div>
 
-      <div className="section-title" style={{ marginBottom: '0.5rem' }}>Agregar Miembro (por User ID)</div>
-      {error && <div style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{error}</div>}
+      <div className="section-title" style={{ marginBottom: '0.5rem' }}>
+        Agregar Miembro (por User ID)
+      </div>
+      {error && (
+        <div style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+          {error}
+        </div>
+      )}
       <div className="team-add-row">
         <input
           className="form-control"
           value={userId}
           onChange={e => setUserId(e.target.value)}
           placeholder="UUID del usuario"
-          onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') handleAdd()
+          }}
         />
-        <button type="button" className="btn btn-primary btn-sm" onClick={handleAdd} disabled={adding || !userId.trim()}>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={handleAdd}
+          disabled={adding || !userId.trim()}
+        >
           {adding ? '…' : 'Agregar'}
         </button>
       </div>
@@ -604,7 +862,9 @@ function ProjectDetail({ project, onDelete }: ProjectDetailProps) {
             <button
               type="button"
               className="btn btn-danger btn-sm"
-              onClick={() => { if (window.confirm('¿Eliminar este proyecto?')) onDelete(project.id) }}
+              onClick={() => {
+                if (window.confirm('¿Eliminar este proyecto?')) onDelete(project.id)
+              }}
             >
               Eliminar
             </button>
@@ -613,15 +873,33 @@ function ProjectDetail({ project, onDelete }: ProjectDetailProps) {
       </div>
 
       <div className="tab-bar">
-        <button type="button" className={`tab-btn ${tab === 'overview' ? 'active' : ''}`} onClick={() => setTab('overview')}>Resumen</button>
-        <button type="button" className={`tab-btn ${tab === 'costos'   ? 'active' : ''}`} onClick={() => setTab('costos')}>Costos ({(project.costs ?? []).length})</button>
-        <button type="button" className={`tab-btn ${tab === 'equipo'   ? 'active' : ''}`} onClick={() => setTab('equipo')}>Equipo ({(project.assignments ?? []).length})</button>
+        <button
+          type="button"
+          className={`tab-btn ${tab === 'overview' ? 'active' : ''}`}
+          onClick={() => setTab('overview')}
+        >
+          Resumen
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${tab === 'costos' ? 'active' : ''}`}
+          onClick={() => setTab('costos')}
+        >
+          Costos ({(project.costs ?? []).length})
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${tab === 'equipo' ? 'active' : ''}`}
+          onClick={() => setTab('equipo')}
+        >
+          Equipo ({(project.assignments ?? []).length})
+        </button>
       </div>
 
       <div className="tab-content">
         {tab === 'overview' && <OverviewTab project={project} />}
-        {tab === 'costos'   && <CostosTab   project={project} />}
-        {tab === 'equipo'   && <EquipoTab   project={project} />}
+        {tab === 'costos' && <CostosTab project={project} />}
+        {tab === 'equipo' && <EquipoTab project={project} />}
       </div>
     </div>
   )
@@ -633,9 +911,9 @@ function ProjectDetail({ project, onDelete }: ProjectDetailProps) {
 
 function ViewSelector({ current, onChange }: { current: string; onChange: (v: any) => void }) {
   const views = [
-    { key: 'list',   icon: '☰', label: 'Lista'  },
+    { key: 'list', icon: '☰', label: 'Lista' },
     { key: 'kanban', icon: '⊞', label: 'Kanban' },
-    { key: 'gantt',  icon: '▦', label: 'Gantt'  },
+    { key: 'gantt', icon: '▦', label: 'Gantt' },
   ]
   return (
     <div className="pj-view-selector">
@@ -660,13 +938,25 @@ function ViewSelector({ current, onChange }: { current: string; onChange: (v: an
 type ViewMode = 'list' | 'kanban' | 'gantt'
 
 export default function Projects() {
-  const { projects, activeId, loading, criticalCount, loadProjects, setActive, createProject, deleteProject, updateProject } = useProjects()
+  const {
+    projects,
+    activeId,
+    loading,
+    criticalCount,
+    loadProjects,
+    setActive,
+    createProject,
+    deleteProject,
+    updateProject,
+  } = useProjects()
   const activeProject = useActiveProject()
   const clients = useMaestro(s => s.clients)
   const [showCreate, setShowCreate] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
 
-  useEffect(() => { loadProjects() }, [])
+  useEffect(() => {
+    loadProjects()
+  }, [])
 
   const handleDelete = async (id: string) => {
     await deleteProject(id)
@@ -682,11 +972,16 @@ export default function Projects() {
         <div className="pj-view-toolbar">
           <h2 className="pj-view-title">Proyectos</h2>
           <ViewSelector current={viewMode} onChange={setViewMode} />
-          <button className="project-add-btn" onClick={() => setShowCreate(true)}>+ Nuevo</button>
+          <button className="project-add-btn" onClick={() => setShowCreate(true)}>
+            + Nuevo
+          </button>
         </div>
         <ProjectsKanban
           projects={projects}
-          onSelect={id => { setActive(id); setViewMode('list') }}
+          onSelect={id => {
+            setActive(id)
+            setViewMode('list')
+          }}
           onStatusChange={handleKanbanStatusChange}
         />
         {showCreate && (
@@ -706,11 +1001,16 @@ export default function Projects() {
         <div className="pj-view-toolbar">
           <h2 className="pj-view-title">Proyectos</h2>
           <ViewSelector current={viewMode} onChange={setViewMode} />
-          <button className="project-add-btn" onClick={() => setShowCreate(true)}>+ Nuevo</button>
+          <button className="project-add-btn" onClick={() => setShowCreate(true)}>
+            + Nuevo
+          </button>
         </div>
         <ProjectsGantt
           projects={projects}
-          onSelect={id => { setActive(id); setViewMode('list') }}
+          onSelect={id => {
+            setActive(id)
+            setViewMode('list')
+          }}
         />
         {showCreate && (
           <CreateModal
@@ -731,11 +1031,17 @@ export default function Projects() {
           <div>
             <h2>Proyectos</h2>
             {criticalCount > 0 && (
-              <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>{criticalCount} crítico{criticalCount > 1 ? 's' : ''}</span>
+              <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>
+                {criticalCount} crítico{criticalCount > 1 ? 's' : ''}
+              </span>
             )}
           </div>
           <ViewSelector current={viewMode} onChange={setViewMode} />
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowCreate(true)}
+          >
             + Nuevo
           </button>
         </div>
@@ -769,15 +1075,29 @@ export default function Projects() {
                     style={{ width: `${Math.min(100, p.progress_pct)}%` }}
                   />
                 </div>
-                <div style={{ marginTop: '0.4rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#94a3b8' }}>
+                <div
+                  style={{
+                    marginTop: '0.4rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '0.7rem',
+                    color: '#94a3b8',
+                  }}
+                >
                   <span>Gasto: {fmtCLP(p.gasto_real)}</span>
-                  <span>Saldo: <span className={p.saldo < 0 ? 'text-danger' : ''}>{fmtCLP(p.saldo)}</span></span>
+                  <span>
+                    Saldo:{' '}
+                    <span className={p.saldo < 0 ? 'text-danger' : ''}>{fmtCLP(p.saldo)}</span>
+                  </span>
                 </div>
                 {p.budget > 0 && (
                   <div className="progress-bar-wrap" style={{ marginTop: '0.25rem' }}>
                     <div
                       className={`progress-bar-fill ${p.gasto_real > p.budget ? 'over-budget' : ''}`}
-                      style={{ width: `${pctGasto}%`, background: p.gasto_real > p.budget ? '#ef4444' : '#10b981' }}
+                      style={{
+                        width: `${pctGasto}%`,
+                        background: p.gasto_real > p.budget ? '#ef4444' : '#10b981',
+                      }}
                     />
                   </div>
                 )}
@@ -788,18 +1108,24 @@ export default function Projects() {
       </div>
 
       {/* ── Right Panel ── */}
-      {activeProject
-        ? <ProjectDetail key={activeProject.id} project={activeProject} onDelete={handleDelete} />
-        : (
-          <div className="project-detail-panel project-detail-empty">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M3 9h18M9 21V9" />
-            </svg>
-            <p>Selecciona un proyecto para ver el detalle</p>
-          </div>
-        )
-      }
+      {activeProject ? (
+        <ProjectDetail key={activeProject.id} project={activeProject} onDelete={handleDelete} />
+      ) : (
+        <div className="project-detail-panel project-detail-empty">
+          <svg
+            width="64"
+            height="64"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M3 9h18M9 21V9" />
+          </svg>
+          <p>Selecciona un proyecto para ver el detalle</p>
+        </div>
+      )}
 
       {/* ── Create Modal ── */}
       {showCreate && (

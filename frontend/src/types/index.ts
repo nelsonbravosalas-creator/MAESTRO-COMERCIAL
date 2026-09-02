@@ -5,7 +5,7 @@
 
 // ── Enums ─────────────────────────────────────────────────────
 export type UserRole = 'admin' | 'manager' | 'user'
-export type CategoryId = 'mo' | 'log' | 'mat' | 'rep' | 'ins'
+export type CategoryId = 'mo' | 'log' | 'mat' | 'rep' | 'ins' | 'mec' | 'ele'
 export type QuoteStatus =
   'Borrador' | 'Emitida' | 'Enviada' | 'Perdida' | 'Adjudicada' | 'Anulada' | 'Cerrada'
 export type OperState = 'Pendiente de ejecución' | 'En ejecución' | 'Terminada'

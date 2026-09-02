@@ -19,6 +19,7 @@ import { createAuthRouter } from './api/auth'
 import { createAdminRouter } from './api/admin'
 import { createConfigRouter } from './api/config'
 import { createCatalogRouter } from './api/catalog'
+import { createElectricalCatalogRouter } from './api/electrical-catalog'
 import { createClientsRouter } from './api/clients'
 import { createQuotationsRouter } from './api/quotations'
 import { createProjectsRouter } from './api/projects'
@@ -98,6 +99,7 @@ app.use('/api/auth', createAuthRouter(pool))
 app.use('/api/admin', createAdminRouter(pool))
 app.use('/api/config', createConfigRouter(pool))
 app.use('/api/catalog', createCatalogRouter(pool))
+app.use('/api/electrical-catalog', createElectricalCatalogRouter(pool))
 app.use('/api/clients', createClientsRouter(pool))
 app.use('/api/quotations', createQuotationsRouter(pool))
 app.use('/api/projects', createProjectsRouter(pool))

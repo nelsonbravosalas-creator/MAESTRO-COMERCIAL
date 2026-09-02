@@ -68,7 +68,7 @@ export const fmtDate = (d: string) =>
     month: '2-digit',
     year: 'numeric',
   })
-const IMPORT_CATEGORY_IDS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
+const IMPORT_CATEGORY_IDS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele']
 
 type ImportPreview = {
   fileName: string
@@ -79,7 +79,15 @@ type ImportPreview = {
 }
 
 const buildImportPreview = (payload: any, fileName: string): ImportPreview => {
-  const counts: Record<CategoryId, number> = { mo: 0, log: 0, mat: 0, rep: 0, ins: 0 }
+  const counts: Record<CategoryId, number> = {
+    mo: 0,
+    log: 0,
+    mat: 0,
+    rep: 0,
+    ins: 0,
+    mec: 0,
+    ele: 0,
+  }
   const margins = new Map<string, number>()
   for (const category of payload?.categorias ?? []) {
     margins.set(category.category_id, Number(category.margin_pct) || 30)
@@ -1695,7 +1703,7 @@ export function TabCosteo() {
 
   const isLocked = LOCKED_STATUSES.includes(q.status) && role !== 'admin'
 
-  const cats: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
+  const cats: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele']
   const totals = calcTotals(q)
   const ivaRate = q.iva / 100
   const conIva = totals.venta * (1 + ivaRate)

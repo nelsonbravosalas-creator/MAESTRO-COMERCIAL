@@ -57,6 +57,8 @@ export const DEFAULT_CATALOGS: CatalogsUI = {
     { desc: 'Canalización EMT Galvanizada', unidad: 'Tir', price: 12500 },
     { desc: 'Aislación Térmica Armaflex', unidad: 'Tir', price: 8500 },
   ],
+  mec: [],
+  ele: [],
 }
 
 const DEFAULT_CATEGORIES: CostCategory[] = [
@@ -110,6 +112,26 @@ const DEFAULT_CATEGORIES: CostCategory[] = [
     note: '',
     collapsed: true,
   },
+  {
+    id: 'mec',
+    label: 'Materiales Mecánico',
+    margin: 30,
+    color: '#7c2d12',
+    showDetails: false,
+    showValues: false,
+    note: '',
+    collapsed: true,
+  },
+  {
+    id: 'ele',
+    label: 'Materiales Eléctricos',
+    margin: 30,
+    color: '#a16207',
+    showDetails: false,
+    showValues: false,
+    note: '',
+    collapsed: true,
+  },
 ]
 
 const DEFAULT_ITEMS: Record<CategoryId, CostItem[]> = {
@@ -118,6 +140,8 @@ const DEFAULT_ITEMS: Record<CategoryId, CostItem[]> = {
   mat: [{ id: 'i3', desc: '', unidad: 'Und', cant: 0, unit: 0 }],
   rep: [{ id: 'i4', desc: '', unidad: 'Uni', cant: 0, unit: 0 }],
   ins: [{ id: 'i5', desc: '', unidad: 'Kg', cant: 0, unit: 0 }],
+  mec: [{ id: 'i6', desc: '', unidad: 'Und', cant: 0, unit: 0 }],
+  ele: [{ id: 'i7', desc: '', unidad: 'Und', cant: 0, unit: 0 }],
 }
 
 const DEFAULT_SCOPE = [
@@ -442,12 +466,17 @@ export const useMaestro = create<MaestroState>()(
       // ── API: hidrata el store desde el backend ────────────────
       loadData: async () => {
         try {
-          const [catalogsFromAPI, clients, serverQuotations, config] = await Promise.all([
-            api.getCatalog(),
-            api.getClients(),
-            api.getQuotations(),
-            api.getConfig(),
-          ])
+          const [catalogsFromAPI, electricalItems, clients, serverQuotations, config] =
+            await Promise.all([
+              api.getCatalog(),
+              api.getElectricalCatalog(),
+              api.getClients(),
+              api.getQuotations(),
+              api.getConfig(),
+            ])
+          // "Materiales Eléctricos" vive en su propia tabla — no viene en
+          // GET /api/catalog, se mergea acá al mismo shape que el resto.
+          catalogsFromAPI.ele = electricalItems
           set(s => {
             // El endpoint GET /api/quotations es liviano (sin line_items ni terms).
             // Mergeamos preservando los datos locales ya cargados en el store.
@@ -585,6 +614,8 @@ export const useMaestro = create<MaestroState>()(
             mat: DEFAULT_ITEMS.mat.map(i => ({ ...i, id: `mat-${Date.now()}` })),
             rep: DEFAULT_ITEMS.rep.map(i => ({ ...i, id: `rep-${Date.now()}` })),
             ins: DEFAULT_ITEMS.ins.map(i => ({ ...i, id: `ins-${Date.now()}` })),
+            mec: DEFAULT_ITEMS.mec.map(i => ({ ...i, id: `mec-${Date.now()}` })),
+            ele: DEFAULT_ITEMS.ele.map(i => ({ ...i, id: `ele-${Date.now()}` })),
           },
           scope: isMtc ? [...DEFAULT_SCOPE_MAINTENANCE] : [...DEFAULT_SCOPE],
           exclusions: isMtc ? [...DEFAULT_EXCLUSIONS_MAINTENANCE] : [...DEFAULT_EXCLUSIONS],
@@ -1012,26 +1043,38 @@ export const useMaestro = create<MaestroState>()(
           list.splice(idx, 1)
           return { catalogs: { ...s.catalogs, [catId]: list }, catalogDirty: true }
         })
-        if (item?.id && !item.id.startsWith('tmp-')) api.deleteCatalogItem(item.id).catch(() => {})
+        if (item?.id && !item.id.startsWith('tmp-')) {
+          // "Materiales Eléctricos" vive en su propia tabla — misma acción,
+          // otro endpoint (ver comentario en saveCatalogs).
+          const del = catId === 'ele' ? api.deleteElectricalItem : api.deleteCatalogItem
+          del(item.id).catch(() => {})
+        }
       },
 
       saveCatalogs: async () => {
         const { catalogs } = get()
-        const CATS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
+        const CATS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele']
         for (const catId of CATS) {
           const items = catalogs[catId]
           for (let idx = 0; idx < items.length; idx++) {
             const item = items[idx]
             if (!item.id || item.id.startsWith('tmp-')) {
-              // Ítem nuevo — crear en backend y reemplazar ID temporal
+              // Ítem nuevo — crear en backend y reemplazar ID temporal.
+              // "Materiales Eléctricos" (catId='ele') se guarda en su propia
+              // tabla vía un endpoint distinto, sin category_id.
               const tempId = item.id
-              const saved = await api.createCatalogItem(catId, item, idx)
+              const saved =
+                catId === 'ele'
+                  ? await api.createElectricalItem(item, idx)
+                  : await api.createCatalogItem(catId, item, idx)
               set(s => ({
                 catalogs: {
                   ...s.catalogs,
                   [catId]: s.catalogs[catId].map(i => (i.id === tempId ? saved : i)),
                 },
               }))
+            } else if (catId === 'ele') {
+              await api.updateElectricalItem(item.id, item)
             } else {
               await api.updateCatalogItem(item.id, catId, item)
             }

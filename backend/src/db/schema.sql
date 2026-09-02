@@ -17,7 +17,7 @@ CREATE TYPE payment_method   AS ENUM ('transferencia', 'cheque', 'efectivo', 'ta
 CREATE TYPE sii_doc_type     AS ENUM ('factura_afecta', 'factura_exenta', 'nota_credito');
 CREATE TYPE financing_type   AS ENUM ('factoring', 'confirming');
 CREATE TYPE financing_status AS ENUM ('cedida', 'anticipada', 'liquidada', 'rechazada');
-CREATE TYPE cost_category_id AS ENUM ('mo', 'log', 'mat', 'rep', 'ins');
+CREATE TYPE cost_category_id AS ENUM ('mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele');
 CREATE TYPE term_type        AS ENUM ('scope', 'exclusion', 'commercial');
 CREATE TYPE audit_action     AS ENUM ('INSERT', 'UPDATE', 'DELETE');
 CREATE TYPE quotation_kind   AS ENUM ('project', 'maintenance');
@@ -119,6 +119,26 @@ CREATE INDEX ix_catalog_category ON catalog_items (category_id) WHERE is_active 
 
 CREATE TRIGGER trg_catalog_items_updated_at
   BEFORE UPDATE ON catalog_items FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+-- "Materiales Eléctricos" (category_id='ele' en cotizaciones): catálogo de
+-- precios en tabla propia, a pedido — sin columna category_id porque es
+-- implícitamente eléctrica completa (ver migración 0019).
+CREATE TABLE electrical_catalog_items (
+  id          UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  description TEXT          NOT NULL,
+  unit_name   TEXT          NOT NULL,
+  unit_price  NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (unit_price >= 0),
+  is_active   BOOLEAN       NOT NULL DEFAULT true,
+  sort_order  SMALLINT      NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX uix_electrical_catalog_item ON electrical_catalog_items (lower(description));
+CREATE INDEX ix_electrical_catalog_active ON electrical_catalog_items (is_active) WHERE is_active = true;
+
+CREATE TRIGGER trg_electrical_catalog_items_updated_at
+  BEFORE UPDATE ON electrical_catalog_items FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
 -- ============================================================
 -- CLIENTES Y CONTACTOS

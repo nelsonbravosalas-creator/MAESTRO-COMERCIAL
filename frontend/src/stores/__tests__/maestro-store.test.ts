@@ -52,7 +52,7 @@ function makeItem(overrides: Partial<CostItem> = {}): CostItem {
 }
 
 function emptyItems(): Record<CategoryId, CostItem[]> {
-  return { mo: [], log: [], mat: [], rep: [], ins: [] }
+  return { mo: [], log: [], mat: [], rep: [], ins: [], mec: [], ele: [] }
 }
 
 function makeQuotation(overrides: Partial<MasterQuotation> = {}): MasterQuotation {

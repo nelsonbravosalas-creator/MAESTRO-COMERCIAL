@@ -22,11 +22,11 @@ import {
 // ── Constants ────────────────────────────────────────────────────
 
 const AGING_TRAMOS = [
-  { key: 'al_dia',        label: 'Al día',            color: '#059669' },
-  { key: 'vencida_1_30',  label: 'Vencida 1–30 días', color: '#d97706' },
+  { key: 'al_dia', label: 'Al día', color: '#059669' },
+  { key: 'vencida_1_30', label: 'Vencida 1–30 días', color: '#d97706' },
   { key: 'vencida_31_60', label: 'Vencida 31–60 días', color: '#ea580c' },
   { key: 'vencida_61_90', label: 'Vencida 61–90 días', color: '#dc2626' },
-  { key: 'vencida_90_mas',label: 'Vencida +90 días',  color: '#7f1d1d' },
+  { key: 'vencida_90_mas', label: 'Vencida +90 días', color: '#7f1d1d' },
 ]
 
 const STATUS_CFG = [
@@ -44,6 +44,8 @@ const CAT_COLORS: Record<string, string> = {
   mat: '#059669',
   rep: '#7c3aed',
   ins: '#d97706',
+  mec: '#7c2d12',
+  ele: '#a16207',
 }
 const CAT_LABELS: Record<string, string> = {
   mo: 'M. de Obra',
@@ -51,6 +53,8 @@ const CAT_LABELS: Record<string, string> = {
   mat: 'Materiales',
   rep: 'Repuestos',
   ins: 'Insumos',
+  mec: 'Mat. Mecánico',
+  ele: 'Mat. Eléctricos',
 }
 
 const TOOLTIP_STYLE: React.CSSProperties = {
@@ -123,10 +127,23 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchKPIs().finally(() => setLoading(false))
-    api.getCartera().then(d => setCartera(d.cartera)).catch(() => {}).finally(() => setLoadingCartera(false))
-    api.getCycleTimes().then(d => setCycleTimes(d.cycle_times)).catch(() => {})
-    api.getAging().then(d => setAging(d.aging)).catch(() => {})
-    api.getMarginAnalysis().then(d => setMarginAnalysis(d.analysis)).catch(() => {})
+    api
+      .getCartera()
+      .then(d => setCartera(d.cartera))
+      .catch(() => {})
+      .finally(() => setLoadingCartera(false))
+    api
+      .getCycleTimes()
+      .then(d => setCycleTimes(d.cycle_times))
+      .catch(() => {})
+    api
+      .getAging()
+      .then(d => setAging(d.aging))
+      .catch(() => {})
+    api
+      .getMarginAnalysis()
+      .then(d => setMarginAnalysis(d.analysis))
+      .catch(() => {})
   }, [fetchKPIs])
 
   const handleForceSync = useCallback(async () => {
@@ -233,10 +250,18 @@ export const Dashboard: React.FC = () => {
 
   // Category distribution
   const catData = useMemo(() => {
-    const cats: Record<string, number> = { mo: 0, log: 0, mat: 0, rep: 0, ins: 0 }
+    const cats: Record<string, number> = {
+      mo: 0,
+      log: 0,
+      mat: 0,
+      rep: 0,
+      ins: 0,
+      mec: 0,
+      ele: 0,
+    }
     activeQuotes.forEach(q => {
       if (!q.items || !q.categories?.length) return
-      ;(['mo', 'log', 'mat', 'rep', 'ins'] as CategoryId[]).forEach(cat => {
+      ;(['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele'] as CategoryId[]).forEach(cat => {
         cats[cat] += calcCat(cat, q.categories, q.items).venta
       })
     })
@@ -320,10 +345,34 @@ export const Dashboard: React.FC = () => {
 
       {/* Embudo de cartera */}
       <div className="kpi-grid kpi-grid--4" style={{ marginBottom: 0 }}>
-        <KpiCard label="Adjudicado Total" value={cartera ? fmtCLP.format(cartera.adjudicado_total) : '—'} sub="contratos ganados" loading={loadingCartera} accent="#059669" />
-        <KpiCard label="Por Facturar" value={cartera ? fmtCLP.format(cartera.pendiente_facturar) : '—'} sub="adjudicado sin factura" loading={loadingCartera} accent="#0891b2" />
-        <KpiCard label="Por Cobrar" value={cartera ? fmtCLP.format(cartera.facturado_por_cobrar) : '—'} sub="facturado pendiente pago" loading={loadingCartera} accent="#d97706" />
-        <KpiCard label="Cobrado este Mes" value={cartera ? fmtCLP.format(cartera.cobrado_mes) : '—'} sub="ingresos confirmados" loading={loadingCartera} accent="#7c3aed" />
+        <KpiCard
+          label="Adjudicado Total"
+          value={cartera ? fmtCLP.format(cartera.adjudicado_total) : '—'}
+          sub="contratos ganados"
+          loading={loadingCartera}
+          accent="#059669"
+        />
+        <KpiCard
+          label="Por Facturar"
+          value={cartera ? fmtCLP.format(cartera.pendiente_facturar) : '—'}
+          sub="adjudicado sin factura"
+          loading={loadingCartera}
+          accent="#0891b2"
+        />
+        <KpiCard
+          label="Por Cobrar"
+          value={cartera ? fmtCLP.format(cartera.facturado_por_cobrar) : '—'}
+          sub="facturado pendiente pago"
+          loading={loadingCartera}
+          accent="#d97706"
+        />
+        <KpiCard
+          label="Cobrado este Mes"
+          value={cartera ? fmtCLP.format(cartera.cobrado_mes) : '—'}
+          sub="ingresos confirmados"
+          loading={loadingCartera}
+          accent="#7c3aed"
+        />
       </div>
 
       {/* Ciclo comercial */}
@@ -336,7 +385,15 @@ export const Dashboard: React.FC = () => {
             { label: 'A primera factura', value: cycleTimes?.avg_awarded_to_invoice, unit: 'días' },
             { label: 'A cobro', value: cycleTimes?.avg_invoice_to_paid, unit: 'días' },
           ].map(({ label, value, unit }) => (
-            <div key={label} style={{ textAlign: 'center', padding: '16px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+            <div
+              key={label}
+              style={{
+                textAlign: 'center',
+                padding: '16px 8px',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: 8,
+              }}
+            >
               <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#e2e8f0' }}>
                 {value != null ? value : '—'}
               </div>
@@ -560,22 +617,28 @@ export const Dashboard: React.FC = () => {
           <div className="chart-empty">Sin facturas pendientes</div>
         ) : (
           <table className="recent-table">
-            <thead><tr>
-              <th>Tramo</th>
-              <th style={{ textAlign: 'right' }}>Facturas</th>
-              <th style={{ textAlign: 'right' }}>Monto total</th>
-              <th style={{ textAlign: 'right' }}>Pendiente cobro</th>
-            </tr></thead>
+            <thead>
+              <tr>
+                <th>Tramo</th>
+                <th style={{ textAlign: 'right' }}>Facturas</th>
+                <th style={{ textAlign: 'right' }}>Monto total</th>
+                <th style={{ textAlign: 'right' }}>Pendiente cobro</th>
+              </tr>
+            </thead>
             <tbody>
               {AGING_TRAMOS.map(tramo => {
                 const row = aging.find(r => r.tramo === tramo.key)
                 if (!row) return null
                 return (
                   <tr key={tramo.key}>
-                    <td><span style={{ color: tramo.color, fontWeight: 600 }}>{tramo.label}</span></td>
+                    <td>
+                      <span style={{ color: tramo.color, fontWeight: 600 }}>{tramo.label}</span>
+                    </td>
                     <td style={{ textAlign: 'right' }}>{row.cantidad}</td>
                     <td style={{ textAlign: 'right' }}>{fmtCLP.format(row.monto_total)}</td>
-                    <td style={{ textAlign: 'right', color: tramo.color, fontWeight: 600 }}>{fmtCLP.format(row.monto_pendiente)}</td>
+                    <td style={{ textAlign: 'right', color: tramo.color, fontWeight: 600 }}>
+                      {fmtCLP.format(row.monto_pendiente)}
+                    </td>
                   </tr>
                 )
               })}
@@ -589,12 +652,15 @@ export const Dashboard: React.FC = () => {
         <div className="dashboard-card chart-card" style={{ marginBottom: 24 }}>
           <h3 className="chart-title">Rentabilidad Real vs. Presupuestada — Proyectos Cerrados</h3>
           <table className="recent-table">
-            <thead><tr>
-              <th>Correlativo</th><th>Cliente</th>
-              <th style={{ textAlign: 'right' }}>Margen presup.</th>
-              <th style={{ textAlign: 'right' }}>Margen real</th>
-              <th style={{ textAlign: 'right' }}>Desvío</th>
-            </tr></thead>
+            <thead>
+              <tr>
+                <th>Correlativo</th>
+                <th>Cliente</th>
+                <th style={{ textAlign: 'right' }}>Margen presup.</th>
+                <th style={{ textAlign: 'right' }}>Margen real</th>
+                <th style={{ textAlign: 'right' }}>Desvío</th>
+              </tr>
+            </thead>
             <tbody>
               {marginAnalysis.map(r => {
                 const desvio = r.margen_real_pct - r.margen_presupuestado_pct
@@ -603,10 +669,13 @@ export const Dashboard: React.FC = () => {
                   <tr key={r.id}>
                     <td className="cell-mono">{r.correlative}</td>
                     <td>{r.client_name}</td>
-                    <td style={{ textAlign: 'right' }}>{r.margen_presupuestado_pct?.toFixed(1)}%</td>
+                    <td style={{ textAlign: 'right' }}>
+                      {r.margen_presupuestado_pct?.toFixed(1)}%
+                    </td>
                     <td style={{ textAlign: 'right' }}>{r.margen_real_pct?.toFixed(1)}%</td>
                     <td style={{ textAlign: 'right', color: desvioColor, fontWeight: 700 }}>
-                      {desvio > 0 ? '+' : ''}{desvio?.toFixed(1)} pp
+                      {desvio > 0 ? '+' : ''}
+                      {desvio?.toFixed(1)} pp
                     </td>
                   </tr>
                 )

@@ -16,6 +16,14 @@ export const envSchema = z.object({
   FRONTEND_PUBLIC_URL: z.string().url().default('http://localhost:5173'),
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM: z.string().optional(),
+  // Alternativa a Resend sin dominio propio verificado: SMTP de una cuenta de
+  // correo existente (ver services/mailer.ts). SMTP_USER/SMTP_PASSWORD tienen
+  // prioridad sobre RESEND_API_KEY si ambos están presentes.
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional(),
+  SMTP_SECURE: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

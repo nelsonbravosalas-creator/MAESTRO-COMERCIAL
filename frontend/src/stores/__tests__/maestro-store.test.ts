@@ -21,6 +21,10 @@ vi.mock('../../api/api', () => ({
     updateQuotation: vi.fn(),
     duplicateQuotation: vi.fn(),
     getQuotations: vi.fn().mockResolvedValue([]),
+    getQuotation: vi.fn(),
+    getCatalog: vi.fn().mockResolvedValue({}),
+    getClients: vi.fn().mockResolvedValue([]),
+    getConfig: vi.fn().mockResolvedValue({ uf_value: '39500', iva_pct: '19', dolar_value: '950' }),
   },
 }))
 
@@ -266,5 +270,55 @@ describe('saveActive — no debe marcar "unsaved:false" si el backend rechaza el
 
     expect(useMaestro.getState().activeId).toBe('srv-2')
     expect(useMaestro.getState().unsaved).toBe(true)
+  })
+})
+
+// Regression test: reportado como "edito la cotización en el teléfono pero el
+// PC sigue sin ver los valores". GET /api/quotations es liviano (sin items ni
+// terms) — loadData() mergea preservando lo que ya está cacheado localmente.
+// El bug: el merge decidía si preservar por "¿tengo items en caché?", sin
+// mirar si esos items eran de una versión vieja. Un dispositivo que abrió la
+// cotización antes de que otro la editara quedaba con esa foto vieja para
+// siempre, porque el merge nunca la consideraba obsoleta.
+describe('loadData — no debe preservar items locales obsoletos', () => {
+  beforeEach(() => {
+    ;(api.getQuotations as any).mockReset()
+  })
+
+  it('descarta los items locales si el servidor tiene una versión más nueva', async () => {
+    const staleLocal = makeQuotation({
+      id: 'srv-1',
+      version: 1,
+      items: { ...emptyItems(), mo: [makeItem({ desc: 'Versión vieja (PC)' })] },
+    })
+    const serverLightweight = makeQuotation({
+      id: 'srv-1',
+      version: 2, // editada en otro dispositivo desde que este cacheó la v1
+      items: emptyItems(), // GET /api/quotations no trae items
+    })
+    ;(api.getQuotations as any).mockResolvedValue([serverLightweight])
+    useMaestro.setState({ quotations: [staleLocal] })
+
+    await useMaestro.getState().loadData()
+
+    const result = useMaestro.getState().quotations.find(q => q.id === 'srv-1')
+    expect(result?.version).toBe(2)
+    expect(result?.items.mo).toEqual([]) // no debe arrastrar el item viejo
+  })
+
+  it('preserva los items locales si son de la misma versión que el servidor (edición en curso)', async () => {
+    const localWithItems = makeQuotation({
+      id: 'srv-1',
+      version: 1,
+      items: { ...emptyItems(), mo: [makeItem({ desc: 'Edición local sin guardar' })] },
+    })
+    const serverLightweight = makeQuotation({ id: 'srv-1', version: 1, items: emptyItems() })
+    ;(api.getQuotations as any).mockResolvedValue([serverLightweight])
+    useMaestro.setState({ quotations: [localWithItems] })
+
+    await useMaestro.getState().loadData()
+
+    const result = useMaestro.getState().quotations.find(q => q.id === 'srv-1')
+    expect(result?.items.mo[0]?.desc).toBe('Edición local sin guardar')
   })
 })

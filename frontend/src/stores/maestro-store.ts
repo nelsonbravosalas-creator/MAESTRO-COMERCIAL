@@ -453,7 +453,14 @@ export const useMaestro = create<MaestroState>()(
             // Mergeamos preservando los datos locales ya cargados en el store.
             const mergedQuotations = serverQuotations.map(serverQ => {
               const localQ = s.quotations.find(lq => lq.id === serverQ.id)
-              if (localQ) {
+              // Si el servidor tiene una versión más nueva (guardada desde otro
+              // dispositivo), los items/terms locales están obsoletos y no hay que
+              // preservarlos — si no, un dispositivo que ya cacheó una versión vieja
+              // con items nunca vuelve a ver ediciones hechas en otro dispositivo
+              // (bug: cambios hechos en el teléfono no aparecían en el PC). Al caer
+              // a serverQ (liviano), loadQuote() hidrata el detalle completo cuando
+              // se abra esa cotización.
+              if (localQ && localQ.version >= serverQ.version) {
                 const hasLocalItems = Object.values(localQ.items).some(arr => arr.length > 0)
                 const hasLocalTerms =
                   localQ.scope.length > 0 ||

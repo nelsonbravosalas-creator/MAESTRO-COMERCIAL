@@ -30,8 +30,8 @@ invocaciones de función** (visible en la pestaña de Functions vs. Firewall).
    (la cadena de conexión actual quedó potencialmente expuesta en el
    historial de git de este mismo proyecto — ver el plan de críticos, C-05).
 3. Actualizar el secret en Vercel (todas las variables de entorno) y en
-   GitHub Actions (`PROD_DATABASE_URL` para `backup.yml` y
-   `cleanup-sessions.yml`).
+   GitHub Actions (`PROD_DATABASE_URL`, usado por `backup.yml`,
+   `cleanup-sessions.yml` y `ci.yml` → job `migrate-production`).
 
 ## A-07 (relacionado): un solo entrypoint de servidor
 

@@ -29,6 +29,14 @@ falta que Vercel/GitHub branch protection lo hagan obligatorio, lo cual
 requiere configuración en ambos dashboards). `scripts/smoke.sh` está escrito
 pero nunca se ejecutó contra un deploy real.
 
+**Migraciones: ya no bloqueado.** No requería ningún dashboard externo — el
+job `migrate-production` en `.github/workflows/ci.yml` corre
+`npm run migrate:up` contra producción en cada push a `master`, reusando el
+secret `PROD_DATABASE_URL` que ya existía para `backup.yml` /
+`cleanup-sessions.yml`. Detalle en `docs/MIGRACIONES.md#ci`. Lo que sigue
+bloqueado por dashboard en A-09 es el branch protection de GitHub/Vercel y
+correr `scripts/smoke.sh` contra un deploy real.
+
 ## A-14 — Pruebas contra PostgreSQL real
 
 **No implementado como suite separada.** Lo que sí existe:

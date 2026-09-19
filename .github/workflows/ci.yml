@@ -152,3 +152,54 @@ jobs:
           JWT_SECRET: ci-integration-secret-at-least-32-characters-long
           ALLOWED_ORIGINS: http://localhost:5173
         run: npm test
+
+  migrate-production:
+    # A-09 (docs/DESPLIEGUE.md): esto reemplaza el paso manual "correr
+    # `npm run migrate:up` con el DATABASE_URL de producción antes de mergear"
+    # — nadie lo hacía y la producción quedó 9 migraciones atrasada durante
+    # casi un mes hasta que un 500 real ("column loss_reason does not exist")
+    # lo delató. Corre sin `needs` (en paralelo al resto de los jobs) a
+    # propósito: Vercel despliega apenas llega el push, sin esperar a que CI
+    # termine (ver "Flujo actual" en DESPLIEGUE.md), así que encadenar este
+    # job detrás de `quality`/`integration` solo ensancharía la ventana en la
+    # que el código nuevo corre contra el esquema viejo. Es seguro igual
+    # porque cada migración corre en su propia transacción (default de
+    # node-pg-migrate) y el equipo sigue la disciplina expand→migrate→contract
+    # (docs/MIGRACIONES.md): el código de un push nunca depende de una
+    # columna/tabla que ese mismo push recién esté creando.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: migrate-production
+      cancel-in-progress: false
+    steps:
+      # Va antes del checkout y del npm ci: si falta el secret no tiene sentido
+      # gastar la instalación. El valor viaja por `env` y NO interpolado dentro
+      # del `run` — un `${{ secrets.X }}` incrustado en el script se expande
+      # como texto antes de que bash lo lea, así que una contraseña con
+      # comillas o `$` rompe el script (o peor, se ejecuta).
+      - name: Verificar secret requerido
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$PROD_DATABASE_URL" ]; then
+            echo "::error::Falta el secret PROD_DATABASE_URL (Settings → Secrets and variables → Actions). Las migraciones NO se aplicaron contra producción — correrlas a mano mientras se configura."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - working-directory: backend
+        run: npm ci
+
+      - name: Aplicar migraciones pendientes contra producción
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: npm run migrate:up

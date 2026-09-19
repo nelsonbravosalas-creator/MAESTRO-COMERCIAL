@@ -52,7 +52,8 @@ deployment) → Runtime Logs**, no en la respuesta HTTP.
 ## Flujo actual
 
 ```
-push a master → CI corre (quality, secrets, integration, vercel-function)
+push a master → CI corre (quality, secrets, integration, vercel-function,
+                           migrate-production)
               → Vercel despliega EN PARALELO, no espera a que CI termine
 ```
 
@@ -71,11 +72,13 @@ a que CI pase. Un PR puede fusionarse con CI en rojo (si alguien hace
    PR. Con eso, nada llega a `master` sin que CI haya pasado — y como Vercel
    despliega `master`, el gate queda cerrado igual, sin depender de
    configuración especial de Vercel.
-3. **Migraciones antes del deploy**: hoy no hay ningún paso automático que
-   corra `npm run migrate:up` contra producción antes de que el código nuevo
-   la use. Mientras no se resuelva, la disciplina es manual: correr
-   `npm run migrate:up` con el `DATABASE_URL` de producción **antes** de
-   mergear cualquier PR que dependa de un cambio de esquema.
+3. ~~**Migraciones antes del deploy**~~ — **resuelto**: el job
+   `migrate-production` de `.github/workflows/ci.yml` corre
+   `npm run migrate:up` contra producción (`secrets.PROD_DATABASE_URL`, el
+   mismo secret que ya usan `backup.yml` y `cleanup-sessions.yml`) en cada
+   push a `master`. Detalle y razones de diseño en `docs/MIGRACIONES.md#ci`.
+   **El job falla si el secret no está configurado** — es deliberado: un rojo
+   visible es mejor que volver en silencio al paso manual que nadie hacía.
 
 ## Smoke test post-deploy
 
@@ -113,8 +116,16 @@ localmente, no en un simulacro real contra producción.
 
 ## Pendiente para cumplir A-09 completo
 
-- [ ] Branch protection en GitHub exigiendo los 4 checks de CI.
-- [ ] Migraciones automatizadas como paso previo al deploy (no manual).
+- [ ] Branch protection en GitHub exigiendo los checks de CI. Los nombres
+      exactos hoy son `quality (backend)`, `quality (frontend)`,
+      `vercel-function`, `secrets`, `commitlint` e `integration` — son seis,
+      no cuatro como decía esta lista antes de que se agregaran
+      `vercel-function` y `commitlint`. **No incluir `migrate-production`**:
+      solo corre en push, así que como check requerido de PR nunca se
+      completaría y bloquearía todo merge.
+- [x] Migraciones automatizadas como paso previo al deploy (no manual) — job
+      `migrate-production` en `.github/workflows/ci.yml`, ver
+      `docs/MIGRACIONES.md#ci`.
 - [ ] Smoke test disparado automáticamente post-deploy (webhook de Vercel → GitHub Action).
 - [ ] Un rollback simulado end-to-end, con tiempo medido (< 5 min según el plan).
 - [ ] `Deployment` de Sentry marcado con el SHA del commit como `release` (el código ya soporta `VERCEL_GIT_COMMIT_SHA`, falta confirmarlo en un deploy real).

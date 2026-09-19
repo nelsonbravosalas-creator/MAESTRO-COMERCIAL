@@ -52,6 +52,20 @@ jobs:
           pg_dump --format=custom --no-owner --no-privileges \
             --dbname="$PROD_DATABASE_URL" --file="bravocrm-$STAMP.dump"
 
+      # Un pg_dump truncado (conexión cortada a mitad de camino) deja un archivo
+      # que se sube igual y se contabiliza como el respaldo del día, pero no se
+      # puede restaurar. `pg_restore --list` lee el índice del archivo completo
+      # sin escribir en ninguna base de datos: es la verificación más barata que
+      # distingue "hay un archivo" de "hay un respaldo".
+      - name: Verificar que el dump es legible
+        run: |
+          set -euo pipefail
+          if ! pg_restore --list "$DUMP_FILE" > /dev/null; then
+            echo "::error::El dump $DUMP_FILE no es legible por pg_restore — NO se sube."
+            exit 1
+          fi
+          echo "Dump legible por pg_restore."
+
       - name: Subir a almacenamiento externo (fuera de Neon)
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
@@ -66,21 +80,155 @@ jobs:
           echo "$CHECKSUM  $DUMP_FILE" > "$DUMP_FILE.sha256"
           aws s3 cp "$DUMP_FILE.sha256" "s3://${{ secrets.BACKUP_S3_BUCKET }}/daily/$DUMP_FILE.sha256" \
             ${AWS_ENDPOINT_URL:+--endpoint-url "$AWS_ENDPOINT_URL"}
+          # Resumen visible en la pestaña Actions sin abrir el log completo. El
+          # tamaño es la línea base que pide el KPI: una caída brusca respecto
+          # de los días anteriores es señal de que algo se truncó.
+          {
+            echo "### Backup $DUMP_FILE"
+            echo ""
+            echo "- Tamaño: $SIZE"
+            echo "- sha256: $CHECKSUM"
+          } >> "$GITHUB_STEP_SUMMARY"
 
+      # La retención dejó de ser un placeholder. El criterio que justificaba
+      # dejarlo vacío sigue vigente — borrar de más es peor que no borrar — así
+      # que la poda está acotada por todos lados:
+      #
+      #  - Solo mira claves que calcen EXACTO con el patrón que genera este
+      #    mismo workflow (bravocrm-AAAAMMDD-HHMMSS.dump). Cualquier otro
+      #    objeto del bucket es invisible para este paso.
+      #  - Nunca borra si quedan tantos respaldos como el tope o menos.
+      #  - Ordena por nombre, no por fecha de modificación: el timestamp está en
+      #    la clave, así que el orden lexicográfico ES el cronológico y no
+      #    depende de que una re-subida altere el LastModified.
+      #  - set -euo pipefail: si el listado falla, el paso muere ahí en vez de
+      #    seguir con una lista vacía y "podar" a ciegas.
+      #  - Con la variable de repo BACKUP_RETENTION_DRY_RUN=true solo imprime lo
+      #    que borraría. Sirve para mirar la primera poda real antes de soltarla.
+      #    No es el default: un dry-run permanente es otro placeholder.
       - name: Aplicar retención (7 diarios + 4 semanales + 12 mensuales)
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.BACKUP_S3_ENDPOINT_URL }}
+          BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+          DRY_RUN: ${{ vars.BACKUP_RETENTION_DRY_RUN }}
         run: |
-          echo "TODO: implementar poda de retención (ver docs/DR_RUNBOOK.md)."
-          echo "Placeholder a propósito: hacerlo mal (borrar de más) es peor que no hacerlo."
+          set -euo pipefail
+          ENDPOINT_ARG=""
+          if [ -n "${AWS_ENDPOINT_URL:-}" ]; then
+            ENDPOINT_ARG="--endpoint-url $AWS_ENDPOINT_URL"
+          fi
+
+          # Promoción: la copia semanal y la mensual salen del dump de hoy con
+          # copia server-side, no se vuelve a subir nada. date -u +%u: 7 = domingo.
+          promover() {
+            local destino="$1"
+            aws s3 cp "s3://$BUCKET/daily/$DUMP_FILE" "s3://$BUCKET/$destino/$DUMP_FILE" $ENDPOINT_ARG
+            aws s3 cp "s3://$BUCKET/daily/$DUMP_FILE.sha256" "s3://$BUCKET/$destino/$DUMP_FILE.sha256" $ENDPOINT_ARG
+            echo "Promovido a $destino/: $DUMP_FILE"
+          }
+          if [ "$(date -u +%u)" = "7" ]; then promover weekly; fi
+          if [ "$(date -u +%d)" = "01" ]; then promover monthly; fi
+
+          podar() {
+            local prefijo="$1" conservar="$2" claves total sobran
+            claves=$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "$prefijo/" \
+                       --query 'Contents[].Key' --output text $ENDPOINT_ARG \
+                     | tr '\t' '\n' \
+                     | grep -E "^${prefijo}/bravocrm-[0-9]{8}-[0-9]{6}[.]dump$" \
+                     | sort || true)
+            total=$(printf '%s' "$claves" | grep -c . || true)
+            if [ "$total" -le "$conservar" ]; then
+              echo "$prefijo/: $total respaldo(s), se conservan todos (tope $conservar)."
+              return 0
+            fi
+            sobran=$((total - conservar))
+            echo "$prefijo/: $total respaldo(s), se eliminan los $sobran más antiguos."
+            printf '%s\n' "$claves" | head -n "$sobran" | while read -r clave; do
+              [ -n "$clave" ] || continue
+              if [ "${DRY_RUN:-}" = "true" ]; then
+                echo "  [dry-run] borraría $clave (+ .sha256)"
+              else
+                aws s3api delete-object --bucket "$BUCKET" --key "$clave" $ENDPOINT_ARG
+                aws s3api delete-object --bucket "$BUCKET" --key "$clave.sha256" $ENDPOINT_ARG || true
+                echo "  borrado $clave"
+              fi
+            done
+          }
+
+          podar daily 7
+          podar weekly 4
+          podar monthly 12
 
   alert-on-failure:
     needs: backup
     if: failure()
     runs-on: ubuntu-latest
+    # Lo mínimo para abrir o comentar el issue de alerta. Sin esto, el
+    # GITHUB_TOKEN por defecto puede venir de solo lectura según cómo esté
+    # configurado el repo, y el aviso fallaría justo cuando hace falta.
+    permissions:
+      contents: read
+      issues: write
     steps:
-      - run: |
-          echo "::error::El backup diario falló. Configurar una notificación real \
-          (Slack/email/PagerDuty) en este job — hoy solo queda registrado en \
-          la pestaña Actions de GitHub. Ver AC-12.7 en el plan de remediación."
+      # Antes esto era un `echo ::error::`: quedaba en el log de Actions, que
+      # nadie mira si no lo va a buscar. Un respaldo que falla en silencio es
+      # exactamente el escenario que este workflow existe para evitar.
+      #
+      # El issue de GitHub es el canal por defecto porque no necesita ningún
+      # secret nuevo (usa GITHUB_TOKEN), llega por la notificación normal del
+      # repo y deja rastro con fecha. Si ya hay uno abierto, comenta en vez de
+      # crear otro: tres noches seguidas de fallo son un hilo, no tres issues.
+      - name: Abrir o actualizar el issue de alerta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          TITULO="Backup diario de base de datos fallando"
+          CUERPO=$(cat <<TXT
+          El workflow de respaldo diario falló el $(date -u '+%Y-%m-%d %H:%M UTC').
+
+          Ejecución: $RUN_URL
+
+          Qué revisar, en orden (ver docs/DR_RUNBOOK.md):
+
+          1. ¿Están configurados los secrets PROD_DATABASE_URL, BACKUP_S3_BUCKET, BACKUP_S3_ACCESS_KEY_ID y BACKUP_S3_SECRET_ACCESS_KEY?
+          2. ¿La base de datos de producción acepta conexiones desde GitHub Actions?
+          3. ¿El bucket existe y las credenciales siguen vigentes?
+
+          **Mientras esto siga en rojo no hay respaldo del día.**
+          TXT
+          )
+
+          EXISTENTE=$(gh issue list --state open --search "$TITULO in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTENTE" ]; then
+            gh issue comment "$EXISTENTE" --body "$CUERPO"
+            echo "Comentado en el issue #$EXISTENTE"
+          else
+            gh issue create --title "$TITULO" --body "$CUERPO"
+            echo "Issue de alerta creado"
+          fi
+
+      # Canal opcional y aditivo: si el secret no existe el paso se salta y el
+      # issue de arriba sigue siendo la alerta. Se ofrece porque un issue avisa
+      # con el ritmo del correo, y un respaldo caído tres noches seguidas
+      # merece algo que suene.
+      - name: Avisar por Slack (si hay webhook configurado)
+        if: ${{ secrets.BACKUP_ALERT_SLACK_WEBHOOK != '' }}
+        env:
+          WEBHOOK: ${{ secrets.BACKUP_ALERT_SLACK_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          curl -sS -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\":rotating_light: El backup diario de BravoCRM falló. No hay respaldo del día. $RUN_URL\"}" \
+            "$WEBHOOK"
+
+      # El issue es el aviso; que el job quede en rojo es el registro.
+      - name: Marcar el job como fallido
+        run: |
+          echo "::error::El backup diario falló — se abrió o actualizó un issue de alerta. Ver docs/DR_RUNBOOK.md."
+          exit 1

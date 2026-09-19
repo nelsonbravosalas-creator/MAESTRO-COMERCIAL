@@ -7,14 +7,14 @@ tarda. Un backup que nunca se restauró no es un backup, es una suposición.
 
 ## Objetivos (RPO / RTO)
 
-| Métrica | Objetivo | Justificación |
-|---|---|---|
-| **RPO** (pérdida de datos máxima aceptable) | 24 horas | Un backup diario cubre esto. Si el negocio necesita menos, hay que subir la frecuencia (ver "Siguiente paso"). |
-| **RTO** (tiempo máximo para volver a operar) | 4 horas | No validado todavía — ver sección "Simulacro". |
+| Métrica                                      | Objetivo | Justificación                                                                                                  |
+| -------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| **RPO** (pérdida de datos máxima aceptable)  | 24 horas | Un backup diario cubre esto. Si el negocio necesita menos, hay que subir la frecuencia (ver "Siguiente paso"). |
+| **RTO** (tiempo máximo para volver a operar) | 4 horas  | No validado todavía — ver sección "Simulacro".                                                                 |
 
-*(Estos números son un punto de partida razonable para una app de gestión
+_(Estos números son un punto de partida razonable para una app de gestión
 interna sin usuarios pagando en tiempo real, no un compromiso contractual.
-Ajustar según lo que el negocio realmente necesite.)*
+Ajustar según lo que el negocio realmente necesite.)_
 
 ## Capas de respaldo
 
@@ -25,17 +25,28 @@ Ajustar según lo que el negocio realmente necesite.)*
 2. **Backup externo diario** (`.github/workflows/backup.yml`, C-12). `pg_dump`
    en formato custom, subido a un bucket S3-compatible **fuera** de Neon.
    Retención objetivo: 7 diarios + 4 semanales + 12 mensuales.
-   **Estado real:** el workflow existe pero necesita:
-   - Los secrets `PROD_DATABASE_URL`, `BACKUP_S3_BUCKET`,
-     `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY` (y opcionalmente
-     `BACKUP_S3_ENDPOINT_URL` si no es AWS S3) configurados en
-     Settings → Secrets and variables → Actions.
-   - Un bucket real (S3, Cloudflare R2 o Backblaze B2 — cualquiera con API
-     compatible con S3 sirve).
-   - Implementar la poda de retención (hoy es un placeholder deliberado: podar
-     mal es peor que no podar).
-   - Una alerta real en `alert-on-failure` (hoy solo deja un `::error::` en el
-     log de Actions, que nadie mira si no lo va a buscar).
+   **Estado real:** el workflow está completo del lado del código. Lo que
+   falta es exclusivamente configuración en las cuentas:
+   - **[pendiente — solo el dueño de la cuenta]** Los secrets
+     `PROD_DATABASE_URL`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`,
+     `BACKUP_S3_SECRET_ACCESS_KEY` (y opcionalmente `BACKUP_S3_ENDPOINT_URL`
+     si no es AWS S3) en Settings → Secrets and variables → Actions.
+   - **[pendiente]** Un bucket real (S3, Cloudflare R2 o Backblaze B2 —
+     cualquiera con API compatible con S3 sirve).
+   - **[hecho]** Poda de retención implementada (7 diarios + 4 semanales + 12
+     mensuales). Solo toca claves que calzan exacto con el patrón
+     `bravocrm-AAAAMMDD-HHMMSS.dump` que genera el propio workflow, nunca
+     borra si quedan tantos respaldos como el tope o menos, y ordena por el
+     timestamp de la clave. La variable de repo `BACKUP_RETENTION_DRY_RUN=true`
+     hace que solo imprima lo que borraría: **conviene activarla para mirar la
+     primera poda real (día 8) y quitarla después.**
+   - **[hecho]** Alerta real en `alert-on-failure`: abre un issue en el repo
+     (o comenta en el que ya esté abierto, para no crear uno por noche) usando
+     `GITHUB_TOKEN`, sin secrets nuevos. Si además existe el secret
+     `BACKUP_ALERT_SLACK_WEBHOOK`, avisa por Slack.
+   - **[hecho]** Verificación de integridad: antes de subir, `pg_restore --list`
+     confirma que el dump es legible. Un `pg_dump` truncado ya no se sube y se
+     contabiliza como respaldo del día.
 
 ## Procedimiento de restauración
 
@@ -62,16 +73,19 @@ severidad real del incidente) si promover esa base restaurada a producción.
 ## Escenarios
 
 ### Se cae Neon
+
 No hay mitigación posible desde la app. Comunicar el estado, monitorear el
 status page del proveedor. Si la caída se extiende, evaluar restaurar el
 backup externo más reciente en un proveedor distinto (más trabajo, solo si el
 RTO de 4h está en riesgo real).
 
 ### Borrado accidental de datos (no caída de infraestructura)
+
 Primero intentar PITR de Neon (más preciso, restaura a un segundo exacto antes
 del borrado). El backup externo diario es el respaldo de ese respaldo.
 
 ### Migración mal aplicada (ver `docs/MIGRACIONES.md`)
+
 Cada migración corre en su propia transacción — un fallo a mitad de camino no
 debería dejar el esquema roto. Si igual pasa: `npm run migrate:down` revierte
 la última. Si el daño ya se escribió (no es un problema de esquema sino de
@@ -89,18 +103,18 @@ datos), ir al backup.
 
 ### Registro de simulacros
 
-| Fecha | Responsable | Duración | Resultado |
-|---|---|---|---|
-| _(ninguno todavía)_ | | | |
+| Fecha               | Responsable | Duración | Resultado |
+| ------------------- | ----------- | -------- | --------- |
+| _(ninguno todavía)_ |             |          |           |
 
 ## Contactos
 
-| Rol | Contacto |
-|---|---|
+| Rol                 | Contacto                      |
+| ------------------- | ----------------------------- |
 | Responsable técnico | Nelson Bravo (dueño del repo) |
 
-*(Completar con contacto real de soporte de Neon/Vercel si se contrata un plan
-con soporte prioritario.)*
+_(Completar con contacto real de soporte de Neon/Vercel si se contrata un plan
+con soporte prioritario.)_
 
 ## Siguiente paso recomendado
 
@@ -108,3 +122,18 @@ Antes de confiar en este plan: (1) configurar los secrets del workflow de
 backup, (2) correr el simulacro de restauración una vez y llenar la tabla de
 arriba, (3) recién después, considerar esto "implementado" y no solo
 "diseñado".
+
+El paso (1) es el único que queda del lado de la configuración, y el (2) sigue
+siendo irreemplazable: el código del workflow está probado, pero **nadie ha
+restaurado nunca un dump de esta base**. Hasta que la tabla de simulacros de
+arriba tenga una fila, el RTO de 4 horas es una estimación, no un dato.
+
+Orden concreto para cerrarlo en una sentada:
+
+1. Crear el bucket y cargar los cuatro secrets.
+2. Disparar `backup.yml` a mano (Actions → Run workflow) y confirmar que
+   termina en verde. Anotar el tamaño del dump que aparece en el resumen del
+   job: es la línea base contra la que se compara si algún día se trunca.
+3. Descargar ese dump, verificar el `.sha256`, restaurarlo en un branch nuevo
+   de Neon y correr `scripts/smoke.sh` contra él. **Cronometrar.**
+4. Llenar la tabla de simulacros con ese tiempo.

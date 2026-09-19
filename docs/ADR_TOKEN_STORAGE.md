@@ -26,8 +26,39 @@ a cookie `httpOnly; Secure; SameSite=Strict` en este sprint.
   más directo de exfiltración vía fetch desde un sitio de terceros.
 - Sin `dangerouslySetInnerHTML` en el frontend (verificado); React escapa por defecto.
 - Helmet añade cabeceras de seguridad HTTP (`C-04`).
-- El access token expira en `JWT_EXPIRY` (8 h por defecto, configurable) — ventana de
-  exposición acotada si un token es robado vía XSS.
+- El access token expira en `JWT_EXPIRY` (**1 h** por defecto desde A-02, no 8 h como
+  decía antes este documento; ver `backend/src/config/env.ts`) — ventana de exposición
+  acotada si un token es robado vía XSS.
+- **El refresh token ya no sirve como access token.** Los dos se firman con el mismo
+  `JWT_SECRET`, así que hasta ahora un refresh de 30 días pasaba `jwt.verify` sin
+  objeción y funcionaba como Bearer en cualquier endpoint protegido: la ventana de 1 h
+  de arriba era, en la práctica, de 30 días. `backend/src/middleware/auth.ts` ahora
+  mira el claim `kind` y rechaza todo lo que no sea un access token.
+
+## Deuda conocida: el chequeo de `kind` es una lista negra, no blanca
+
+`middleware/auth.ts` acepta un token si `kind === 'access'` **o si no trae
+`kind`**, y rechaza cualquier otro valor. La segunda condición existe solo por
+compatibilidad: los access tokens emitidos antes de ese cambio no llevan el
+claim, y exigirlo habría devuelto 401 a todas las sesiones vivas en el momento
+del despliegue.
+
+Pasada una ventana de `JWT_EXPIRY` (1 h) desde el despliegue ya no queda
+ninguno de esos tokens en circulación. A partir de ahí el chequeo puede
+endurecerse a la forma estricta:
+
+```ts
+const isAccessToken = (decoded: TokenPayload) => decoded.kind === 'access'
+```
+
+Al hacerlo hay que borrar el test
+`sigue aceptando un access token legado sin claim kind` de
+`backend/src/middleware/__tests__/auth.test.ts`, que es el que fija hoy esa
+compatibilidad a propósito.
+
+En seguridad no cambia nada mientras `refresh` sea el único otro `kind` que la
+aplicación emite; endurecerlo es higiene para cuando aparezca un tercer tipo de
+token.
 
 ## Riesgo residual
 

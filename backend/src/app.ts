@@ -13,6 +13,7 @@ import {
   adminSetupLimiter,
   forgotPasswordLimiter,
 } from './config/rateLimiters'
+import { createAuthThrottle, ipAndEmailKey, ipKey } from './middleware/authThrottle'
 import { requestIdMiddleware, requestLoggingMiddleware } from './middleware/requestId'
 import { captureException } from './config/sentry'
 import { createAuthRouter } from './api/auth'
@@ -81,6 +82,78 @@ app.use('/api', apiLimiter())
 app.use('/api/auth/login', loginLimiter())
 app.use('/api/admin/setup', adminSetupLimiter())
 app.use('/api/auth/forgot-password', forgotPasswordLimiter())
+
+// Los limitadores de arriba guardan su estado en el MemoryStore de CADA
+// instancia serverless, así que "5 intentos por 15 minutos" era en realidad
+// 5 × (instancias tibias) — y ese número lo elige la plataforma según la
+// carga, que es justo lo que sube durante un ataque. Los de abajo respaldan
+// cada uno con el contador compartido en Postgres (migración 0019): el de
+// memoria corta el pico local sin tocar la base de datos, este hace que el
+// tope sea global. Van después del body parser porque leen req.body.email.
+app.use(
+  '/api/auth/login',
+  createAuthThrottle(pool, {
+    name: 'login',
+    windowMinutes: 15,
+    max: 5,
+    keyGenerator: ipAndEmailKey,
+    countWhen: status => status === 401 || status === 423,
+    message: {
+      error: 'Too many requests',
+      message: 'Demasiados intentos. Reintente en 15 minutos.',
+    },
+  })
+)
+
+// Un segundo bucket por IP sola. Sin él, rotar el correo en cada intento
+// (password spraying contra muchas cuentas) esquiva el bucket de arriba por
+// completo: cada correo estrena su propio contador y nunca llega a 5.
+app.use(
+  '/api/auth/login',
+  createAuthThrottle(pool, {
+    name: 'login-ip',
+    windowMinutes: 15,
+    max: 20,
+    keyGenerator: ipKey,
+    countWhen: status => status === 401 || status === 423,
+    message: {
+      error: 'Too many requests',
+      message: 'Demasiados intentos fallidos desde esta conexión. Reintente en 15 minutos.',
+    },
+  })
+)
+
+app.use(
+  '/api/auth/forgot-password',
+  createAuthThrottle(pool, {
+    name: 'forgot-password',
+    windowMinutes: 60,
+    max: 3,
+    keyGenerator: ipAndEmailKey,
+    // Responde 200 tanto si el correo existe como si no (para no filtrar qué
+    // cuentas hay), así que contar solo los fallos no contaría nunca nada.
+    countWhen: () => true,
+    message: {
+      error: 'Too many requests',
+      message: 'Demasiadas solicitudes. Reintente en una hora.',
+    },
+  })
+)
+
+app.use(
+  '/api/admin/setup',
+  createAuthThrottle(pool, {
+    name: 'admin-setup',
+    windowMinutes: 60,
+    max: 3,
+    keyGenerator: ipKey,
+    countWhen: () => true,
+    message: {
+      error: 'Too many requests',
+      message: 'Demasiados intentos. Reintente en una hora.',
+    },
+  })
+)
 
 app.get('/api/health', async (_req: Request, res: Response) => {
   try {

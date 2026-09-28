@@ -597,7 +597,12 @@ app.delete('/api/clients/:cid/contacts/:id', requireAuth, (req: Request, res: Re
   )
   if (idx === -1) return res.status(404).json({ error: 'Contacto no encontrado' })
   // Espejo de backend/src/api/clients.ts: no dejar cotizaciones sin contacto.
-  if (db.quotations.some((q: any) => q.contact_id === req.params.id && !q.deleted_at)) {
+  if (
+    db.quotations.some(
+      (q: { contact_id?: string | null; deleted_at?: string | null }) =>
+        q.contact_id === req.params.id && !q.deleted_at
+    )
+  ) {
     return res.status(409).json({
       error: 'Contact has quotations',
       message:
@@ -623,7 +628,9 @@ app.get('/api/quotations', requireAuth, (_req: Request, res: Response) => {
       return {
         ...q,
         client_name: db.clients.find((c: any) => c.id === q.client_id)?.name || null,
-        contact_name: db.client_contacts.find((cc: any) => cc.id === q.contact_id)?.name || null,
+        contact_name:
+          db.client_contacts.find((cc: { id: string; name: string }) => cc.id === q.contact_id)
+            ?.name || null,
         totals,
         // Espejo de los campos top-level que expone el backend real
         // (backend/src/api/quotations.ts) — el frontend los lee así, no

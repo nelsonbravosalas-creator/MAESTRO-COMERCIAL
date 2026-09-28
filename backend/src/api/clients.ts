@@ -173,9 +173,9 @@ export const createClientsRouter = (pool: Pool) => {
         )
         if (result.rows.length === 0) return res.status(404).json({ error: 'Contact not found' })
         return res.json({ message: 'Contact deleted successfully' })
-      } catch (error: any) {
+      } catch (error) {
         logger.error('Delete contact error', {
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           contactId: req.params.contactId,
         })
         return res.status(500).json({ error: 'Failed to delete contact' })

@@ -8,6 +8,7 @@ import type {
   CategoryId,
   MasterClient,
   MasterContact,
+  ClientContact,
   MasterQuotation,
   CostCategory,
   CostItem,
@@ -139,7 +140,7 @@ function fromCatalogItemUI(catId: CategoryId, i: CatalogItemUI, sortOrder = 0) {
   }
 }
 
-function toMasterContact(ct: any): MasterContact {
+function toMasterContact(ct: ClientContact): MasterContact {
   return {
     id: ct.id,
     name: ct.name ?? '',

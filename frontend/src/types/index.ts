@@ -318,6 +318,17 @@ export interface CatalogItemUI {
 
 export type CatalogsUI = Record<CategoryId, CatalogItemUI[]>
 
+// Contacto de un cliente tal como lo edita la UI. `id` vacío = aún no existe
+// en el backend (se crea al guardar el cliente).
+export interface MasterContact {
+  id: string
+  name: string
+  cargo: string
+  email: string
+  phone: string
+  is_primary: boolean
+}
+
 // Cliente aplanado (Client + ContactoPrimario) para UI
 export interface MasterClient {
   id: string
@@ -331,6 +342,9 @@ export interface MasterClient {
   cargo: string
   email: string
   phone: string
+  // Todos los contactos del cliente. Opcional porque el store persistido en
+  // localStorage puede traer clientes guardados antes de que existiera.
+  contacts?: MasterContact[]
   created_at: string
   updated_at: string
 }

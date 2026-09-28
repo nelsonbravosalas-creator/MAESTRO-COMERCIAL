@@ -7,6 +7,7 @@ import {
 } from '../stores/maestro-store'
 import type { MasterClient, MasterQuotation } from '../types'
 import { buildQuotationValuationRows } from './quotationRows'
+import { quotationContact } from './contacts'
 
 const fmtDateLong = (d: string) =>
   new Date(d + 'T12:00:00').toLocaleDateString('es-CL', {
@@ -114,12 +115,14 @@ export function downloadHtml(params: {
     }
   `
 
+  const contact = quotationContact(q, client)
   const clientBlock = `  <div class="sg">
     <div class="gt">Datos del Cliente</div>
     <table class="ct">
       <tbody>
         <tr><th>Empresa</th><td>${esc(q.client_name || '—')}</td><th>RUT</th><td>${esc(client?.rut || '—')}</td></tr>
-        <tr><th>Contacto</th><td>${esc(q.contact || '—')}</td><th>Cargo</th><td>${esc(client?.cargo || '—')}</td></tr>
+        <tr><th>Contacto</th><td>${esc(contact.name || '—')}</td><th>Cargo</th><td>${esc(contact.cargo || '—')}</td></tr>
+        <tr><th>Correo</th><td colspan="3">${esc(contact.email || '—')}</td></tr>
         <tr><th>Referencia</th><td colspan="3">${esc(q.ref || '—')}</td></tr>
         ${q.enduser ? `<tr><th>Usuario Final</th><td colspan="3">${esc(q.enduser)}</td></tr>` : ''}
         <tr class="re"><th>Elaborado por</th><td colspan="3">${esc(sessionUserName)}</td></tr>

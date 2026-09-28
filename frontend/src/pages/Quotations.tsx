@@ -8,7 +8,16 @@ import {
   fmtCLP,
   fmtDecimal,
 } from '../stores/maestro-store'
-import type { CategoryId, QuoteStatus, OperState, CatalogItemUI, QuotationActivity } from '../types'
+import type {
+  CategoryId,
+  QuoteStatus,
+  OperState,
+  CatalogItemUI,
+  QuotationActivity,
+  MasterClient,
+  MasterQuotation,
+} from '../types'
+import { primaryContact, quotationContact } from '../utils/contacts'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { usePermissions } from '../hooks/usePermissions'
 import { ApiError, api } from '../api/api'
@@ -1328,6 +1337,72 @@ function QuotationsList({
 
 // ── Tab Base ──────────────────────────────────────────────────────────────────
 
+// Selector de contacto de la cotización: lista desplegable con los contactos
+// del cliente. Guarda `contact_id` (lo único que persiste el backend) y el
+// nombre; cargo y correo se leen del contacto al generar el documento.
+export function ContactPicker({
+  q,
+  client,
+  patch,
+}: {
+  q: MasterQuotation
+  client: MasterClient | undefined
+  patch: (fields: Partial<MasterQuotation>) => void
+}) {
+  const contacts = client?.contacts ?? []
+  const selected = contacts.find(c => c.id === q.contact_id)
+  // Cotización antigua: tiene el nombre en texto pero no el id del contacto.
+  const legacyName = !selected && q.contact ? q.contact : ''
+
+  return (
+    <>
+      <div className="base-row">
+        <label>Contacto</label>
+        <select
+          value={selected?.id ?? ''}
+          className="base-input"
+          disabled={!client}
+          onChange={e => {
+            const ct = contacts.find(c => c.id === e.target.value)
+            patch({ contact_id: ct?.id ?? null, contact: ct?.name ?? '' })
+          }}
+        >
+          <option value="">
+            {!client
+              ? '— Primero elige un cliente —'
+              : contacts.length === 0
+                ? '— Cliente sin contactos —'
+                : legacyName
+                  ? `${legacyName} (sin vincular)`
+                  : '— Seleccionar contacto —'}
+          </option>
+          {contacts.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+              {c.cargo ? ` — ${c.cargo}` : ''}
+              {c.is_primary ? ' ★' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+      {client && contacts.length === 0 && (
+        <div className="base-row">
+          <label />
+          <span className="base-hint">Agrega contactos al cliente en la sección Clientes.</span>
+        </div>
+      )}
+      <div className="base-row">
+        <label>Cargo</label>
+        <span className="base-rut">{selected?.cargo || '—'}</span>
+      </div>
+      <div className="base-row">
+        <label>Correo</label>
+        <span className="base-rut">{selected?.email || '—'}</span>
+      </div>
+    </>
+  )
+}
+
 function TabBase() {
   const { clients, patchActive, saveActive, reloadActive } = useMaestro()
   const q = useActiveQuotation()
@@ -1396,10 +1471,12 @@ function TabBase() {
               className="base-input"
               onChange={e => {
                 const cl = clients.find(c => c.id === e.target.value)
+                const ct = primaryContact(cl)
                 patch({
                   client_id: e.target.value,
                   client_name: cl?.name || '',
-                  contact: cl?.contact || '',
+                  contact_id: ct?.id || null,
+                  contact: ct?.name || '',
                 })
               }}
             >
@@ -1411,15 +1488,7 @@ function TabBase() {
               ))}
             </select>
           </div>
-          <div className="base-row">
-            <label>Contacto</label>
-            <input
-              value={q.contact}
-              onChange={e => patch({ contact: e.target.value })}
-              className="base-input"
-              placeholder="Nombre del contacto"
-            />
-          </div>
+          <ContactPicker q={q} client={clients.find(c => c.id === q.client_id)} patch={patch} />
           <div className="base-row">
             <label>RUT</label>
             <span className="base-rut">{clients.find(c => c.id === q.client_id)?.rut || '—'}</span>
@@ -1968,6 +2037,7 @@ function TabCotizacion() {
 
   const isLocked = LOCKED_STATUSES.includes(q.status) && role !== 'admin'
   const client = clients.find(c => c.id === q.client_id)
+  const contact = quotationContact(q, client)
   const totals = calcTotals(q)
   const iva = totals.venta * (q.iva / 100)
   const conIva = totals.venta + iva
@@ -2107,8 +2177,12 @@ function TabCotizacion() {
               </tr>
               <tr>
                 <th>Contacto</th>
-                <td>{q.contact || '—'}</td>
-                <th>Cargo</th> <td>{client?.cargo || '—'}</td>
+                <td>{contact.name || '—'}</td>
+                <th>Cargo</th> <td>{contact.cargo || '—'}</td>
+              </tr>
+              <tr>
+                <th>Correo</th>
+                <td colSpan={3}>{contact.email || '—'}</td>
               </tr>
               <tr>
                 <th>Referencia</th>

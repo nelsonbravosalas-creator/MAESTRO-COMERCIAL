@@ -7,6 +7,7 @@ import type {
   CatalogsUI,
   CategoryId,
   MasterClient,
+  MasterContact,
   MasterQuotation,
   CostCategory,
   CostItem,
@@ -138,8 +139,42 @@ function fromCatalogItemUI(catId: CategoryId, i: CatalogItemUI, sortOrder = 0) {
   }
 }
 
+function toMasterContact(ct: any): MasterContact {
+  return {
+    id: ct.id,
+    name: ct.name ?? '',
+    cargo: ct.cargo ?? '',
+    email: ct.email ?? '',
+    phone: ct.phone ?? '',
+    is_primary: !!ct.is_primary,
+  }
+}
+
+// Payload de un contacto para el backend. Solo el marcado como principal manda
+// is_primary=true: el backend desmarca al resto del cliente cuando llega uno.
+function contactPayload(ct: MasterContact) {
+  return {
+    name: ct.name.trim(),
+    cargo: ct.cargo.trim() || null,
+    email: ct.email.trim() || null,
+    phone: ct.phone.trim() || null,
+    is_primary: ct.is_primary,
+  }
+}
+
+// Contactos con nombre, con exactamente un principal (el marcado, o el primero).
+function normalizeContacts(contacts: MasterContact[] | undefined): MasterContact[] {
+  const valid = (contacts ?? []).filter(ct => ct.name.trim())
+  const primaryIdx = Math.max(
+    0,
+    valid.findIndex(ct => ct.is_primary)
+  )
+  return valid.map((ct, i) => ({ ...ct, is_primary: i === primaryIdx }))
+}
+
 function toMasterClient(c: any): MasterClient {
-  const primary = (c.contacts ?? []).find((ct: any) => ct.is_primary) ?? c.contacts?.[0] ?? {}
+  const contacts: MasterContact[] = (c.contacts ?? []).map(toMasterContact)
+  const primary: Partial<MasterContact> = contacts.find(ct => ct.is_primary) ?? contacts[0] ?? {}
   return {
     id: c.id,
     name: c.name ?? '',
@@ -151,6 +186,7 @@ function toMasterClient(c: any): MasterClient {
     cargo: primary.cargo ?? '',
     email: primary.email ?? '',
     phone: primary.phone ?? '',
+    contacts,
     created_at: c.created_at,
     updated_at: c.updated_at,
   }
@@ -537,16 +573,7 @@ export const api = {
       activity: c.activity || null,
       address: c.address || null,
       city: c.city || null,
-      contacts: c.contact
-        ? [
-            {
-              name: c.contact,
-              cargo: c.cargo || null,
-              email: c.email || null,
-              phone: c.phone || null,
-            },
-          ]
-        : [],
+      contacts: normalizeContacts(c.contacts).map(contactPayload),
     })
     return toMasterClient(raw)
   },
@@ -560,24 +587,17 @@ export const api = {
       address: c.address || null,
       city: c.city || null,
     })
-    // Actualizar contacto principal si existe
-    const contacts: any[] = await get(`/api/clients/${c.id}/contacts`)
-    const primary = contacts.find((ct: any) => ct.is_primary) ?? contacts[0]
-    if (primary) {
-      await put(`/api/clients/${c.id}/contacts/${primary.id}`, {
-        name: c.contact || primary.name,
-        cargo: c.cargo || null,
-        email: c.email || null,
-        phone: c.phone || null,
-      })
-    } else if (c.contact) {
-      await post(`/api/clients/${c.id}/contacts`, {
-        name: c.contact,
-        cargo: c.cargo,
-        email: c.email,
-        phone: c.phone,
-        is_primary: true,
-      })
+    // Sincronizar la lista de contactos: actualizar los existentes, crear los
+    // nuevos y borrar los que el usuario quitó del formulario.
+    const desired = normalizeContacts(c.contacts)
+    const existing: any[] = await get(`/api/clients/${c.id}/contacts`)
+    const keepIds = new Set(desired.filter(ct => ct.id).map(ct => ct.id))
+    for (const old of existing) {
+      if (!keepIds.has(old.id)) await del(`/api/clients/${c.id}/contacts/${old.id}`)
+    }
+    for (const ct of desired) {
+      if (ct.id) await put(`/api/clients/${c.id}/contacts/${ct.id}`, contactPayload(ct))
+      else await post(`/api/clients/${c.id}/contacts`, contactPayload(ct))
     }
     // Re-fetch para obtener el estado real guardado en el backend
     const updated: any = await get(`/api/clients/${c.id}`)

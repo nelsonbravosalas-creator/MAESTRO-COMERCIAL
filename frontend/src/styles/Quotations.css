@@ -2071,3 +2071,8 @@
   background: #fef3c7;
   border-color: #d97706;
 }
+
+.base-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}

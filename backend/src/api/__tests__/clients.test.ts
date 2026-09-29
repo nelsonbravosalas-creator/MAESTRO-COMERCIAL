@@ -8,10 +8,13 @@ const JWT_SECRET = 'test-secret-test-secret-test-secret'
 
 const CLIENT_ID = '11111111-1111-4111-8111-111111111111'
 const MISSING_ID = '99999999-9999-4999-8999-999999999999'
+const CONTACT_ID = '22222222-2222-4222-8222-222222222222'
 
 interface FakeState {
   clients: Record<string, { id: string; deleted: boolean }>
   quotationsByClient: Record<string, number>
+  contacts?: Record<string, { client_id: string }>
+  quotationsByContact?: Record<string, number>
 }
 
 // Fake DB en memoria: solo cubre lo que DELETE /:id necesita de `pool`.
@@ -21,6 +24,20 @@ interface FakeState {
 function makeFakeDb(state: FakeState) {
   async function query(sql: string, params: any[] = []) {
     const s = sql.trim()
+
+    if (s.startsWith('SELECT 1 FROM quotations WHERE contact_id')) {
+      const [contactId] = params
+      const count = state.quotationsByContact?.[contactId] ?? 0
+      return { rows: count > 0 ? [{ exists: 1 }] : [] }
+    }
+
+    if (s.startsWith('DELETE FROM client_contacts')) {
+      const [contactId, clientId] = params
+      const ct = state.contacts?.[contactId]
+      if (!ct || ct.client_id !== clientId) return { rows: [] }
+      delete state.contacts![contactId]
+      return { rows: [{ id: contactId }] }
+    }
 
     if (s.startsWith('SELECT 1 FROM quotations')) {
       const [clientId] = params
@@ -118,5 +135,50 @@ describe('DELETE /api/clients/:id — protección server-side contra cotizacione
     const res = await request(app).delete(`/api/clients/${CLIENT_ID}`)
 
     expect(res.status).toBe(401)
+  })
+})
+
+describe('DELETE /api/clients/:id/contacts/:contactId', () => {
+  beforeAll(() => {
+    process.env.JWT_SECRET = JWT_SECRET
+  })
+
+  const url = `/api/clients/${CLIENT_ID}/contacts/${CONTACT_ID}`
+
+  it('rechaza con 409 si el contacto está asignado a cotizaciones', async () => {
+    const state: FakeState = {
+      clients: {},
+      quotationsByClient: {},
+      contacts: { [CONTACT_ID]: { client_id: CLIENT_ID } },
+      quotationsByContact: { [CONTACT_ID]: 1 },
+    }
+    const res = await request(buildApp(state)).delete(url).set('Authorization', authHeader())
+
+    expect(res.status).toBe(409)
+    expect(res.body.message).toMatch(/asignado a cotizaciones/i)
+    expect(state.contacts![CONTACT_ID]).toBeDefined()
+  })
+
+  it('elimina el contacto si no está en uso', async () => {
+    const state: FakeState = {
+      clients: {},
+      quotationsByClient: {},
+      contacts: { [CONTACT_ID]: { client_id: CLIENT_ID } },
+    }
+    const res = await request(buildApp(state)).delete(url).set('Authorization', authHeader())
+
+    expect(res.status).toBe(200)
+    expect(state.contacts![CONTACT_ID]).toBeUndefined()
+  })
+
+  it('devuelve 404 si el contacto no pertenece a ese cliente', async () => {
+    const state: FakeState = {
+      clients: {},
+      quotationsByClient: {},
+      contacts: { [CONTACT_ID]: { client_id: MISSING_ID } },
+    }
+    const res = await request(buildApp(state)).delete(url).set('Authorization', authHeader())
+
+    expect(res.status).toBe(404)
   })
 })

@@ -148,6 +148,41 @@ export const createClientsRouter = (pool: Pool) => {
     }
   )
 
+  router.delete(
+    '/:id/contacts/:contactId',
+    validate({ params: uuidParams('id', 'contactId') }),
+    async (req: AuthRequest, res) => {
+      try {
+        // quotations.contact_id es ON DELETE SET NULL: borrar un contacto en uso
+        // dejaría esas cotizaciones sin contacto sin que nadie se entere.
+        const inUse = await pool.query(
+          'SELECT 1 FROM quotations WHERE contact_id = $1 AND deleted_at IS NULL LIMIT 1',
+          [req.params.contactId]
+        )
+        if (inUse.rows.length > 0) {
+          return res.status(409).json({
+            error: 'Contact has quotations',
+            message:
+              'No se puede eliminar un contacto que está asignado a cotizaciones. Cambia el contacto en esas cotizaciones primero.',
+          })
+        }
+
+        const result = await pool.query(
+          'DELETE FROM client_contacts WHERE id = $1 AND client_id = $2 RETURNING id',
+          [req.params.contactId, req.params.id]
+        )
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Contact not found' })
+        return res.json({ message: 'Contact deleted successfully' })
+      } catch (error) {
+        logger.error('Delete contact error', {
+          error: error instanceof Error ? error.message : String(error),
+          contactId: req.params.contactId,
+        })
+        return res.status(500).json({ error: 'Failed to delete contact' })
+      }
+    }
+  )
+
   router.get('/:id', validate({ params: uuidParams('id') }), async (req: AuthRequest, res) => {
     try {
       const result = await pool.query(

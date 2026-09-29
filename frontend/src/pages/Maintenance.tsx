@@ -19,6 +19,7 @@ import {
   TabCosteo,
   EditableList,
   OcModal,
+  ContactPicker,
 } from './Quotations'
 import { usePermissions } from '../hooks/usePermissions'
 import { downloadDocx } from '../utils/docxExport'
@@ -26,6 +27,7 @@ import { downloadHtml } from '../utils/htmlExport'
 import { downloadPdfFromElement } from '../utils/pdfExport'
 import { buildQuotationValuationRows } from '../utils/quotationRows'
 import { ApiError, api } from '../api/api'
+import { primaryContact, quotationContact } from '../utils/contacts'
 
 // ── Master List ────────────────────────────────────────────────────────────────
 
@@ -475,10 +477,12 @@ function TabBaseMtc() {
               className="base-input"
               onChange={e => {
                 const cl = clients.find(c => c.id === e.target.value)
+                const ct = primaryContact(cl)
                 patch({
                   client_id: e.target.value,
                   client_name: cl?.name || '',
-                  contact: cl?.contact || '',
+                  contact_id: ct?.id || null,
+                  contact: ct?.name || '',
                 })
               }}
             >
@@ -490,15 +494,7 @@ function TabBaseMtc() {
               ))}
             </select>
           </div>
-          <div className="base-row">
-            <label>Contacto</label>
-            <input
-              value={q.contact}
-              onChange={e => patch({ contact: e.target.value })}
-              className="base-input"
-              placeholder="Nombre del contacto"
-            />
-          </div>
+          <ContactPicker q={q} client={clients.find(c => c.id === q.client_id)} patch={patch} />
           <div className="base-row">
             <label>RUT</label>
             <span className="base-rut">{clients.find(c => c.id === q.client_id)?.rut || '—'}</span>
@@ -607,6 +603,7 @@ function TabDocumentoMtc() {
   if (!q) return null
 
   const client = clients.find(c => c.id === q.client_id)
+  const contact = quotationContact(q, client)
 
   // "Costeo" siempre calcula el valor de UNA visita — el total anual es esa
   // cifra multiplicada por la frecuencia contratada (ver decisión del plan).
@@ -768,9 +765,13 @@ function TabDocumentoMtc() {
               </tr>
               <tr>
                 <th>Contacto</th>
-                <td>{q.contact || '—'}</td>
+                <td>{contact.name || '—'}</td>
                 <th>Cargo</th>
-                <td>{client?.cargo || '—'}</td>
+                <td>{contact.cargo || '—'}</td>
+              </tr>
+              <tr>
+                <th>Correo</th>
+                <td colSpan={3}>{contact.email || '—'}</td>
               </tr>
               <tr>
                 <th>Referencia</th>

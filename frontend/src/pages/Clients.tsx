@@ -2,17 +2,53 @@ import React, { useState, useMemo } from 'react'
 import '../styles/Clients.css'
 import { useMaestro } from '../stores/maestro-store'
 import { usePermissions } from '../hooks/usePermissions'
-import { MasterClient } from '../types'
+import { MasterClient, MasterContact } from '../types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const emptyContact = (is_primary = false): MasterContact => ({
+  id: '',
+  name: '',
+  cargo: '',
+  email: '',
+  phone: '',
+  is_primary,
+})
+
 const emptyClient = (): MasterClient => ({
   id: '',
-  name: '', contact: '', cargo: '',
-  email: '', phone: '', address: '',
-  rut: '', activity: '', city: '',
-  created_at: '', updated_at: '',
+  name: '',
+  contact: '',
+  cargo: '',
+  email: '',
+  phone: '',
+  address: '',
+  rut: '',
+  activity: '',
+  city: '',
+  contacts: [emptyContact(true)],
+  created_at: '',
+  updated_at: '',
 })
+
+// Clientes guardados antes de existir `contacts` (localStorage) solo traen el
+// contacto principal aplanado: se reconstruye como lista para poder editarlo.
+const withContactList = (c: MasterClient): MasterClient => {
+  if (c.contacts && c.contacts.length > 0) return c
+  const legacy = c.contact
+    ? [
+        {
+          id: '',
+          name: c.contact,
+          cargo: c.cargo,
+          email: c.email,
+          phone: c.phone,
+          is_primary: true,
+        },
+      ]
+    : [emptyContact(true)]
+  return { ...c, contacts: legacy }
+}
 
 // ── Client Form Modal ─────────────────────────────────────────────────────────
 
@@ -23,18 +59,53 @@ interface ClientFormProps {
 }
 
 function ClientForm({ initial, onSave, onClose }: ClientFormProps) {
-  const [form, setForm] = useState<MasterClient>(initial ?? emptyClient())
+  const [form, setForm] = useState<MasterClient>(initial ? withContactList(initial) : emptyClient())
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  const contacts = form.contacts ?? []
+
   const patch = (field: keyof MasterClient, value: string) =>
     setForm(f => ({ ...f, [field]: value }))
+
+  const patchContact = (idx: number, field: keyof MasterContact, value: string) =>
+    setForm(f => ({
+      ...f,
+      contacts: (f.contacts ?? []).map((ct, i) => (i === idx ? { ...ct, [field]: value } : ct)),
+    }))
+
+  const setPrimary = (idx: number) =>
+    setForm(f => ({
+      ...f,
+      contacts: (f.contacts ?? []).map((ct, i) => ({ ...ct, is_primary: i === idx })),
+    }))
+
+  const addContact = () =>
+    setForm(f => ({
+      ...f,
+      contacts: [...(f.contacts ?? []), emptyContact((f.contacts ?? []).length === 0)],
+    }))
+
+  const removeContact = (idx: number) =>
+    setForm(f => {
+      const rest = (f.contacts ?? []).filter((_, i) => i !== idx)
+      // Si se quitó el principal, el primero que queda pasa a serlo.
+      if (rest.length > 0 && !rest.some(ct => ct.is_primary))
+        rest[0] = { ...rest[0], is_primary: true }
+      return { ...f, contacts: rest }
+    })
 
   const validate = () => {
     const e: Record<string, string> = {}
     if (!form.name.trim()) e.name = 'El nombre es obligatorio'
     if (!form.rut.trim()) e.rut = 'El RUT es obligatorio'
+    contacts.forEach((ct, i) => {
+      const hasData = ct.cargo.trim() || ct.email.trim() || ct.phone.trim()
+      if (hasData && !ct.name.trim()) e[`contact-${i}`] = 'El contacto necesita un nombre'
+      if (ct.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ct.email.trim()))
+        e[`contact-${i}`] = 'Correo no válido'
+    })
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -45,9 +116,18 @@ function ClientForm({ initial, onSave, onClose }: ClientFormProps) {
     setSaving(true)
     setSubmitError(null)
     const now = new Date().toISOString().slice(0, 10)
+    // Los campos aplanados (contact/cargo/email/phone) reflejan al principal,
+    // que es lo que muestra la tabla de clientes.
+    const filled = contacts.filter(ct => ct.name.trim())
+    const primary = filled.find(ct => ct.is_primary) ?? filled[0]
     try {
       await onSave({
         ...form,
+        contacts: filled,
+        contact: primary?.name ?? '',
+        cargo: primary?.cargo ?? '',
+        email: primary?.email ?? '',
+        phone: primary?.phone ?? '',
         id: form.id || `cl-${Date.now()}`,
         created_at: form.created_at || now,
         updated_at: now,
@@ -67,7 +147,9 @@ function ClientForm({ initial, onSave, onClose }: ClientFormProps) {
       <div className="cl-modal" onClick={e => e.stopPropagation()}>
         <div className="cl-modal-header">
           <h2>{initial?.id ? 'Editar cliente' : 'Nuevo cliente'}</h2>
-          <button className="btn-modal-close" onClick={onClose}>✕</button>
+          <button className="btn-modal-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
 
         <form className="cl-form" onSubmit={handleSubmit}>
@@ -97,50 +179,115 @@ function ClientForm({ initial, onSave, onClose }: ClientFormProps) {
               </div>
 
               <div className="cl-field">
-                <label>Contacto</label>
-                <input className="cl-input" value={form.contact} onChange={e => patch('contact', e.target.value)} placeholder="Nombre del contacto" />
-              </div>
-
-              <div className="cl-field">
-                <label>Cargo</label>
-                <input className="cl-input" value={form.cargo} onChange={e => patch('cargo', e.target.value)} placeholder="Cargo del contacto" />
-              </div>
-
-              <div className="cl-field">
                 <label>Actividad / Rubro</label>
-                <input className="cl-input" value={form.activity} onChange={e => patch('activity', e.target.value)} placeholder="Construcción, Minería, etc." />
+                <input
+                  className="cl-input"
+                  value={form.activity}
+                  onChange={e => patch('activity', e.target.value)}
+                  placeholder="Construcción, Minería, etc."
+                />
               </div>
             </div>
 
             {/* Right column */}
             <div className="cl-form-col">
               <div className="cl-field">
-                <label>Email</label>
-                <input type="email" className="cl-input" value={form.email} onChange={e => patch('email', e.target.value)} placeholder="contacto@empresa.cl" />
-              </div>
-
-              <div className="cl-field">
-                <label>Teléfono</label>
-                <input className="cl-input" value={form.phone} onChange={e => patch('phone', e.target.value)} placeholder="+56 2 2345 6789" />
-              </div>
-
-              <div className="cl-field">
                 <label>Ciudad</label>
-                <input className="cl-input" value={form.city} onChange={e => patch('city', e.target.value)} placeholder="Santiago, Antofagasta, etc." />
+                <input
+                  className="cl-input"
+                  value={form.city}
+                  onChange={e => patch('city', e.target.value)}
+                  placeholder="Santiago, Antofagasta, etc."
+                />
               </div>
 
               <div className="cl-field cl-field-full">
                 <label>Dirección</label>
-                <input className="cl-input" value={form.address} onChange={e => patch('address', e.target.value)} placeholder="Av. Ejemplo 1234, comuna" />
+                <input
+                  className="cl-input"
+                  value={form.address}
+                  onChange={e => patch('address', e.target.value)}
+                  placeholder="Av. Ejemplo 1234, comuna"
+                />
               </div>
             </div>
+          </div>
+
+          {/* Contactos */}
+          <div className="cl-contacts">
+            <div className="cl-contacts-header">
+              <label>Contactos</label>
+              <button type="button" className="btn-outline-sm" onClick={addContact}>
+                + Agregar contacto
+              </button>
+            </div>
+            {contacts.length === 0 && (
+              <div className="cl-contacts-empty">
+                Sin contactos. Agrega al menos uno para usarlo en las cotizaciones.
+              </div>
+            )}
+            {contacts.map((ct, i) => (
+              <div key={ct.id || `new-${i}`} className="cl-contact-row">
+                <label className="cl-contact-primary" title="Contacto principal">
+                  <input
+                    type="radio"
+                    name="primary-contact"
+                    checked={ct.is_primary}
+                    onChange={() => setPrimary(i)}
+                    aria-label={`Contacto principal ${i + 1}`}
+                  />
+                  Principal
+                </label>
+                <input
+                  className="cl-input"
+                  value={ct.name}
+                  onChange={e => patchContact(i, 'name', e.target.value)}
+                  placeholder="Nombre"
+                  aria-label={`Nombre contacto ${i + 1}`}
+                />
+                <input
+                  className="cl-input"
+                  value={ct.cargo}
+                  onChange={e => patchContact(i, 'cargo', e.target.value)}
+                  placeholder="Cargo"
+                  aria-label={`Cargo contacto ${i + 1}`}
+                />
+                <input
+                  type="email"
+                  className="cl-input"
+                  value={ct.email}
+                  onChange={e => patchContact(i, 'email', e.target.value)}
+                  placeholder="correo@empresa.cl"
+                  aria-label={`Correo contacto ${i + 1}`}
+                />
+                <input
+                  className="cl-input"
+                  value={ct.phone}
+                  onChange={e => patchContact(i, 'phone', e.target.value)}
+                  placeholder="+56 9 1234 5678"
+                  aria-label={`Teléfono contacto ${i + 1}`}
+                />
+                <button
+                  type="button"
+                  className="cl-contact-remove"
+                  onClick={() => removeContact(i)}
+                  title="Quitar contacto"
+                  aria-label={`Quitar contacto ${i + 1}`}
+                >
+                  ✕
+                </button>
+                {errors[`contact-${i}`] && (
+                  <span className="cl-error cl-contact-error">{errors[`contact-${i}`]}</span>
+                )}
+              </div>
+            ))}
           </div>
 
           {submitError && <div className="cl-submit-error">{submitError}</div>}
 
           <div className="cl-form-actions">
             <button type="submit" className="btn-primary-sm" disabled={saving}>
-              {saving ? 'Guardando…' : (initial?.id ? 'Guardar cambios' : 'Crear cliente')}
+              {saving ? 'Guardando…' : initial?.id ? 'Guardar cambios' : 'Crear cliente'}
             </button>
             <button type="button" className="btn-outline-sm" onClick={onClose} disabled={saving}>
               Cancelar
@@ -174,12 +321,13 @@ export const Clients: React.FC = () => {
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     if (!q) return clients
-    return clients.filter(c =>
-      c.name.toLowerCase().includes(q) ||
-      c.rut.toLowerCase().includes(q) ||
-      c.city.toLowerCase().includes(q) ||
-      c.contact.toLowerCase().includes(q) ||
-      c.activity.toLowerCase().includes(q)
+    return clients.filter(
+      c =>
+        c.name.toLowerCase().includes(q) ||
+        c.rut.toLowerCase().includes(q) ||
+        c.city.toLowerCase().includes(q) ||
+        c.contact.toLowerCase().includes(q) ||
+        c.activity.toLowerCase().includes(q)
     )
   }, [clients, search])
 
@@ -201,7 +349,7 @@ export const Clients: React.FC = () => {
     }
   }
 
-  const editingClient = editing === 'new' ? null : editing as MasterClient | null
+  const editingClient = editing === 'new' ? null : (editing as MasterClient | null)
 
   return (
     <div className="clients-root">
@@ -209,7 +357,9 @@ export const Clients: React.FC = () => {
       <div className="cl-toolbar">
         <div className="cl-toolbar-left">
           <h2 className="cl-title">Clientes</h2>
-          <span className="cl-count">{filtered.length} / {clients.length}</span>
+          <span className="cl-count">
+            {filtered.length} / {clients.length}
+          </span>
         </div>
         <div className="cl-toolbar-right">
           <input
@@ -230,10 +380,14 @@ export const Clients: React.FC = () => {
           {clients.length === 0 ? (
             <>
               <p>No hay clientes registrados.</p>
-              <button className="btn-primary-sm" onClick={() => setEditing('new')}>Agregar primer cliente</button>
+              <button className="btn-primary-sm" onClick={() => setEditing('new')}>
+                Agregar primer cliente
+              </button>
             </>
           ) : (
-            <p>Sin resultados para <strong>&quot;{search}&quot;</strong></p>
+            <p>
+              Sin resultados para <strong>&quot;{search}&quot;</strong>
+            </p>
           )}
         </div>
       ) : (
@@ -276,12 +430,17 @@ export const Clients: React.FC = () => {
                     </td>
                     <td>
                       <div className="cl-row-actions">
-                        <button className="btn-icon" title="Editar" onClick={() => setEditing(c)}>✎</button>
+                        <button className="btn-icon" title="Editar" onClick={() => setEditing(c)}>
+                          ✎
+                        </button>
                         {canDeleteClient && (
                           <button
                             className="btn-icon btn-danger"
                             title="Eliminar"
-                            onClick={() => { setDeleteError(null); setConfirmDel(c.id) }}
+                            onClick={() => {
+                              setDeleteError(null)
+                              setConfirmDel(c.id)
+                            }}
                             disabled={qCount > 0}
                           >
                             ✕
@@ -306,11 +465,7 @@ export const Clients: React.FC = () => {
 
       {/* Edit/Create modal */}
       {editing !== null && (
-        <ClientForm
-          initial={editingClient}
-          onSave={handleSave}
-          onClose={() => setEditing(null)}
-        />
+        <ClientForm initial={editingClient} onSave={handleSave} onClose={() => setEditing(null)} />
       )}
 
       {/* Delete confirm */}
@@ -321,10 +476,18 @@ export const Clients: React.FC = () => {
             <p>Esta acción no se puede deshacer.</p>
             {deleteError && <div className="cl-submit-error">{deleteError}</div>}
             <div className="modal-confirm-actions">
-              <button className="btn-danger-sm" onClick={() => handleDelete(confirmDel)} disabled={deleting}>
+              <button
+                className="btn-danger-sm"
+                onClick={() => handleDelete(confirmDel)}
+                disabled={deleting}
+              >
                 {deleting ? 'Eliminando…' : 'Eliminar'}
               </button>
-              <button className="btn-outline-sm" onClick={() => setConfirmDel(null)} disabled={deleting}>
+              <button
+                className="btn-outline-sm"
+                onClick={() => setConfirmDel(null)}
+                disabled={deleting}
+              >
                 Cancelar
               </button>
             </div>

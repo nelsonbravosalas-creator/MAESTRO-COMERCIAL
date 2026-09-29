@@ -16,6 +16,7 @@ import {
 import { calcTotals, fmtCLP, VISITS_PER_YEAR, FREQUENCY_LABELS } from '../stores/maestro-store'
 import type { MasterClient, MasterQuotation } from '../types'
 import { buildQuotationValuationRows } from './quotationRows'
+import { quotationContact } from './contacts'
 
 const C = {
   DARK: '0F172A',
@@ -212,6 +213,7 @@ export async function downloadDocx(params: {
   expandedCategoryIds?: Iterable<string>
 }): Promise<void> {
   const { q, client, sessionUserName, expandedCategoryIds } = params
+  const contact = quotationContact(q, client)
   const isMtc = q.kind === 'maintenance'
   const totals = calcTotals(q)
 
@@ -262,7 +264,8 @@ export async function downloadDocx(params: {
     },
     rows: [
       clientRow('EMPRESA', q.client_name || '—', 'RUT', client?.rut || '—'),
-      clientRow('CONTACTO', q.contact || '—', 'CARGO', client?.cargo || '—'),
+      clientRow('CONTACTO', contact.name || '—', 'CARGO', contact.cargo || '—'),
+      clientRow('CORREO', contact.email || '—'),
       clientRow('REFERENCIA', q.ref || '—'),
       ...(q.enduser ? [clientRow('USUARIO FINAL', q.enduser)] : []),
       clientRow('ELABORADO POR', sessionUserName),

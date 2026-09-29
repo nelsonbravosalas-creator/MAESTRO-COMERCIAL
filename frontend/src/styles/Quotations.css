@@ -1373,39 +1373,7 @@
 
 /* ── Shared Buttons ──────────────────────────────────────────────────────── */
 
-.btn-primary-sm {
-  padding: 8px 18px;
-  background: #1e3a8a;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s;
-  font-family: 'Outfit', sans-serif;
-}
-.btn-primary-sm:hover {
-  background: #1e40af;
-}
 
-.btn-outline-sm {
-  padding: 8px 16px;
-  background: transparent;
-  color: #64748b;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-  font-family: 'Outfit', sans-serif;
-}
-.btn-outline-sm:hover {
-  border-color: #94a3b8;
-  color: #1e293b;
-}
 
 .btn-save-quote {
   padding: 9px 22px;
@@ -1456,40 +1424,6 @@
   color: #e2e8f0;
 }
 
-.btn-icon {
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #e2e8f0;
-  border-radius: 5px;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: all 0.15s;
-}
-.btn-icon:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #1e293b;
-}
-.btn-icon-version {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-.btn-icon-version:hover {
-  background: #eef2ff;
-  border-color: #a5b4fc;
-  color: #4338ca;
-}
-.btn-icon.btn-danger:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  color: #b91c1c;
-}
 
 .btn-icon-sm {
   width: 22px;
@@ -1514,58 +1448,10 @@
   color: #b91c1c;
 }
 
-.btn-danger-sm {
-  padding: 8px 18px;
-  background: #dc2626;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: 'Outfit', sans-serif;
-}
-.btn-danger-sm:hover {
-  background: #b91c1c;
-}
 
-/* ── Modals ──────────────────────────────────────────────────────────────── */
+/* Botones compartidos y modal de confirmación: ver styles/shared.css */
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
-}
 
-.modal-confirm {
-  background: #fff;
-  border-radius: 12px;
-  padding: 28px;
-  max-width: 380px;
-  width: 90%;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
-}
-.modal-confirm h3 {
-  margin: 0 0 8px;
-  font-size: 1.05rem;
-  color: #0f172a;
-}
-.modal-confirm p {
-  font-size: 0.875rem;
-  color: #64748b;
-  margin: 0 0 20px;
-}
-.modal-confirm-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
 
 /* ── Utilities ───────────────────────────────────────────────────────────── */
 .mono {

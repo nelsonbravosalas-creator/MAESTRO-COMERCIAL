@@ -330,21 +330,11 @@
 
 /* ── Shared Buttons (override from Quotations if both loaded) ────────────── */
 
-.clients-root .btn-primary-sm,
-.cl-modal .btn-primary-sm {
-  background: #0e7490;
-}
-.clients-root .btn-primary-sm:hover,
-.cl-modal .btn-primary-sm:hover {
-  background: #0891b2;
-}
-
 .clients-root .btn-icon {
   border-color: #e2e8f0;
 }
 
-/* Reuse from Quotations.css: .btn-primary-sm, .btn-outline-sm, .btn-icon,
-   .btn-icon.btn-danger, .btn-danger-sm, .modal-overlay, .modal-confirm */
+/* Botones y modal de confirmación compartidos: ver styles/shared.css */
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 

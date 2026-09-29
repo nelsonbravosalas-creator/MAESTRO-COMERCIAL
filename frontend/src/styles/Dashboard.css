@@ -84,16 +84,23 @@
 .badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  background: rgba(37, 99, 235, 0.2);
-  color: #93c5fd;
-  border-radius: 0.25rem;
+  background: var(--info-bg);
+  color: var(--info-text);
+  border-radius: var(--radius-sm);
   font-size: 0.8rem;
   font-weight: 600;
 }
 
-.badge.dev {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fcd34d;
+/* Estado de conexión: verde = conectado, rojo = sin servidor (antes "Online"
+   usaba el ámbar de advertencia). */
+.badge.online {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.badge.offline {
+  background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 /* FEATURES */
@@ -339,11 +346,11 @@
   align-items: center;
   gap: 0.45rem;
   padding: 0.5rem 1rem;
-  border: 1px solid rgba(37, 99, 235, 0.35);
-  border-left: 3px solid #2563eb;
+  border: 1px solid rgba(var(--primary-rgb), 0.35);
+  border-left: 3px solid var(--primary);
   border-radius: 6px;
-  background: rgba(37, 99, 235, 0.07);
-  color: #93c5fd;
+  background: rgba(var(--primary-rgb), 0.07);
+  color: var(--primary-text);
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -355,30 +362,30 @@
 }
 
 .sync-btn:hover:not(:disabled) {
-  background: rgba(37, 99, 235, 0.15);
-  border-left-color: #60a5fa;
-  color: #bfdbfe;
-  box-shadow: 0 0 14px rgba(37, 99, 235, 0.2);
+  background: rgba(var(--primary-rgb), 0.15);
+  border-left-color: var(--primary);
+  color: var(--text);
+  box-shadow: 0 0 14px rgba(var(--primary-rgb), 0.2);
 }
 
 .sync-btn--syncing {
-  border-left-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.07);
-  color: #fcd34d;
+  border-left-color: var(--warning);
+  background: var(--warning-bg);
+  color: var(--warning-text);
   cursor: not-allowed;
   animation: syncPulse 1.3s ease-in-out infinite;
 }
 
 .sync-btn--done {
-  border-left-color: #059669;
-  background: rgba(5, 150, 105, 0.09);
-  color: #6ee7b7;
+  border-left-color: var(--success);
+  background: var(--success-bg);
+  color: var(--success-text);
 }
 
 .sync-btn--error {
-  border-left-color: #dc2626;
-  background: rgba(220, 38, 38, 0.09);
-  color: #fca5a5;
+  border-left-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 .sync-btn__icon {

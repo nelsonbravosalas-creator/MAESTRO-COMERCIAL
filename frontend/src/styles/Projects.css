@@ -602,14 +602,14 @@
 }
 
 .btn-primary {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border-color: var(--btn-primary-bg);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: var(--btn-primary-bg-hover);
+  border-color: var(--btn-primary-bg-hover);
 }
 
 .btn-secondary {

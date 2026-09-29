@@ -947,7 +947,7 @@ export default function Invoices({
     <div className="inv-root">
       <div className="inv-toolbar">
         <div className="inv-toolbar-left">
-          <h1 className="inv-title">Facturación</h1>
+          <h1 className="inv-title">Facturas</h1>
           <span className="inv-count">
             {visibles.length} / {facturas.length}
           </span>

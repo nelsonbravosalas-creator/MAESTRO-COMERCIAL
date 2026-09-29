@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
 import './App.css'
+import './styles/shared.css'
 import Login from './pages/Login'
 import { useMaestro } from './stores/maestro-store'
 import { useProjects } from './stores/projects-store'

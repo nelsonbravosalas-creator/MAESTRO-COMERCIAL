@@ -71,6 +71,9 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
           AWS_ENDPOINT_URL: ${{ secrets.BACKUP_S3_ENDPOINT_URL }} # opcional: R2/Backblaze/etc.
+          # La CLI de AWS exige región y el runner no trae ninguna. R2 usa "auto";
+          # para AWS S3 real, definir la variable de repo BACKUP_S3_REGION.
+          AWS_DEFAULT_REGION: ${{ vars.BACKUP_S3_REGION || 'auto' }}
         run: |
           SIZE=$(du -h "$DUMP_FILE" | cut -f1)
           CHECKSUM=$(sha256sum "$DUMP_FILE" | cut -d' ' -f1)
@@ -111,6 +114,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
           AWS_ENDPOINT_URL: ${{ secrets.BACKUP_S3_ENDPOINT_URL }}
+          AWS_DEFAULT_REGION: ${{ vars.BACKUP_S3_REGION || 'auto' }}
           BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
           DRY_RUN: ${{ vars.BACKUP_RETENTION_DRY_RUN }}
         run: |

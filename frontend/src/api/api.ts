@@ -173,6 +173,14 @@ function normalizeContacts(contacts: MasterContact[] | undefined): MasterContact
   return valid.map((ct, i) => ({ ...ct, is_primary: i === primaryIdx }))
 }
 
+// Fila de electrical_catalog_items tal como la devuelve el backend.
+interface ElectricalCatalogRow {
+  id: string
+  description: string
+  unit_name: string
+  unit_price: number
+}
+
 // "Materiales Eléctricos" vive en su propia tabla, sin category_id.
 function fromElectricalItemUI(i: CatalogItemUI, sortOrder = 0) {
   return {
@@ -591,17 +599,23 @@ export const api = {
 
   // ── Catálogo — Materiales Eléctricos (tabla propia) ──────────
   getElectricalCatalog: async (): Promise<CatalogItemUI[]> => {
-    const raw: any[] = await get('/api/electrical-catalog')
+    const raw = await get<ElectricalCatalogRow[]>('/api/electrical-catalog')
     return raw.map(toCatalogItemUI)
   },
 
   createElectricalItem: async (item: CatalogItemUI, sortOrder = 0) => {
-    const raw: any = await post('/api/electrical-catalog', fromElectricalItemUI(item, sortOrder))
+    const raw = await post<ElectricalCatalogRow>(
+      '/api/electrical-catalog',
+      fromElectricalItemUI(item, sortOrder)
+    )
     return toCatalogItemUI(raw)
   },
 
   updateElectricalItem: async (id: string, item: CatalogItemUI) => {
-    const raw: any = await put(`/api/electrical-catalog/${id}`, fromElectricalItemUI(item))
+    const raw = await put<ElectricalCatalogRow>(
+      `/api/electrical-catalog/${id}`,
+      fromElectricalItemUI(item)
+    )
     return toCatalogItemUI(raw)
   },
 

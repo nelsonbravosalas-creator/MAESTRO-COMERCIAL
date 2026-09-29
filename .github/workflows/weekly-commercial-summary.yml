@@ -1,0 +1,35 @@
+name: Resumen Comercial Semanal
+
+on:
+  schedule:
+    - cron: '0 21 * * 5' # Viernes 21:00 UTC (18:00 hora Chile)
+  workflow_dispatch: {} # Permite ejecución manual desde GitHub
+
+jobs:
+  weekly-summary:
+    name: Generar Resumen Comercial
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - working-directory: backend
+        run: npm ci
+
+      - name: Verificar PROD_DATABASE_URL
+        run: |
+          if [ -z "${{ secrets.PROD_DATABASE_URL }}" ]; then
+            echo "::error::Falta el secret PROD_DATABASE_URL en GitHub (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - name: Ejecutar script de resumen comercial
+        working-directory: backend
+        run: npm run report:weekly
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}

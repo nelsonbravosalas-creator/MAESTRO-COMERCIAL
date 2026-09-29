@@ -36,13 +36,29 @@ export const createElectricalCatalogRouter = (pool: Pool) => {
       try {
         const { description, unit_name, unit_price, sort_order } = req.body
 
+        // El borrado es lógico (is_active=false) y el índice único sobre
+        // lower(description) también cubre los inactivos: recrear un ítem
+        // borrado lo reactiva con los datos nuevos en vez de chocar. Si el
+        // que choca está activo, el WHERE no deja actualizar → 0 filas → 409.
         const result = await pool.query(
           `INSERT INTO electrical_catalog_items (description, unit_name, unit_price, sort_order)
          VALUES ($1, $2, $3, $4)
+         ON CONFLICT ((lower(description))) DO UPDATE
+            SET description = EXCLUDED.description,
+                unit_name = EXCLUDED.unit_name,
+                unit_price = EXCLUDED.unit_price,
+                sort_order = EXCLUDED.sort_order,
+                is_active = true,
+                updated_at = NOW()
+          WHERE electrical_catalog_items.is_active = false
          RETURNING *`,
           [description, unit_name, Number(unit_price) || 0, Number(sort_order) || 0]
         )
 
+        if (result.rows.length === 0)
+          return res
+            .status(409)
+            .json({ error: `Ya existe el ítem "${description}" en Materiales Eléctricos` })
         return res.status(201).json(result.rows[0])
       } catch (error: any) {
         logger.error('Create electrical catalog item error', { error: error.message })
@@ -75,6 +91,10 @@ export const createElectricalCatalogRouter = (pool: Pool) => {
           return res.status(404).json({ error: 'Electrical catalog item not found' })
         return res.json(result.rows[0])
       } catch (error: any) {
+        if (error.code === '23505')
+          return res.status(409).json({
+            error: `Ya existe el ítem "${req.body.description}" en Materiales Eléctricos`,
+          })
         logger.error('Update electrical catalog item error', {
           error: error.message,
           id: req.params.id,

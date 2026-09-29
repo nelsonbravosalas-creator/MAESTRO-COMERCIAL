@@ -20,6 +20,14 @@ function makeFakeDb() {
     }
     if (s.startsWith('INSERT INTO electrical_catalog_items')) {
       const [description, unit_name, unit_price, sort_order] = params
+      // Emula ON CONFLICT ((lower(description))) DO UPDATE ... WHERE is_active = false
+      const clash = items.find(i => i.description.toLowerCase() === description.toLowerCase())
+      if (clash && s.includes('ON CONFLICT')) {
+        if (clash.is_active) return { rows: [] }
+        Object.assign(clash, { description, unit_name, unit_price, sort_order, is_active: true })
+        return { rows: [clash] }
+      }
+      if (clash) throw Object.assign(new Error('duplicate key'), { code: '23505' })
       const row = {
         id: ITEM_ID,
         description,
@@ -98,6 +106,50 @@ describe('CRUD /api/electrical-catalog', () => {
       .get('/api/electrical-catalog')
       .set('Authorization', authHeader())
     expect(listAfter.body).toHaveLength(0)
+  })
+
+  it('recrear un ítem borrado lo reactiva en vez de fallar', async () => {
+    const { app, db } = buildApp()
+    const body = { description: 'Cable THHN 12 AWG', unit_name: 'Mt', unit_price: 850 }
+
+    await request(app).post('/api/electrical-catalog').set('Authorization', authHeader()).send(body)
+    await request(app)
+      .delete(`/api/electrical-catalog/${ITEM_ID}`)
+      .set('Authorization', authHeader('admin'))
+
+    const again = await request(app)
+      .post('/api/electrical-catalog')
+      .set('Authorization', authHeader())
+      .send({ ...body, description: 'cable thhn 12 awg', unit_price: 990 })
+
+    expect(again.status).toBe(201)
+    expect(again.body.id).toBe(ITEM_ID)
+    expect(again.body.unit_price).toBe(990)
+    expect(db.getItems()).toHaveLength(1)
+    expect(db.getItems()[0].is_active).toBe(true)
+  })
+
+  it('responde 409 con mensaje claro si la descripción ya existe activa', async () => {
+    const { app } = buildApp()
+    const body = { description: 'Cable THHN 12 AWG', unit_name: 'Mt', unit_price: 850 }
+
+    await request(app).post('/api/electrical-catalog').set('Authorization', authHeader()).send(body)
+    const dup = await request(app)
+      .post('/api/electrical-catalog')
+      .set('Authorization', authHeader())
+      .send({ ...body, description: 'CABLE THHN 12 AWG' })
+
+    expect(dup.status).toBe(409)
+    expect(dup.body.error).toContain('Ya existe el ítem')
+  })
+
+  it('rechaza con 400 un ítem sin descripción', async () => {
+    const { app } = buildApp()
+    const res = await request(app)
+      .post('/api/electrical-catalog')
+      .set('Authorization', authHeader())
+      .send({ description: '  ', unit_name: 'Und', unit_price: 0 })
+    expect(res.status).toBe(400)
   })
 
   it('responde 404 al actualizar un ítem que no existe', async () => {

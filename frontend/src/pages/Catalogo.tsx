@@ -258,6 +258,7 @@ export const Catalogo: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CategoryId | 'all'>('all')
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<'success' | 'error' | null>(null)
+  const [toastMsg, setToastMsg] = useState('')
 
   const totalItems = CATS.reduce((s, c) => s + catalogs[c].length, 0)
 
@@ -275,11 +276,12 @@ export const Catalogo: React.FC = () => {
     try {
       await saveCatalogs()
       setToast('success')
-    } catch {
+    } catch (err) {
+      setToastMsg(err instanceof Error ? err.message : '')
       setToast('error')
     } finally {
       setSaving(false)
-      setTimeout(() => setToast(null), 3500)
+      setTimeout(() => setToast(null), 6000)
     }
   }
 
@@ -292,7 +294,7 @@ export const Catalogo: React.FC = () => {
         <div className={`cat-toast cat-toast-${toast}`}>
           {toast === 'success'
             ? '✓ Sincronización exitosa — Maestro de Precios actualizado'
-            : '✕ Error al sincronizar. Verifique la conexión e intente nuevamente.'}
+            : `✕ ${toastMsg || 'Error al sincronizar. Verifique la conexión e intente nuevamente.'}`}
         </div>
       )}
 

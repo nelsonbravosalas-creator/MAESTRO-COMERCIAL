@@ -604,7 +604,7 @@ app.delete('/api/clients/:cid/contacts/:id', requireAuth, (req: Request, res: Re
 // ────────────────────────────────────────────────────────────
 // COTIZACIONES
 // ────────────────────────────────────────────────────────────
-app.get('/api/quotations', requireAuth, (_req: Request, res: Response) => {
+app.get('/api/quotations', requireAuth, (req: Request, res: Response) => {
   const list = db.quotations
     .filter((q: any) => !q.deleted_at)
     .map((q: any) => {
@@ -630,9 +630,18 @@ app.get('/api/quotations', requireAuth, (_req: Request, res: Response) => {
     .sort((a: any, b: any) => b.date.localeCompare(a.date))
   // El backend real pagina por cursor (ver buildPage en backend/src/utils/pagination.ts)
   // y frontend/src/api/api.ts's getAllPages() espera esa forma {data, next_cursor,
-  // has_more}. db.json es chico: una sola página con has_more=false alcanza para
-  // que el contrato calce sin implementar cursores de verdad.
-  res.json({ data: list, next_cursor: null, has_more: false })
+  // has_more}. Acá se emula con un cursor de offset simple, ya que la lista
+  // completa vive en memoria: así el recorrido de páginas del frontend también
+  // se ejercita en desarrollo, no solo contra el backend real.
+  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200)
+  const offset = Math.max(Number(req.query.cursor) || 0, 0)
+  const page = list.slice(offset, offset + limit)
+  const has_more = offset + limit < list.length
+  res.json({
+    data: page,
+    next_cursor: has_more ? String(offset + limit) : null,
+    has_more,
+  })
 })
 
 app.get('/api/quotations/:id', requireAuth, (req: Request, res: Response) => {

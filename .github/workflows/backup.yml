@@ -175,6 +175,10 @@ jobs:
     permissions:
       contents: read
       issues: write
+    # `secrets` no se puede usar en el `if:` de un paso (GitHub invalida el
+    # workflow entero y el backup nunca corre); `env` sí.
+    env:
+      SLACK_WEBHOOK: ${{ secrets.BACKUP_ALERT_SLACK_WEBHOOK }}
     steps:
       # Antes esto era un `echo ::error::`: quedaba en el log de Actions, que
       # nadie mira si no lo va a buscar. Un respaldo que falla en silencio es
@@ -221,9 +225,9 @@ jobs:
       # con el ritmo del correo, y un respaldo caído tres noches seguidas
       # merece algo que suene.
       - name: Avisar por Slack (si hay webhook configurado)
-        if: ${{ secrets.BACKUP_ALERT_SLACK_WEBHOOK != '' }}
+        if: env.SLACK_WEBHOOK != ''
         env:
-          WEBHOOK: ${{ secrets.BACKUP_ALERT_SLACK_WEBHOOK }}
+          WEBHOOK: ${{ env.SLACK_WEBHOOK }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail

@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import '../styles/Catalogo.css'
-import { useMaestro, fmtCLP } from '../stores/maestro-store'
+import { useMaestro, fmtCLP, CatalogSaveError } from '../stores/maestro-store'
 import { CategoryId, CatalogItemUI } from '../types'
 
 // ── Metadata de categorías ────────────────────────────────────────────────────
@@ -39,24 +39,43 @@ function maxPrice(items: CatalogItemUI[]) {
 interface ItemRowProps {
   idx: number
   item: CatalogItemUI
+  hasError: boolean
   onPatch: (field: keyof CatalogItemUI, value: string | number) => void
   onDelete: () => void
 }
 
-function ItemRow({ idx, item, onPatch, onDelete }: ItemRowProps) {
-  const [localPrice, setLocalPrice] = useState(String(item.price))
+function ItemRow({ idx, item, hasError, onPatch, onDelete }: ItemRowProps) {
+  // Una sola columna de precio: se ve con formato ($120.000) y al editar
+  // muestra el número. El valor local existe solo mientras se edita, así nunca
+  // queda desfasado del ítem.
+  const [editingPrice, setEditingPrice] = useState<string | null>(null)
+  const descRef = useRef<HTMLInputElement>(null)
+  const rowRef = useRef<HTMLTableRowElement>(null)
+
+  useEffect(() => {
+    if (!hasError) return
+    rowRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    descRef.current?.focus()
+  }, [hasError])
 
   const commitPrice = () => {
-    const v = parseFloat(localPrice.replace(/[^\d.]/g, '')) || 0
-    setLocalPrice(String(v))
+    if (editingPrice === null) return
+    // Formato chileno: el punto separa miles ("120.000") y la coma, decimales.
+    const limpio = editingPrice
+      .replace(/\./g, '')
+      .replace(',', '.')
+      .replace(/[^\d.]/g, '')
+    const v = parseFloat(limpio) || 0
+    setEditingPrice(null)
     onPatch('price', v)
   }
 
   return (
-    <tr className="cat-row">
+    <tr ref={rowRef} className={`cat-row${hasError ? ' cat-row--error' : ''}`}>
       <td className="cat-col-idx">{idx + 1}</td>
       <td className="cat-col-desc">
         <input
+          ref={descRef}
           className="cat-cell-input cat-cell-desc"
           value={item.desc}
           onChange={e => onPatch('desc', e.target.value)}
@@ -74,19 +93,20 @@ function ItemRow({ idx, item, onPatch, onDelete }: ItemRowProps) {
       </td>
       <td className="cat-col-price">
         <div className="cat-price-wrap">
-          <span className="cat-price-prefix">$</span>
           <input
             className="cat-cell-input cat-cell-price"
-            value={localPrice}
-            onChange={e => setLocalPrice(e.target.value)}
+            inputMode="numeric"
+            value={editingPrice ?? fmtCLP.format(item.price)}
+            onFocus={e => {
+              setEditingPrice(String(item.price))
+              requestAnimationFrame(() => e.target.select())
+            }}
+            onChange={e => setEditingPrice(e.target.value)}
             onBlur={commitPrice}
-            onKeyDown={e => e.key === 'Enter' && commitPrice()}
+            onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
             aria-label="Precio unitario"
           />
         </div>
-      </td>
-      <td className="cat-col-fmt">
-        <span className="cat-price-fmt">{fmtCLP.format(item.price)}</span>
       </td>
       <td className="cat-col-del">
         <button type="button" className="cat-btn-del" onClick={onDelete} title="Eliminar ítem">
@@ -102,9 +122,11 @@ function ItemRow({ idx, item, onPatch, onDelete }: ItemRowProps) {
 interface CatTableProps {
   catId: CategoryId
   globalSearch: string
+  errorIdx: number | null
+  onRowEdited: (idx: number) => void
 }
 
-function CatTable({ catId, globalSearch }: CatTableProps) {
+function CatTable({ catId, globalSearch, errorIdx, onRowEdited }: CatTableProps) {
   const { catalogs, upsertCatalogItem, addCatalogItem, deleteCatalogItem } = useMaestro()
   const meta = CAT_META[catId]
   const items = catalogs[catId]
@@ -126,6 +148,7 @@ function CatTable({ catId, globalSearch }: CatTableProps) {
 
   const handlePatch = (idx: number, field: keyof CatalogItemUI, value: string | number) => {
     upsertCatalogItem(catId, idx, field as string, value)
+    onRowEdited(idx)
   }
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -222,8 +245,7 @@ function CatTable({ catId, globalSearch }: CatTableProps) {
                 <th className="cat-col-idx">#</th>
                 <th className="cat-col-desc">Descripción</th>
                 <th className="cat-col-unit">Unidad</th>
-                <th className="cat-col-price">Precio Unitario</th>
-                <th className="cat-col-fmt">Formato CLP</th>
+                <th className="cat-col-price">Precio unitario</th>
                 <th className="cat-col-del">
                   <span className="sr-only">Acciones</span>
                 </th>
@@ -235,6 +257,7 @@ function CatTable({ catId, globalSearch }: CatTableProps) {
                   key={i}
                   idx={i}
                   item={item}
+                  hasError={errorIdx === i}
                   onPatch={(field, value) => handlePatch(i, field, value)}
                   onDelete={() => deleteCatalogItem(catId, i)}
                 />
@@ -242,9 +265,6 @@ function CatTable({ catId, globalSearch }: CatTableProps) {
             </tbody>
           </table>
         )}
-        <button type="button" className="cat-btn-add-row" onClick={handleAdd}>
-          + Agregar ítem a {meta.label}
-        </button>
       </div>
     </div>
   )
@@ -259,6 +279,8 @@ export const Catalogo: React.FC = () => {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<'success' | 'error' | null>(null)
   const [toastMsg, setToastMsg] = useState('')
+  // Fila que no se pudo guardar: se marca, se enfoca y se limpia al editarla.
+  const [errorRow, setErrorRow] = useState<{ catId: CategoryId; idx: number } | null>(null)
 
   const totalItems = CATS.reduce((s, c) => s + catalogs[c].length, 0)
 
@@ -273,12 +295,18 @@ export const Catalogo: React.FC = () => {
   const handleSave = async () => {
     setSaving(true)
     setToast(null)
+    setErrorRow(null)
     try {
       await saveCatalogs()
       setToast('success')
     } catch (err) {
       setToastMsg(err instanceof Error ? err.message : '')
       setToast('error')
+      if (err instanceof CatalogSaveError) {
+        if (activeTab !== 'all' && activeTab !== err.catId) setActiveTab(err.catId)
+        if (search) setSearch('')
+        setErrorRow({ catId: err.catId, idx: err.idx })
+      }
     } finally {
       setSaving(false)
       setTimeout(() => setToast(null), 6000)
@@ -353,11 +381,7 @@ export const Catalogo: React.FC = () => {
             key={c}
             type="button"
             className={`catalogo-tab ${activeTab === c ? 'catalogo-tab-active' : ''}`}
-            style={
-              activeTab === c
-                ? { borderBottomColor: CAT_META[c].color, color: CAT_META[c].color }
-                : {}
-            }
+            style={activeTab === c ? { borderBottomColor: CAT_META[c].color } : {}}
             onClick={() => setActiveTab(c)}
           >
             {CAT_META[c].abbr}
@@ -369,7 +393,15 @@ export const Catalogo: React.FC = () => {
       {/* Contenido */}
       <div className="catalogo-body">
         {visibleCats.map(c => (
-          <CatTable key={c} catId={c} globalSearch={search} />
+          <CatTable
+            key={c}
+            catId={c}
+            globalSearch={search}
+            errorIdx={errorRow?.catId === c ? errorRow.idx : null}
+            onRowEdited={idx =>
+              setErrorRow(prev => (prev?.catId === c && prev.idx === idx ? null : prev))
+            }
+          />
         ))}
       </div>
     </div>

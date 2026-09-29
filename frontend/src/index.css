@@ -183,6 +183,8 @@
   --radius-md:    8px;
   --radius-lg:    12px;
   --radius-pill:  999px;
+  /* Texto sobre franjas de color de identidad (siempre oscuras), igual en los 3 temas */
+  --on-strip-rgb: 255, 255, 255;
 }
 
 /* ── Tema Cyberpunk ─────────────────────────────────────────────── */

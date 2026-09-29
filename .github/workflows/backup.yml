@@ -32,10 +32,16 @@ jobs:
           BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
           BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
 
-      - name: Instalar cliente pg_dump (Postgres 15)
+      # Neon corre Postgres 17 y pg_dump se niega a volcar un servidor de versión
+      # mayor que la suya. Ubuntu 24.04 solo trae el cliente 16 en sus repos, así
+      # que se instala desde PGDG; GITHUB_PATH deja pg_dump/pg_restore 17 primeros.
+      - name: Instalar cliente pg_dump (Postgres 17, desde PGDG)
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client-15
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
 
       - name: Instalar AWS CLI
         run: |

@@ -23,6 +23,7 @@ vi.mock('../../api/api', () => ({
     getQuotations: vi.fn().mockResolvedValue([]),
     getQuotation: vi.fn(),
     getCatalog: vi.fn().mockResolvedValue({}),
+    getElectricalCatalog: vi.fn().mockResolvedValue([]),
     getClients: vi.fn().mockResolvedValue([]),
     getConfig: vi.fn().mockResolvedValue({ uf_value: '39500', iva_pct: '19', dolar_value: '950' }),
   },
@@ -56,7 +57,7 @@ function makeItem(overrides: Partial<CostItem> = {}): CostItem {
 }
 
 function emptyItems(): Record<CategoryId, CostItem[]> {
-  return { mo: [], log: [], mat: [], rep: [], ins: [] }
+  return { mo: [], log: [], mat: [], rep: [], ins: [], mec: [], ele: [] }
 }
 
 function makeQuotation(overrides: Partial<MasterQuotation> = {}): MasterQuotation {

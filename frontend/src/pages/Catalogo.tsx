@@ -6,14 +6,16 @@ import { CategoryId, CatalogItemUI } from '../types'
 // ── Metadata de categorías ────────────────────────────────────────────────────
 
 export const CAT_META: Record<CategoryId, { label: string; color: string; abbr: string }> = {
-  mo:  { label: 'Mano de Obra Especializada',     color: '#1e293b', abbr: 'MO'  },
-  log: { label: 'Logística y Operación',           color: '#334155', abbr: 'LOG' },
-  mat: { label: 'Provisión de Materiales',         color: '#1e3a8a', abbr: 'MAT' },
-  rep: { label: 'Suministro Equipos / Repuestos',  color: '#312e81', abbr: 'REP' },
-  ins: { label: 'Insumos Industriales y Gases',    color: '#164e63', abbr: 'INS' },
+  mo: { label: 'Mano de Obra Especializada', color: '#1e293b', abbr: 'MO' },
+  log: { label: 'Logística y Operación', color: '#334155', abbr: 'LOG' },
+  mat: { label: 'Provisión de Materiales', color: '#1e3a8a', abbr: 'MAT' },
+  rep: { label: 'Suministro Equipos / Repuestos', color: '#312e81', abbr: 'REP' },
+  ins: { label: 'Insumos Industriales y Gases', color: '#164e63', abbr: 'INS' },
+  mec: { label: 'Materiales Mecánico', color: '#7c2d12', abbr: 'MEC' },
+  ele: { label: 'Materiales Eléctricos', color: '#a16207', abbr: 'ELE' },
 }
 
-const CATS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins']
+const CATS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele']
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -87,12 +89,7 @@ function ItemRow({ idx, item, onPatch, onDelete }: ItemRowProps) {
         <span className="cat-price-fmt">{fmtCLP.format(item.price)}</span>
       </td>
       <td className="cat-col-del">
-        <button
-          type="button"
-          className="cat-btn-del"
-          onClick={onDelete}
-          title="Eliminar ítem"
-        >
+        <button type="button" className="cat-btn-del" onClick={onDelete} title="Eliminar ítem">
           ✕
         </button>
       </td>
@@ -118,8 +115,8 @@ function CatTable({ catId, globalSearch }: CatTableProps) {
     const q = globalSearch.toLowerCase()
     return items
       .map((item, i) => ({ item, i }))
-      .filter(({ item }) =>
-        item.desc.toLowerCase().includes(q) || item.unidad.toLowerCase().includes(q)
+      .filter(
+        ({ item }) => item.desc.toLowerCase().includes(q) || item.unidad.toLowerCase().includes(q)
       )
   }, [items, globalSearch])
 
@@ -180,13 +177,30 @@ function CatTable({ catId, globalSearch }: CatTableProps) {
           </div>
         </div>
         <div className="cat-section-header-right">
-          <button type="button" className="cat-btn-sm cat-btn-ghost" onClick={handleExport} title="Exportar esta categoría">
+          <button
+            type="button"
+            className="cat-btn-sm cat-btn-ghost"
+            onClick={handleExport}
+            title="Exportar esta categoría"
+          >
             ↓ Exportar
           </button>
-          <button type="button" className="cat-btn-sm cat-btn-ghost" onClick={() => fileRef.current?.click()} title="Importar JSON">
+          <button
+            type="button"
+            className="cat-btn-sm cat-btn-ghost"
+            onClick={() => fileRef.current?.click()}
+            title="Importar JSON"
+          >
             ↑ Importar
           </button>
-          <input ref={fileRef} type="file" accept=".json" aria-label="Importar catálogo JSON" style={{ display: 'none' }} onChange={handleImport} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json"
+            aria-label="Importar catálogo JSON"
+            style={{ display: 'none' }}
+            onChange={handleImport}
+          />
           <button type="button" className="cat-btn-sm cat-btn-add" onClick={handleAdd}>
             + Agregar
           </button>
@@ -210,7 +224,9 @@ function CatTable({ catId, globalSearch }: CatTableProps) {
                 <th className="cat-col-unit">Unidad</th>
                 <th className="cat-col-price">Precio Unitario</th>
                 <th className="cat-col-fmt">Formato CLP</th>
-                <th className="cat-col-del"><span className="sr-only">Acciones</span></th>
+                <th className="cat-col-del">
+                  <span className="sr-only">Acciones</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -294,7 +310,12 @@ export const Catalogo: React.FC = () => {
             onChange={e => setSearch(e.target.value)}
             aria-label="Búsqueda global"
           />
-          <button type="button" className="cat-btn-export-all" onClick={handleExportAll} title="Exportar catálogo completo">
+          <button
+            type="button"
+            className="cat-btn-export-all"
+            onClick={handleExportAll}
+            title="Exportar catálogo completo"
+          >
             ↓ Exportar todo
           </button>
           <button
@@ -305,7 +326,9 @@ export const Catalogo: React.FC = () => {
             title="Guardar y sincronizar cambios"
           >
             {saving ? (
-              <><span className="cat-save-spinner" /> Guardando…</>
+              <>
+                <span className="cat-save-spinner" /> Guardando…
+              </>
             ) : (
               <>💾 Guardar{catalogDirty ? ' *' : ''}</>
             )}
@@ -328,7 +351,11 @@ export const Catalogo: React.FC = () => {
             key={c}
             type="button"
             className={`catalogo-tab ${activeTab === c ? 'catalogo-tab-active' : ''}`}
-            style={activeTab === c ? { borderBottomColor: CAT_META[c].color, color: CAT_META[c].color } : {}}
+            style={
+              activeTab === c
+                ? { borderBottomColor: CAT_META[c].color, color: CAT_META[c].color }
+                : {}
+            }
             onClick={() => setActiveTab(c)}
           >
             {CAT_META[c].abbr}

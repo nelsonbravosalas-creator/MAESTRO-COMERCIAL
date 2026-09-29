@@ -1061,30 +1061,55 @@ export const useMaestro = create<MaestroState>()(
       saveCatalogs: async () => {
         const { catalogs } = get()
         const CATS: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele']
+        const catLabel = (id: CategoryId) => DEFAULT_CATEGORIES.find(c => c.id === id)?.label ?? id
+
+        // Antes de tocar el backend: una fila sin descripción o sin unidad
+        // (p.ej. recién agregada con "+ Agregar" y sin completar) la rechaza
+        // la validación y cortaría el guardado a medias.
+        const incompletas = CATS.flatMap(catId =>
+          catalogs[catId].filter(i => !i.desc?.trim() || !i.unidad?.trim()).map(() => catId)
+        )
+        if (incompletas.length > 0) {
+          const cats = [...new Set(incompletas)].map(catLabel).join(', ')
+          throw new Error(
+            `Hay ${incompletas.length} ítem(s) sin descripción o unidad en ${cats}. Complételos o elimínelos antes de guardar.`
+          )
+        }
+
         for (const catId of CATS) {
           const items = catalogs[catId]
           for (let idx = 0; idx < items.length; idx++) {
             const item = items[idx]
-            if (!item.id || item.id.startsWith('tmp-')) {
-              // Ítem nuevo — crear en backend y reemplazar ID temporal.
-              // "Materiales Eléctricos" (catId='ele') se guarda en su propia
-              // tabla vía un endpoint distinto, sin category_id.
-              const tempId = item.id
-              const saved =
-                catId === 'ele'
-                  ? await api.createElectricalItem(item, idx)
-                  : await api.createCatalogItem(catId, item, idx)
-              set(s => ({
-                catalogs: {
-                  ...s.catalogs,
-                  [catId]: s.catalogs[catId].map(i => (i.id === tempId ? saved : i)),
-                },
-              }))
-            } else if (catId === 'ele') {
-              await api.updateElectricalItem(item.id, item)
-            } else {
-              await api.updateCatalogItem(item.id, catId, item)
+            let fallo: string | null = null
+            try {
+              if (!item.id || item.id.startsWith('tmp-')) {
+                // Ítem nuevo — crear en backend y reemplazar ID temporal.
+                // "Materiales Eléctricos" (catId='ele') se guarda en su propia
+                // tabla vía un endpoint distinto, sin category_id.
+                const tempId = item.id
+                const saved =
+                  catId === 'ele'
+                    ? await api.createElectricalItem(item, idx)
+                    : await api.createCatalogItem(catId, item, idx)
+                set(s => ({
+                  catalogs: {
+                    ...s.catalogs,
+                    [catId]: s.catalogs[catId].map(i => (i.id === tempId ? saved : i)),
+                  },
+                }))
+              } else if (catId === 'ele') {
+                await api.updateElectricalItem(item.id, item, idx)
+              } else {
+                await api.updateCatalogItem(item.id, catId, item)
+              }
+            } catch (err) {
+              fallo = err instanceof Error ? err.message : 'error desconocido'
             }
+            // Los ítems anteriores ya quedaron guardados; decir cuál falló y por
+            // qué (p.ej. el 409 de descripción duplicada) en vez del genérico
+            // "verifique la conexión".
+            if (fallo !== null)
+              throw new Error(`No se pudo guardar "${item.desc}" (${catLabel(catId)}): ${fallo}`)
           }
         }
         set({ catalogDirty: false })

@@ -611,10 +611,10 @@ export const api = {
     return toCatalogItemUI(raw)
   },
 
-  updateElectricalItem: async (id: string, item: CatalogItemUI) => {
+  updateElectricalItem: async (id: string, item: CatalogItemUI, sortOrder = 0) => {
     const raw = await put<ElectricalCatalogRow>(
       `/api/electrical-catalog/${id}`,
-      fromElectricalItemUI(item)
+      fromElectricalItemUI(item, sortOrder)
     )
     return toCatalogItemUI(raw)
   },

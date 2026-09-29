@@ -465,6 +465,28 @@ app.post(
     if (!description || !unit_name)
       return res.status(400).json({ error: 'description y unit_name son requeridos' })
 
+    // Mismo criterio que el router real: descripción única (sin mayúsculas);
+    // si la que choca está borrada (inactiva) se reactiva, si está activa → 409.
+    const existing = db.electrical_catalog_items.find(
+      i => String(i.description).toLowerCase() === String(description).toLowerCase()
+    )
+    if (existing?.is_active)
+      return res
+        .status(409)
+        .json({ error: `Ya existe el ítem "${description}" en Materiales Eléctricos` })
+    if (existing) {
+      Object.assign(existing, {
+        description,
+        unit_name,
+        unit_price: Number(unit_price) || 0,
+        sort_order: Number(sort_order) || 0,
+        is_active: true,
+        updated_at: now(),
+      })
+      saveDB(db)
+      return res.status(201).json(existing)
+    }
+
     const item = {
       id: uid(),
       description,

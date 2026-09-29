@@ -28,9 +28,20 @@ const hashToken = (token: string) => crypto.createHash('sha256').update(token).d
 // jti aleatorio: sin esto, dos tokens firmados con el mismo payload dentro del
 // mismo segundo (iat con granularidad de segundos) son bit a bit idénticos —
 // rompe la rotación de A-02 y dificulta la trazabilidad de tokens individuales.
+// `kind: 'access'` es nuevo: hasta ahora solo el refresh token se etiquetaba,
+// y middleware/auth.ts no miraba el claim — un refresh de 30 días pasaba como
+// Bearer en cualquier endpoint protegido. Emitirlo acá es la mitad que permite
+// endurecer ese chequeo a una lista blanca estricta más adelante.
 const signAccessToken = (user: any) =>
   jwt.sign(
-    { id: user.id, email: user.email, name: user.name, role: user.role, jti: crypto.randomUUID() },
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      kind: 'access',
+      jti: crypto.randomUUID(),
+    },
     env.JWT_SECRET,
     { expiresIn: env.JWT_EXPIRY } as jwt.SignOptions
   )

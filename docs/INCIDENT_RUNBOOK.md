@@ -19,11 +19,11 @@ responsable técnico.
 
 ## 2. A quién avisar
 
-| Rol | Contacto | Cuándo |
-|---|---|---|
+| Rol                 | Contacto                      | Cuándo                        |
+| ------------------- | ----------------------------- | ----------------------------- |
 | Responsable técnico | Nelson Bravo (dueño del repo) | Cualquier caída en producción |
 
-*(Completar con el contacto real del equipo/soporte antes de operar con usuarios reales.)*
+_(Completar con el contacto real del equipo/soporte antes de operar con usuarios reales.)_
 
 ## 3. La base de datos no responde (`/api/health` → 503)
 
@@ -33,7 +33,7 @@ responsable técnico.
 - Revisar el límite de conexiones del plan de Neon: el pool del backend usa `max: 5`;
   si hay múltiples instancias de función serverless activas a la vez, pueden agotar
   el límite de conexiones directas. Ver `docs/MIGRACIONES.md` / issue abierto sobre
-  usar el endpoint *pooled* (pgbouncer) de Neon.
+  usar el endpoint _pooled_ (pgbouncer) de Neon.
 - Si Neon está caído: no hay mitigación desde la app. Comunicar el estado a los
   usuarios y monitorear el status page del proveedor.
 
@@ -49,11 +49,26 @@ responsable técnico.
 
 ## 5. Login masivo fallando (posible bloqueo por rate limit)
 
-- `POST /api/auth/login` limita a 5 intentos / 15 min por combinación IP+email
-  (`backend/src/config/rateLimiters.ts`). Si un usuario legítimo quedó bloqueado,
-  no hay panel de desbloqueo manual todavía: esperar la ventana o reiniciar la
-  función (en serverless, el estado del limiter vive en memoria del proceso y no
-  persiste entre invocaciones frías, así que un cold start ya lo despeja).
+- `POST /api/auth/login` limita a 5 intentos fallidos / 15 min por combinación
+  IP+email, y a 20 fallidos / 15 min por IP sola (este segundo tope existe
+  porque rotar el correo en cada intento esquivaba el primero por completo).
+- **El estado del límite vive en Postgres** (tabla `auth_throttle`,
+  `backend/src/middleware/authThrottle.ts`), no en la memoria del proceso.
+  Este runbook decía antes que un cold start "ya lo despeja" y lo presentaba
+  como la forma de desbloquear a alguien. Era cierto, y era exactamente el
+  problema: si un reinicio despeja el contador, entonces el límite real era
+  5 × (instancias tibias), un número que sube justo durante un ataque. Ya no:
+  reiniciar la función no despeja nada.
+- Desbloqueo manual de una IP o de un par IP+correo:
+  ```sql
+  -- Ver quién está frenado y hasta cuándo
+  SELECT bucket_key, attempt_count, window_start FROM auth_throttle
+   ORDER BY window_start DESC;
+  -- Liberar (el bucket_key tiene el formato '<limitador>:<ip>[:<correo>]')
+  DELETE FROM auth_throttle WHERE bucket_key LIKE 'login%:<ip>%';
+  ```
+  El limitador en memoria (`backend/src/config/rateLimiters.ts`) sigue delante
+  como primera capa; ese sí se despeja con un cold start.
 - Tras 10 intentos fallidos la CUENTA (no la IP) queda bloqueada 30 min
   (`failed_login_attempts` / `locked_until` en `users`). Desbloqueo manual:
   ```sql

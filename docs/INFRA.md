@@ -22,6 +22,18 @@ Verificación una vez activado: 200 peticiones en 10s contra `/api/auth/login`
 desde una IP de prueba deben bloquearse en el panel de Vercel **sin generar
 invocaciones de función** (visible en la pestaña de Functions vs. Firewall).
 
+**Ya no es lo único que hay.** El límite de intentos dejó de vivir solo en la
+memoria de cada instancia: `backend/src/middleware/authThrottle.ts` lo respalda
+con un contador compartido en Postgres (tabla `auth_throttle`, migración
+`0019`), así que el tope es global aunque la plataforma levante veinte
+instancias. Eso cubre el riesgo de fuerza bruta.
+
+Lo que el Firewall **sigue** aportando, y que esto no reemplaza, es cortar el
+tráfico en el borde: hoy un ataque volumétrico igual paga una invocación de
+función y una consulta a la base de datos por intento. Activarlo sigue
+valiendo la pena; ya no es lo que separa a la aplicación de una fuerza bruta
+exitosa.
+
 ## A-06: restricción de red en Neon
 
 1. Activar **IP Allowlist** o el equivalente de acceso restringido al proyecto
@@ -30,8 +42,8 @@ invocaciones de función** (visible en la pestaña de Functions vs. Firewall).
    (la cadena de conexión actual quedó potencialmente expuesta en el
    historial de git de este mismo proyecto — ver el plan de críticos, C-05).
 3. Actualizar el secret en Vercel (todas las variables de entorno) y en
-   GitHub Actions (`PROD_DATABASE_URL` para `backup.yml` y
-   `cleanup-sessions.yml`).
+   GitHub Actions (`PROD_DATABASE_URL`, usado por `backup.yml`,
+   `cleanup-sessions.yml` y `ci.yml` → job `migrate-production`).
 
 ## A-07 (relacionado): un solo entrypoint de servidor
 

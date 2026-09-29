@@ -53,6 +53,39 @@
   --sync-idle-bdr:    #2563eb;
   --sync-idle-bg:     rgba(37, 99, 235, 0.08);
   --sync-idle-color:  #93c5fd;
+
+  /* ── Tokens semánticos (F0) — usar estos en las hojas de cada pantalla ── */
+  /* Superficies: tarjetas/tablas, zonas atenuadas y barras/encabezados */
+  --surface:          #1e293b;
+  --surface-muted:    #172033;
+  --surface-strong:   #0f172a;
+  --text-muted:       #94a3b8;
+  --border-subtle:    #26344a;
+  --border-strong:    #475569;
+  /* Texto sobre un fondo de acento (botón primario, badge sólido) */
+  --on-accent:        #ffffff;
+  --primary-text:     #60a5fa;
+  /* Estados: fondo suave + texto legible sobre --surface */
+  --success-bg:       rgba(16, 185, 129, 0.14);
+  --success-text:     #6ee7b7;
+  --warning-bg:       rgba(245, 158, 11, 0.14);
+  --warning-text:     #fcd34d;
+  --danger-bg:        rgba(239, 68, 68, 0.14);
+  --danger-text:      #fca5a5;
+  --info:             #0ea5e9;
+  --info-bg:          rgba(59, 130, 246, 0.14);
+  --info-text:        #93c5fd;
+  /* Canales RGB para rgba(var(--x-rgb), alfa) */
+  --success-rgb:      16, 185, 129;
+  --warning-rgb:      245, 158, 11;
+  --danger-rgb:       239, 68, 68;
+  --info-rgb:         14, 165, 233;
+  --overlay-rgb:      255, 255, 255;
+  --shadow-rgb:       0, 0, 0;
+  /* Botón primario único para toda la app */
+  --btn-primary-bg:       var(--primary);
+  --btn-primary-bg-hover: var(--primary-dark);
+  --btn-primary-text:     var(--on-accent);
 }
 
 /* ── Tema Claro ─────────────────────────────────────────────────── */
@@ -102,6 +135,54 @@
   --sync-idle-bdr:    #2563eb;
   --sync-idle-bg:     rgba(37, 99, 235, 0.06);
   --sync-idle-color:  #1d4ed8;
+
+  /* ── Tokens semánticos (F0) — usar estos en las hojas de cada pantalla ── */
+  /* Superficies: tarjetas/tablas, zonas atenuadas y barras/encabezados */
+  --surface:          #ffffff;
+  --surface-muted:    #f8fafc;
+  --surface-strong:   #f1f5f9;
+  --text-muted:       #5b6a80;
+  --border-subtle:    #f1f5f9;
+  --border-strong:    #cbd5e1;
+  /* Texto sobre un fondo de acento (botón primario, badge sólido) */
+  --on-accent:        #ffffff;
+  --primary-text:     #1d4ed8;
+  /* Estados: fondo suave + texto legible sobre --surface */
+  --success-bg:       #dcfce7;
+  --success-text:     #15803d;
+  --warning-bg:       #fef3c7;
+  --warning-text:     #b45309;
+  --danger-bg:        #fee2e2;
+  --danger-text:      #b91c1c;
+  --info:             #0284c7;
+  --info-bg:          #eff6ff;
+  --info-text:        #1d4ed8;
+  /* Canales RGB para rgba(var(--x-rgb), alfa) */
+  --success-rgb:      5, 150, 105;
+  --warning-rgb:      217, 119, 6;
+  --danger-rgb:       220, 38, 38;
+  --info-rgb:         2, 132, 199;
+  --overlay-rgb:      15, 23, 42;
+  --shadow-rgb:       15, 23, 42;
+  /* Botón primario único para toda la app */
+  --btn-primary-bg:       var(--primary);
+  --btn-primary-bg-hover: var(--primary-dark);
+  --btn-primary-text:     var(--on-accent);
+}
+
+/* ── Escalas comunes a los 3 temas (F0) ─────────────────────────── */
+:root {
+  --header-h:     64px;
+  --fs-xs:        11px;
+  --fs-sm:        12px;
+  --fs-base:      14px;
+  --fs-md:        16px;
+  --fs-lg:        20px;
+  --fs-xl:        28px;
+  --radius-sm:    4px;
+  --radius-md:    8px;
+  --radius-lg:    12px;
+  --radius-pill:  999px;
 }
 
 /* ── Tema Cyberpunk ─────────────────────────────────────────────── */
@@ -151,6 +232,39 @@
   --sync-idle-bdr:    #ff6b00;
   --sync-idle-bg:     rgba(255, 107, 0, 0.08);
   --sync-idle-color:  #ff9944;
+
+  /* ── Tokens semánticos (F0) — usar estos en las hojas de cada pantalla ── */
+  /* Superficies: tarjetas/tablas, zonas atenuadas y barras/encabezados */
+  --surface:          #080808;
+  --surface-muted:    #0d0d0d;
+  --surface-strong:   #111111;
+  --text-muted:       #00b32d;
+  --border-subtle:    rgba(255, 107, 0, 0.12);
+  --border-strong:    rgba(255, 107, 0, 0.45);
+  /* Texto sobre un fondo de acento (botón primario, badge sólido) */
+  --on-accent:        #000000;
+  --primary-text:     #ff8c44;
+  /* Estados: fondo suave + texto legible sobre --surface */
+  --success-bg:       rgba(0, 255, 65, 0.08);
+  --success-text:     #00ff41;
+  --warning-bg:       rgba(255, 140, 0, 0.1);
+  --warning-text:     #ffb347;
+  --danger-bg:        rgba(255, 34, 68, 0.12);
+  --danger-text:      #ff5570;
+  --info:             #ff9944;
+  --info-bg:          rgba(255, 107, 0, 0.08);
+  --info-text:        #ff9944;
+  /* Canales RGB para rgba(var(--x-rgb), alfa) */
+  --success-rgb:      0, 255, 65;
+  --warning-rgb:      255, 140, 0;
+  --danger-rgb:       255, 34, 68;
+  --info-rgb:         255, 153, 68;
+  --overlay-rgb:      255, 107, 0;
+  --shadow-rgb:       0, 0, 0;
+  /* Botón primario único para toda la app */
+  --btn-primary-bg:       var(--primary);
+  --btn-primary-bg-hover: var(--primary-dark);
+  --btn-primary-text:     var(--on-accent);
 }
 
 /* ── Transición global al cambiar tema ──────────────────────────── */

@@ -1,0 +1,32 @@
+{
+  "cssHardcodedColors": {
+    "App.css": 9,
+    "components/CatalogAutocomplete.css": 38,
+    "styles/Catalogo.css": 87,
+    "styles/Clients.css": 62,
+    "styles/CostIndicator.css": 7,
+    "styles/Dashboard.css": 39,
+    "styles/Invoices.css": 109,
+    "styles/Login.css": 16,
+    "styles/Logistica.css": 29,
+    "styles/Maintenance.css": 3,
+    "styles/Projects.css": 193,
+    "styles/Quotations.css": 299
+  },
+  "tsxInlineColors": {
+    "App.tsx": 0,
+    "components/CatalogAutocomplete.tsx": 0,
+    "components/CostIndicator.tsx": 0,
+    "pages/Catalogo.tsx": 7,
+    "pages/Clients.tsx": 0,
+    "pages/Dashboard.tsx": 55,
+    "pages/Invoices.tsx": 2,
+    "pages/Login.tsx": 0,
+    "pages/Logistica.tsx": 0,
+    "pages/Maintenance.tsx": 0,
+    "pages/Projects.tsx": 13,
+    "pages/ProjectsGantt.tsx": 17,
+    "pages/ProjectsKanban.tsx": 0,
+    "pages/Quotations.tsx": 18
+  }
+}

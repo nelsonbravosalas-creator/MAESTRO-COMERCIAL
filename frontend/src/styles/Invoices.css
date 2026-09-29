@@ -4,7 +4,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f1f5f9;
+  background: var(--surface-muted);
   font-family: 'Outfit', 'Segoe UI', sans-serif;
 }
 
@@ -15,8 +15,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 28px 16px;
-  background: #0f172a;
-  border-bottom: 2px solid #0e7490;
+  background: var(--surface-strong);
+  border-bottom: 2px solid var(--info);
   flex-shrink: 0;
 }
 
@@ -29,15 +29,15 @@
 .inv-title {
   font-size: 1.35rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text);
   letter-spacing: -0.02em;
   margin: 0;
 }
 
 .inv-count {
   font-size: 0.78rem;
-  color: #64748b;
-  background: #1e293b;
+  color: var(--text-muted);
+  background: var(--surface);
   padding: 3px 10px;
   border-radius: 12px;
   font-family: 'Space Mono', monospace;
@@ -51,9 +51,9 @@
 
 .inv-select,
 .inv-input {
-  background: #1e293b;
-  color: #e2e8f0;
-  border: 1px solid #334155;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 0.85rem;
@@ -61,7 +61,7 @@
 }
 
 .inv-input::placeholder {
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 /* ── Tarjetas de cobranza ────────────────────────────────────────────────── */
@@ -75,45 +75,45 @@
 }
 
 .inv-card {
-  background: #fff;
+  background: var(--surface);
   border-radius: 12px;
   padding: 14px 16px;
-  border-left: 4px solid #94a3b8;
-  box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+  border-left: 4px solid var(--border-strong);
+  box-shadow: 0 1px 3px rgba(var(--shadow-rgb), 0.08);
 }
 
 .inv-card.is-danger {
-  border-left-color: #ef4444;
+  border-left-color: var(--danger);
 }
 .inv-card.is-warning {
-  border-left-color: #f59e0b;
+  border-left-color: var(--warning);
 }
 .inv-card.is-success {
-  border-left-color: #10b981;
+  border-left-color: var(--success);
 }
 .inv-card.is-primary {
-  border-left-color: #2563eb;
+  border-left-color: var(--primary);
 }
 
 .inv-card-label {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
 .inv-card-value {
   font-size: 1.3rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text);
   font-family: 'Space Mono', monospace;
   margin-top: 4px;
 }
 
 .inv-card-sub {
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
@@ -129,15 +129,15 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  background: #fff;
+  background: var(--surface);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+  box-shadow: 0 1px 3px rgba(var(--shadow-rgb), 0.08);
 }
 
 .inv-table thead th {
-  background: #0f172a;
-  color: #94a3b8;
+  background: var(--surface-strong);
+  color: var(--text-muted);
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -149,24 +149,24 @@
 
 .inv-table tbody td {
   padding: 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
   font-size: 0.86rem;
-  color: #1e293b;
+  color: var(--text);
   vertical-align: middle;
 }
 
 .inv-table tbody tr:hover {
-  background: #f8fafc;
+  background: var(--surface-muted);
 }
 
 .inv-num {
   font-family: 'Space Mono', monospace;
   font-weight: 700;
-  color: #0e7490;
+  color: var(--info-text);
 }
 
 .inv-num-pending {
-  color: #b45309;
+  color: var(--warning-text);
   font-style: italic;
   font-weight: 600;
 }
@@ -179,11 +179,11 @@
 
 .inv-money.is-pending {
   font-weight: 700;
-  color: #b91c1c;
+  color: var(--danger-text);
 }
 
 .inv-money.is-zero {
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 /* ── Badges de estado ────────────────────────────────────────────────────── */
@@ -198,37 +198,38 @@
 }
 
 .inv-badge.al_dia {
-  background: #e0f2fe;
-  color: #075985;
+  background: var(--info-bg);
+  color: var(--info-text);
 }
 .inv-badge.por_vencer {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--warning-bg);
+  color: var(--warning-text);
 }
 .inv-badge.vencida {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--danger-bg);
+  color: var(--danger-text);
 }
 .inv-badge.parcial {
-  background: #ede9fe;
-  color: #5b21b6;
+  background: var(--violet-bg);
+  color: var(--violet-text);
 }
 .inv-badge.parcial_vencida {
-  background: #ffe4e6;
-  color: #9f1239;
+  /* Parcialmente vencida: el mismo rojo que vencida, más intenso */
+  background: rgba(var(--danger-rgb), 0.24);
+  color: var(--danger-text);
 }
 .inv-badge.pagada {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--success-bg);
+  color: var(--success-text);
 }
 .inv-badge.anulada {
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 .inv-mora {
   font-size: 0.72rem;
-  color: #b91c1c;
+  color: var(--danger-text);
   font-weight: 600;
   margin-left: 6px;
 }
@@ -239,8 +240,8 @@
   border-radius: 10px;
   font-size: 0.68rem;
   font-weight: 700;
-  background: #cffafe;
-  color: #155e75;
+  background: var(--info-bg);
+  color: var(--info-text);
   margin-left: 6px;
 }
 
@@ -252,20 +253,20 @@
 }
 
 .inv-btn {
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 5px 9px;
   cursor: pointer;
   font-size: 0.78rem;
-  color: #334155;
+  color: var(--text);
   font-family: inherit;
   transition: all 0.15s;
 }
 
 .inv-btn:hover {
-  background: #e2e8f0;
-  border-color: #94a3b8;
+  background: var(--bg-tertiary);
+  border-color: var(--border-strong);
 }
 
 .inv-btn.is-primary {
@@ -280,23 +281,23 @@
 }
 
 .inv-btn.is-warning {
-  background: #d97706;
-  border-color: #b45309;
-  color: #fff;
+  background: var(--warning);
+  border-color: var(--warning);
+  color: var(--on-accent);
 }
 
 .inv-btn.is-warning:hover {
-  background: #b45309;
+  background: var(--warning);
 }
 
 .inv-btn.is-danger {
-  background: #dc2626;
-  border-color: #b91c1c;
-  color: #fff;
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--on-accent);
 }
 
 .inv-btn.is-danger:hover {
-  background: #b91c1c;
+  background: var(--danger);
 }
 
 .inv-btn:disabled {
@@ -307,12 +308,12 @@
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 
 .inv-modal {
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px;
   width: min(760px, 94vw);
   max-height: 90vh;
   overflow: auto;
-  box-shadow: 0 20px 50px rgb(15 23 42 / 30%);
+  box-shadow: 0 20px 50px rgba(var(--shadow-rgb), 0.3);
 }
 
 .inv-modal-header {
@@ -320,17 +321,17 @@
   align-items: center;
   justify-content: space-between;
   padding: 18px 22px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  background: #fff;
+  background: var(--surface);
   z-index: 1;
 }
 
 .inv-modal-header h2 {
   margin: 0;
   font-size: 1.1rem;
-  color: #0f172a;
+  color: var(--text);
 }
 
 .inv-modal-body {
@@ -341,7 +342,7 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 700;
   margin: 22px 0 10px;
 }
@@ -359,7 +360,7 @@
 .inv-field label {
   display: block;
   font-size: 0.76rem;
-  color: #475569;
+  color: var(--text-secondary);
   font-weight: 600;
   margin-bottom: 4px;
 }
@@ -368,13 +369,13 @@
 .inv-field select,
 .inv-field textarea {
   width: 100%;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 0.86rem;
   font-family: inherit;
-  color: #0f172a;
-  background: #fff;
+  color: var(--text);
+  background: var(--surface);
 }
 
 .inv-field textarea {
@@ -383,13 +384,13 @@
 }
 
 .inv-field .inv-error {
-  color: #b91c1c;
+  color: var(--danger-text);
   font-size: 0.74rem;
   margin-top: 3px;
 }
 
 .inv-payments-list {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -399,7 +400,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-subtle);
   font-size: 0.84rem;
 }
 
@@ -408,14 +409,14 @@
 }
 
 .inv-payment-meta {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.76rem;
 }
 
 .inv-empty {
   padding: 18px;
   text-align: center;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -424,16 +425,16 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 22px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
   position: sticky;
   bottom: 0;
-  background: #fff;
+  background: var(--surface);
 }
 
 .inv-alert {
-  background: #fee2e2;
-  border: 1px solid #fca5a5;
-  color: #991b1b;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  color: var(--danger-text);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 0.82rem;
@@ -443,7 +444,7 @@
 .inv-loading {
   padding: 40px;
   text-align: center;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 /* ── Referencia a cotización en la tabla ─────────────────────────────────── */
@@ -451,23 +452,23 @@
 .inv-quotacion-ref {
   font-family: 'Space Mono', monospace;
   font-size: 0.82rem;
-  color: #0369a1;
+  color: var(--info-text);
   font-weight: 600;
 }
 
 .inv-empty-cell {
-  color: #cbd5e1;
+  color: var(--text-secondary);
 }
 
 /* ── Banner de cotización vinculada en el modal ──────────────────────────── */
 
 .inv-quotacion-link {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--info-bg);
+  border: 1px solid var(--primary);
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 0.84rem;
-  color: #1e40af;
+  color: var(--primary-text);
   margin-bottom: 14px;
 }
 
@@ -511,8 +512,8 @@
 .inv-remove-item-btn {
   flex-shrink: 0;
   padding: 6px 8px;
-  color: #ef4444;
-  border-color: #fca5a5;
+  color: var(--danger-text);
+  border-color: var(--danger);
   margin-top: 0;
 }
 
@@ -527,8 +528,8 @@
 }
 
 .inv-doc-badge {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--success-bg);
+  color: var(--success-text);
   border-radius: 4px;
   padding: 3px 8px;
   font-size: 0.82rem;
@@ -537,7 +538,7 @@
 
 .inv-doc-hint {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 /* ── Clip de PDF en el listado ───────────────────────────────────────────── */
@@ -549,7 +550,7 @@
   width: 32px;
   height: 28px;
   background: transparent;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
   font-size: 1rem;
@@ -559,34 +560,34 @@
 }
 
 .inv-clip-btn.is-complete {
-  border-color: #16a34a;
-  background: #f0fdf4;
+  border-color: var(--success);
+  background: var(--success-bg);
 }
 
 .inv-clip-btn.is-missing {
-  border-color: #f59e0b;
-  background: #fffbeb;
+  border-color: var(--warning);
+  background: var(--warning-bg);
 }
 
 .inv-clip-btn.is-missing:hover {
-  background: #fef3c7;
-  border-color: #d97706;
+  background: var(--warning-bg);
+  border-color: var(--warning);
 }
 
 /* ── Banner de cuota en NuevaFactura ─────────────────────────────────────── */
 
 .inv-cuota-banner {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--info-bg);
+  border: 1px solid var(--primary);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 0.85rem;
-  color: #1d4ed8;
+  color: var(--primary-text);
   margin-bottom: 12px;
 }
 
 .inv-cuota-banner.is-blocked {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #b91c1c;
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger-text);
 }

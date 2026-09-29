@@ -113,7 +113,9 @@ function CreateModal({ clients, onClose, onCreate }: CreateModalProps) {
           </button>
         </div>
         <div className="modal-body">
-          {error && <div style={{ color: '#ef4444', fontSize: '0.875rem' }}>{error}</div>}
+          {error && (
+            <div style={{ color: 'var(--danger-text)', fontSize: '0.875rem' }}>{error}</div>
+          )}
           <div className="form-group">
             <label className="form-label">Nombre del Proyecto *</label>
             <input
@@ -293,7 +295,7 @@ function OverviewTab({ project }: OverviewTabProps) {
             borderRadius: '0.5rem',
             padding: '0.75rem 1rem',
             marginBottom: '1rem',
-            color: '#ef4444',
+            color: 'var(--danger-text)',
             fontSize: '0.875rem',
             display: 'flex',
             alignItems: 'center',
@@ -386,7 +388,7 @@ function OverviewTab({ project }: OverviewTabProps) {
             style={{ width: `${Math.min(100, pct)}%` }}
           />
         </div>
-        <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>
           {pct}% completado
         </div>
       </div>
@@ -576,7 +578,10 @@ function CostosTab({ project }: CostosTabProps) {
           <tbody>
             {costs.length === 0 && (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', color: '#475569', padding: '2rem' }}>
+                <td
+                  colSpan={6}
+                  style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}
+                >
                   Sin costos registrados
                 </td>
               </tr>
@@ -695,7 +700,7 @@ function CostosTab({ project }: CostosTabProps) {
               <tr>
                 <td
                   colSpan={4}
-                  style={{ textAlign: 'right', color: '#94a3b8', fontSize: '0.875rem' }}
+                  style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.875rem' }}
                 >
                   Total Costos
                 </td>
@@ -705,7 +710,7 @@ function CostosTab({ project }: CostosTabProps) {
               <tr>
                 <td
                   colSpan={4}
-                  style={{ textAlign: 'right', color: '#94a3b8', fontSize: '0.875rem' }}
+                  style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.875rem' }}
                 >
                   Presupuesto
                 </td>
@@ -715,7 +720,7 @@ function CostosTab({ project }: CostosTabProps) {
               <tr>
                 <td
                   colSpan={4}
-                  style={{ textAlign: 'right', color: '#94a3b8', fontSize: '0.875rem' }}
+                  style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.875rem' }}
                 >
                   Saldo
                 </td>
@@ -801,7 +806,7 @@ function EquipoTab({ project }: EquipoTabProps) {
         Agregar Miembro (por User ID)
       </div>
       {error && (
-        <div style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+        <div style={{ color: 'var(--danger-text)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
           {error}
         </div>
       )}
@@ -1031,7 +1036,7 @@ export default function Projects() {
           <div>
             <h2>Proyectos</h2>
             {criticalCount > 0 && (
-              <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--danger-text)' }}>
                 {criticalCount} crítico{criticalCount > 1 ? 's' : ''}
               </span>
             )}
@@ -1067,7 +1072,9 @@ export default function Projects() {
                 <div className="project-card-client">{p.client_name}</div>
                 <div className="project-card-meta">
                   <span className={`status-badge ${p.status}`}>{STATUS_LABELS[p.status]}</span>
-                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{p.progress_pct}%</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    {p.progress_pct}%
+                  </span>
                 </div>
                 <div className="progress-bar-wrap">
                   <div
@@ -1081,7 +1088,7 @@ export default function Projects() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     fontSize: '0.7rem',
-                    color: '#94a3b8',
+                    color: 'var(--text-muted)',
                   }}
                 >
                   <span>Gasto: {fmtCLP(p.gasto_real)}</span>
@@ -1096,7 +1103,7 @@ export default function Projects() {
                       className={`progress-bar-fill ${p.gasto_real > p.budget ? 'over-budget' : ''}`}
                       style={{
                         width: `${pctGasto}%`,
-                        background: p.gasto_real > p.budget ? '#ef4444' : '#10b981',
+                        background: p.gasto_real > p.budget ? 'var(--danger)' : 'var(--success)',
                       }}
                     />
                   </div>

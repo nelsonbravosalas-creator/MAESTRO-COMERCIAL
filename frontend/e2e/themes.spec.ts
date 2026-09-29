@@ -6,7 +6,13 @@ import { test, expect, openScreen, THEMES, type Screen } from './fixtures'
 // pantallas mostraban un bloque blanco en tema oscuro (y al revés en claro).
 
 // Pantallas ya migradas a tokens; cada fase agrega las suyas.
-export const MIGRADAS: Screen[] = ['Maestro de Precios', 'Clientes', 'Logística']
+export const MIGRADAS: Screen[] = [
+  'Maestro de Precios',
+  'Clientes',
+  'Logística',
+  'Facturas',
+  'Proyectos',
+]
 
 for (const theme of THEMES) {
   test.describe(`tema ${theme}`, () => {

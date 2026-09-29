@@ -1,6 +1,6 @@
 .cost-indicator {
   padding: 2rem;
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-strong) 100%);
   border-radius: 0.75rem;
   border: 1px solid var(--border);
   margin-bottom: 2rem;
@@ -16,7 +16,7 @@
 }
 
 .cost-indicator.error {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(var(--danger-rgb), 0.1);
   border-color: var(--danger);
 }
 
@@ -41,7 +41,7 @@
 
 .indicator-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 10px 25px rgba(var(--primary-rgb), 0.1);
   border-color: var(--primary);
 }
 
@@ -54,7 +54,7 @@
 }
 
 .indicator-card.success {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(var(--success-rgb), 0.1);
   border-color: var(--success);
 }
 
@@ -117,12 +117,12 @@
 }
 
 .badge.success {
-  background: rgba(16, 185, 129, 0.2);
+  background: rgba(var(--success-rgb), 0.2);
   color: var(--success);
 }
 
 .badge.warning {
-  background: rgba(245, 158, 11, 0.2);
+  background: rgba(var(--warning-rgb), 0.2);
   color: var(--warning);
 }
 

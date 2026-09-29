@@ -43,7 +43,7 @@
 .dashboard-card:hover {
   transform: translateY(-4px);
   border-color: var(--primary);
-  box-shadow: 0 15px 35px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 15px 35px rgba(var(--primary-rgb), 0.2);
 }
 
 .dashboard-card h3 {
@@ -61,7 +61,7 @@
 .dashboard-card li {
   padding: 0.5rem 0;
   color: var(--text-secondary);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(var(--overlay-rgb), 0.05);
 }
 
 .dashboard-card li:last-child {
@@ -132,7 +132,7 @@
 .feature:hover {
   transform: translateY(-4px);
   border-color: var(--primary);
-  box-shadow: 0 15px 35px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 15px 35px rgba(var(--primary-rgb), 0.2);
 }
 
 .feature-icon {
@@ -180,20 +180,20 @@
 
 .phase.completed {
   border-color: var(--success);
-  background: rgba(16, 185, 129, 0.05);
+  background: rgba(var(--success-rgb), 0.05);
 }
 
 .phase.completed:hover {
-  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 10px 25px rgba(var(--success-rgb), 0.2);
 }
 
 .phase.pending {
   border-color: var(--warning);
-  background: rgba(245, 158, 11, 0.05);
+  background: rgba(var(--warning-rgb), 0.05);
 }
 
 .phase.pending:hover {
-  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 10px 25px rgba(var(--warning-rgb), 0.2);
 }
 
 .phase-number {
@@ -282,15 +282,24 @@
   display: inline-block;
   width: 120px;
   height: 1.5rem;
-  background: linear-gradient(90deg, var(--border) 25%, rgba(255,255,255,0.06) 50%, var(--border) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    rgba(var(--overlay-rgb), 0.06) 50%,
+    var(--border) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
   border-radius: 4px;
 }
 
 @keyframes shimmer {
-  0%   { background-position: 200% 0 }
-  100% { background-position: -200% 0 }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* STATUS LIST */
@@ -305,12 +314,14 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.45rem 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(var(--overlay-rgb), 0.05);
   color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
-.status-item:last-child { border-bottom: none; }
+.status-item:last-child {
+  border-bottom: none;
+}
 
 .status-dot {
   width: 8px;
@@ -319,7 +330,9 @@
   flex-shrink: 0;
 }
 
-.status-label { flex: 1; }
+.status-label {
+  flex: 1;
+}
 
 .status-count {
   font-weight: 600;
@@ -333,11 +346,14 @@
   text-align: right;
 }
 
-.dashboard-subtitle { display: flex; align-items: center; }
+.dashboard-subtitle {
+  display: flex;
+  align-items: center;
+}
 
 .badge.offline {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
+  background: rgba(var(--danger-rgb), 0.15);
+  color: var(--danger-text);
 }
 
 /* SYNC BUTTON */
@@ -355,7 +371,11 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    color 0.2s;
   white-space: nowrap;
   align-self: flex-start;
   margin-top: 0.25rem;
@@ -408,13 +428,24 @@
 }
 
 @keyframes rotateSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes syncPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-  50%       { box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.12), 0 0 12px rgba(245, 158, 11, 0.2); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--warning-rgb), 0);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px rgba(var(--warning-rgb), 0.12),
+      0 0 12px rgba(var(--warning-rgb), 0.2);
+  }
 }
 
 /* ── 6-COLUMN KPI GRID ──────────────────────────────────────── */
@@ -431,12 +462,18 @@
   margin-bottom: 1.5rem;
 }
 
-.dash-row--6-4 { grid-template-columns: 6fr 4fr; }
-.dash-row--5-5 { grid-template-columns: 1fr 1fr; }
+.dash-row--6-4 {
+  grid-template-columns: 6fr 4fr;
+}
+.dash-row--5-5 {
+  grid-template-columns: 1fr 1fr;
+}
 
 /* ── CHART CARDS ─────────────────────────────────────────────── */
 
-.chart-card { padding: 1.25rem 1.5rem 1rem; }
+.chart-card {
+  padding: 1.25rem 1.5rem 1rem;
+}
 
 .chart-title {
   font-size: 0.8rem;
@@ -456,7 +493,7 @@
   font-size: 0.85rem;
   text-align: center;
   padding: 0 1.5rem;
-  border: 1px dashed rgba(255,255,255,0.08);
+  border: 1px dashed rgba(var(--overlay-rgb), 0.08);
   border-radius: 0.5rem;
   margin-top: 0.5rem;
 }
@@ -537,7 +574,9 @@
   flex-shrink: 0;
 }
 
-.pie-name { color: var(--text-secondary); }
+.pie-name {
+  color: var(--text-secondary);
+}
 
 .pie-count {
   font-weight: 600;
@@ -567,27 +606,60 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 600;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid rgba(var(--overlay-rgb), 0.07);
   white-space: nowrap;
 }
 
 .recent-table td {
   padding: 0.55rem 0.75rem;
   color: var(--text-secondary);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(var(--overlay-rgb), 0.04);
   white-space: nowrap;
 }
 
-.recent-table tbody tr:last-child td { border-bottom: none; }
+.recent-table tbody tr:last-child td {
+  border-bottom: none;
+}
 
-.recent-table tbody tr:hover td { background: rgba(255,255,255,0.025); }
+.recent-table tbody tr:hover td {
+  background: rgba(var(--overlay-rgb), 0.025);
+}
 
-.cell-mono  { font-family: 'Courier New', monospace; color: var(--text); font-size: 0.78rem; }
-.cell-name  { color: var(--text); font-weight: 500; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
-.cell-ref   { max-width: 180px; overflow: hidden; text-overflow: ellipsis; font-size: 0.8rem; }
-.cell-date  { color: var(--text-secondary); font-size: 0.78rem; }
-.cell-oper  { font-size: 0.78rem; color: var(--text-secondary); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
-.cell-amount { text-align: right; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cell-mono {
+  font-family: 'Courier New', monospace;
+  color: var(--text);
+  font-size: 0.78rem;
+}
+.cell-name {
+  color: var(--text);
+  font-weight: 500;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-ref {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.8rem;
+}
+.cell-date {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+.cell-oper {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-amount {
+  text-align: right;
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 
 .status-pill {
   display: inline-block;
@@ -617,23 +689,51 @@
 /* ── RESPONSIVE ──────────────────────────────────────────────── */
 
 @media (max-width: 1200px) {
-  .kpi-grid--6    { grid-template-columns: repeat(3, 1fr); }
-  .dash-row--6-4  { grid-template-columns: 1fr; }
+  .kpi-grid--6 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .dash-row--6-4 {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 900px) {
-  .dash-row--5-5  { grid-template-columns: 1fr; }
+  .dash-row--5-5 {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
-  .dashboard-container { padding: 1rem; }
-  .dashboard-header h1 { font-size: 1.8rem; }
-  .dashboard-header p  { font-size: 1rem; }
-  .dashboard-grid      { grid-template-columns: 1fr; }
-  .features-grid       { grid-template-columns: 1fr; }
-  .phases              { grid-template-columns: 1fr; }
-  .kpi-grid--6         { grid-template-columns: repeat(2, 1fr); }
-  .dash-row            { margin-bottom: 1rem; }
-  .phase-number        { position: static; margin-right: 0.5rem; }
-  .cell-ref, .cell-oper { display: none; }
+  .dashboard-container {
+    padding: 1rem;
+  }
+  .dashboard-header h1 {
+    font-size: 1.8rem;
+  }
+  .dashboard-header p {
+    font-size: 1rem;
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+  .phases {
+    grid-template-columns: 1fr;
+  }
+  .kpi-grid--6 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dash-row {
+    margin-bottom: 1rem;
+  }
+  .phase-number {
+    position: static;
+    margin-right: 0.5rem;
+  }
+  .cell-ref,
+  .cell-oper {
+    display: none;
+  }
 }

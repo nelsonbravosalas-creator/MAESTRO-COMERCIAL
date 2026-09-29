@@ -12,6 +12,7 @@
     "start": "node dist/server.js",
     "seed": "tsx src/db/seed.ts",
     "cleanup:sessions": "tsx src/scripts/cleanupSessions.ts",
+    "report:weekly": "tsx src/scripts/weeklyCommercialSummary.ts",
     "migrate": "node-pg-migrate -m src/db/migrations",
     "migrate:up": "npm run migrate -- up",
     "migrate:down": "npm run migrate -- down 1",

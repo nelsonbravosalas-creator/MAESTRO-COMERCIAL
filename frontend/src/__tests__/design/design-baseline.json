@@ -1,17 +1,17 @@
 {
   "cssHardcodedColors": {
-    "App.css": 9,
-    "components/CatalogAutocomplete.css": 38,
+    "App.css": 0,
+    "components/CatalogAutocomplete.css": 0,
     "styles/Catalogo.css": 0,
     "styles/Clients.css": 0,
     "styles/CostIndicator.css": 0,
     "styles/Dashboard.css": 0,
     "styles/Invoices.css": 0,
-    "styles/Login.css": 16,
+    "styles/Login.css": 0,
     "styles/Logistica.css": 0,
     "styles/Maintenance.css": 0,
     "styles/Projects.css": 0,
-    "styles/Quotations.css": 273,
+    "styles/Quotations.css": 0,
     "styles/shared.css": 0
   },
   "tsxInlineColors": {
@@ -28,6 +28,6 @@
     "pages/Projects.tsx": 0,
     "pages/ProjectsGantt.tsx": 10,
     "pages/ProjectsKanban.tsx": 0,
-    "pages/Quotations.tsx": 18
+    "pages/Quotations.tsx": 0
   }
 }

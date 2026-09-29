@@ -171,7 +171,7 @@ function LossReasonModal({
     display: 'block',
     fontSize: '0.82rem',
     fontWeight: 600,
-    color: '#475569',
+    color: 'var(--text-secondary)',
     marginBottom: 4,
   }
   const inp: React.CSSProperties = {
@@ -186,8 +186,8 @@ function LossReasonModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-confirm" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
-        <h3 style={{ margin: '0 0 4px', color: '#dc2626' }}>Cotización perdida</h3>
-        <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.85rem' }}>
+        <h3 style={{ margin: '0 0 4px', color: 'var(--danger-text)' }}>Cotización perdida</h3>
+        <p style={{ margin: '0 0 16px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           {correlative} — ¿Por qué se perdió esta cotización?
         </p>
         {error && (
@@ -312,7 +312,7 @@ export function OcModal({
     display: 'block',
     fontSize: '0.82rem',
     fontWeight: 600,
-    color: '#475569',
+    color: 'var(--text-secondary)',
     marginBottom: 4,
   }
   const inp: React.CSSProperties = {
@@ -328,7 +328,9 @@ export function OcModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-confirm" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
         <h3 style={{ margin: '0 0 4px' }}>Orden de Compra / Aceptación</h3>
-        <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.85rem' }}>{correlative}</p>
+        <p style={{ margin: '0 0 16px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+          {correlative}
+        </p>
         {error && (
           <div className="inv-alert" style={{ marginBottom: 12 }}>
             {error}
@@ -380,7 +382,7 @@ export function OcModal({
             disabled={guardando}
           />
           {initial.oc_document_name && !file && (
-            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 4 }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>
               Ya adjunto: {initial.oc_document_name}
             </div>
           )}
@@ -444,7 +446,7 @@ function ActivityPanel({ quotationId }: { quotationId: string }) {
         style={{
           margin: '0 0 12px',
           fontSize: '0.85rem',
-          color: '#475569',
+          color: 'var(--text-secondary)',
           fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
@@ -509,7 +511,7 @@ function ActivityPanel({ quotationId }: { quotationId: string }) {
         {activities.length === 0 ? (
           <p
             style={{
-              color: '#94a3b8',
+              color: 'var(--text-muted)',
               fontSize: '0.82rem',
               textAlign: 'center',
               padding: '12px 0',
@@ -525,15 +527,15 @@ function ActivityPanel({ quotationId }: { quotationId: string }) {
                 display: 'flex',
                 gap: 8,
                 padding: '8px 10px',
-                background: 'rgba(255,255,255,0.03)',
+                background: 'var(--surface-muted)',
                 borderRadius: 6,
                 fontSize: '0.82rem',
               }}
             >
               <span style={{ fontSize: '1rem' }}>{ACTIVITY_ICONS[act.activity_type] ?? '💬'}</span>
               <div style={{ flex: 1 }}>
-                <span style={{ color: '#e2e8f0' }}>{act.content}</span>
-                <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 2 }}>
+                <span style={{ color: 'var(--text)' }}>{act.content}</span>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>
                   {new Date(act.created_at).toLocaleString('es-CL', {
                     day: '2-digit',
                     month: 'short',
@@ -580,7 +582,7 @@ function BillingConfigModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-confirm" onClick={e => e.stopPropagation()}>
         <h3 style={{ margin: '0 0 8px' }}>Configurar facturación</h3>
-        <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.9rem' }}>
+        <p style={{ margin: '0 0 16px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
           ¿Cuántas facturas se emitirán para esta cotización?
         </p>
         {error && (
@@ -932,7 +934,10 @@ function QuotationsList({
                           style={{
                             fontSize: '0.7rem',
                             marginTop: 2,
-                            color: new Date(q.follow_up_date) <= new Date() ? '#dc2626' : '#d97706',
+                            color:
+                              new Date(q.follow_up_date) <= new Date()
+                                ? 'var(--danger-text)'
+                                : 'var(--warning-text)',
                           }}
                         >
                           📅 {fmtDate(q.follow_up_date)}
@@ -950,7 +955,7 @@ function QuotationsList({
                               <div
                                 style={{
                                   fontSize: '0.7rem',
-                                  color: diff <= 3 ? '#dc2626' : '#d97706',
+                                  color: diff <= 3 ? 'var(--danger-text)' : 'var(--warning-text)',
                                   marginTop: 2,
                                 }}
                               >
@@ -982,7 +987,7 @@ function QuotationsList({
                           style={{
                             fontSize: '0.7rem',
                             marginTop: 2,
-                            color: '#d97706',
+                            color: 'var(--warning-text)',
                             fontWeight: 600,
                           }}
                         >
@@ -1059,7 +1064,7 @@ function QuotationsList({
                               <button
                                 className="btn-icon"
                                 title="Aprobar cotización"
-                                style={{ color: '#059669' }}
+                                style={{ color: 'var(--success-text)' }}
                                 onClick={() =>
                                   api
                                     .approveQuotation(q.id)
@@ -1664,7 +1669,7 @@ export function CosteoRow({ catId }: { catId: CategoryId }) {
                               </option>
                             ))}
                           </select>
-                          <span style={{ color: '#94a3b8', fontSize: '12px' }}>→</span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>→</span>
                           <select
                             className="cost-item-input"
                             value={item.puntoB ?? ''}

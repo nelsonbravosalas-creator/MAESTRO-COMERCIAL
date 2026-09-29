@@ -32,8 +32,8 @@
     0deg,
     transparent,
     transparent 3px,
-    rgba(0, 255, 65, 0.012) 3px,
-    rgba(0, 255, 65, 0.012) 4px
+    rgba(var(--success-rgb), 0.012) 3px,
+    rgba(var(--success-rgb), 0.012) 4px
   );
   pointer-events: none;
   z-index: 9999;
@@ -73,8 +73,8 @@
 [data-theme='cyberpunk'] .header-left h1 {
   color: var(--text);
   text-shadow:
-    0 0 15px rgba(0, 255, 65, 0.7),
-    0 0 30px rgba(0, 255, 65, 0.3);
+    0 0 15px rgba(var(--success-rgb), 0.7),
+    0 0 30px rgba(var(--success-rgb), 0.3);
   letter-spacing: 0.04em;
 }
 
@@ -133,7 +133,7 @@
   top: 3px;
   right: 3px;
   background: var(--danger);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 9999px;
   font-size: 10px;
   min-width: 16px;
@@ -196,7 +196,7 @@
 
 .btn-logout:hover {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-accent);
   opacity: 1;
 }
 
@@ -282,20 +282,20 @@
 
 .nav-sync-btn--syncing {
   border-left-color: var(--warning);
-  background: rgba(245, 158, 11, 0.07);
+  background: rgba(var(--warning-rgb), 0.07);
   color: var(--warning);
   cursor: not-allowed;
 }
 
 .nav-sync-btn--done {
   border-left-color: var(--success);
-  background: rgba(16, 185, 129, 0.07);
+  background: rgba(var(--success-rgb), 0.07);
   color: var(--success);
 }
 
 .nav-sync-btn--error {
   border-left-color: var(--danger);
-  background: rgba(239, 68, 68, 0.07);
+  background: rgba(var(--danger-rgb), 0.07);
   color: var(--danger);
 }
 

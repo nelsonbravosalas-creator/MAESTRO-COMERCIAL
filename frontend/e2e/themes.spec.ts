@@ -40,6 +40,8 @@ for (const theme of THEMES) {
               // catálogo) son datos, no superficies del tema.
               if ((el as HTMLElement).style.background || (el as HTMLElement).style.backgroundColor)
                 return null
+              // La hoja carta de la cotización es "papel": blanca en cualquier tema.
+              if (el.closest('.coti-doc')) return null
               const [red, g, b, a = '1'] = m
               if (parseFloat(a) < 0.9) return null
               return {
@@ -54,5 +56,54 @@ for (const theme of THEMES) {
         expect(fuera, `bloques que no siguen el tema ${theme}`).toEqual([])
       })
     }
+  })
+}
+
+// El editor de cotizaciones (pestañas Base, Costeo y Cotización) es la vista más
+// grande: se revisa aparte, creando una cotización nueva en memoria.
+for (const theme of THEMES) {
+  test.describe(`tema ${theme} · editor de cotizaciones`, () => {
+    test.use({ theme })
+
+    test('Base, Costeo y Cotización siguen el tema (la hoja carta queda blanca)', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await openScreen(page, 'Cotizaciones')
+      await page.getByRole('button', { name: '+ Nueva', exact: true }).click()
+      for (const tab of ['Base', 'Costeo', 'Cotización']) {
+        await page.getByRole('button', { name: tab, exact: true }).click()
+        await page.waitForTimeout(300)
+        const { fuera, papel } = await page.evaluate(t => {
+          const lum = (rgb: number[]) => {
+            const lin = (c: number) => {
+              const s = c / 255
+              return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+            }
+            return 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2])
+          }
+          const bgLum = (el: Element) => {
+            const m = getComputedStyle(el).backgroundColor.match(/[\d.]+/g)
+            if (!m || parseFloat(m[3] ?? '1') < 0.9) return null
+            return lum([+m[0], +m[1], +m[2]])
+          }
+          const area = innerWidth * innerHeight
+          const fuera = [...document.querySelectorAll('main *')]
+            .filter(el => {
+              const r = el.getBoundingClientRect()
+              if (r.width * r.height < area * 0.04) return false
+              if ((el as HTMLElement).style.background || el.closest('.coti-doc')) return false
+              const l = bgLum(el)
+              if (l === null) return false
+              return t === 'light' ? l < 0.6 : l > 0.25
+            })
+            .map(el => `${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]}`)
+          const doc = document.querySelector('.coti-doc')
+          return { fuera, papel: doc ? bgLum(doc) : null }
+        }, theme)
+        expect(fuera, `${tab}: bloques que no siguen el tema`).toEqual([])
+        if (tab === 'Cotización') expect(papel, 'la hoja carta es blanca').toBeGreaterThan(0.9)
+      }
+    })
   })
 }

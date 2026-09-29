@@ -122,7 +122,7 @@
 
 .cat-toast {
   position: fixed;
-  top: 68px;
+  top: calc(var(--header-h) + 12px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 9999;

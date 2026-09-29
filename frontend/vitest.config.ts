@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'jsdom',
+    // Las pruebas e2e (e2e/*.spec.ts) corren con Playwright, no con Vitest.
+    include: ['src/**/*.test.{ts,tsx}'],
     globals: false,
     coverage: {
       provider: 'v8',

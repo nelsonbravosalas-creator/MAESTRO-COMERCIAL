@@ -63,6 +63,35 @@ jobs:
       - run: npm run build
         if: matrix.workspace == 'frontend'
 
+  e2e:
+    # Pruebas de diseño en navegador (T-04 layout, T-05 temas, T-07 accesibilidad):
+    # Playwright contra el build de producción (vite preview) con la API simulada,
+    # así que no necesita backend ni base de datos. Ver frontend/e2e/.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: frontend/test-results/
+          retention-days: 7
+
   vercel-function:
     # api/index.ts (la función serverless real de Vercel) importa backend/src/app.ts
     # pero se resuelve con las dependencias del package.json RAÍZ, no las de

@@ -1601,7 +1601,8 @@
 
   .q-search {
     width: 100%;
-    flex: 1;
+    flex: 1 1 100%;
+    min-width: 160px;
   }
 
   /* --- Tabla lista --- */

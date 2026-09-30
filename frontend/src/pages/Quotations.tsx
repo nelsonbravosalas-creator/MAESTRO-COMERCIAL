@@ -21,11 +21,10 @@ import { primaryContact, quotationContact } from '../utils/contacts'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { usePermissions } from '../hooks/usePermissions'
 import { ApiError, api } from '../api/api'
-import { downloadDocx } from '../utils/docxExport'
-import { downloadHtml } from '../utils/htmlExport'
-import { downloadPdfFromElement } from '../utils/pdfExport'
+// docx/html2canvas/jsPDF son pesados y solo hacen falta al exportar: se cargan
+// bajo demanda en cada handler (fase F7), no junto con el resto de la pantalla.
 import { buildQuotationValuationRows } from '../utils/quotationRows'
-import { CITIES, getDistance } from '../data/cityDistances'
+import { useCityDistances } from '../hooks/useCityDistances'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1580,12 +1579,19 @@ function TabBase() {
 export function CosteoRow({ catId }: { catId: CategoryId }) {
   const { addItem, removeItem, patchItem, setCatMargin, toggleCat } = useMaestro()
   const q = useActiveQuotation()
+  // La tabla de distancias (~400 kB) se carga solo si esta categoría ya tiene
+  // una fila de "Cálculo de Distancias" que la necesite (fase F7). El hook va
+  // antes del "if (!q) return null" de abajo: los Hooks no pueden llamarse
+  // condicionalmente ni después de un return temprano.
+  const items = q?.items[catId] ?? []
+  const hasDistCalc = items.some(item => item.desc === 'Cálculo de Distancias')
+  const distMod = useCityDistances(hasDistCalc)
   if (!q) return null
 
   const cat = q.categories.find(c => c.id === catId)!
-  const items = q.items[catId] || []
   const { costo, venta, beneficio } = calcCat(catId, q.categories, q.items)
   const isMO = catId === 'mo'
+  const CITIES = distMod?.CITIES ?? []
 
   return (
     <div className="cost-accordion" style={{ '--cat-color': cat.color } as React.CSSProperties}>
@@ -1656,13 +1662,15 @@ export function CosteoRow({ catId }: { catId: CategoryId }) {
                             value={item.puntoA ?? ''}
                             onChange={e => {
                               patchItem(catId, i, 'puntoA', e.target.value)
-                              const dist = getDistance(e.target.value, item.puntoB ?? '')
+                              const dist =
+                                distMod?.getDistance(e.target.value, item.puntoB ?? '') ?? null
                               if (dist !== null) patchItem(catId, i, 'cant', String(dist))
                             }}
                             aria-label="Punto A"
                             style={{ flex: 1 }}
+                            disabled={!distMod}
                           >
-                            <option value="">Punto A…</option>
+                            <option value="">{distMod ? 'Punto A…' : 'Cargando…'}</option>
                             {CITIES.map(c => (
                               <option key={c} value={c}>
                                 {c}
@@ -1675,13 +1683,15 @@ export function CosteoRow({ catId }: { catId: CategoryId }) {
                             value={item.puntoB ?? ''}
                             onChange={e => {
                               patchItem(catId, i, 'puntoB', e.target.value)
-                              const dist = getDistance(item.puntoA ?? '', e.target.value)
+                              const dist =
+                                distMod?.getDistance(item.puntoA ?? '', e.target.value) ?? null
                               if (dist !== null) patchItem(catId, i, 'cant', String(dist))
                             }}
                             aria-label="Punto B"
                             style={{ flex: 1 }}
+                            disabled={!distMod}
                           >
-                            <option value="">Punto B…</option>
+                            <option value="">{distMod ? 'Punto B…' : 'Cargando…'}</option>
                             {CITIES.map(c => (
                               <option key={c} value={c}>
                                 {c}
@@ -2072,6 +2082,7 @@ function TabCotizacion() {
   const handleDocx = async () => {
     setLoadingDocx(true)
     try {
+      const { downloadDocx } = await import('../utils/docxExport')
       await downloadDocx({
         q,
         client,
@@ -2086,8 +2097,9 @@ function TabCotizacion() {
     }
   }
 
-  const handleHtml = () => {
+  const handleHtml = async () => {
     try {
+      const { downloadHtml } = await import('../utils/htmlExport')
       downloadHtml({
         q,
         client,
@@ -2104,6 +2116,7 @@ function TabCotizacion() {
     if (!docRef.current) return
     setLoadingPdf(true)
     try {
+      const { downloadPdfFromElement } = await import('../utils/pdfExport')
       await downloadPdfFromElement(docRef.current, `Cotizacion-${q.correlative}-${q.date}.pdf`)
       showToast('Documento PDF generado')
     } catch {

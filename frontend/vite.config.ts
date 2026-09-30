@@ -18,5 +18,19 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     minify: 'esbuild',
+    // manifest: true + manualChunks (abajo) es lo que le permite a
+    // check-bundle-budget.mjs (T-06) leer dist/.vite/manifest.json y detectar
+    // si cityDistances vuelve a quedar enganchada a la carga inicial: sin
+    // manualChunks, un import *estático* nuevo la inlinearía directo dentro
+    // del chunk de entrada (sin generar una entrada propia en el manifest),
+    // y el chequeo no vería nada raro pese a que el bundle inicial creció.
+    manifest: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('/src/data/cityDistances.ts')) return 'city-distances'
+        },
+      },
+    },
   },
 })

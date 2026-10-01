@@ -28,8 +28,13 @@ const rel = (f: string) => relative(SRC, f).split(sep).join('/')
 const HEX = /#[0-9a-fA-F]{3,8}\b/g
 const RGB_LITERAL = /rgba?\(\s*(?!var\()[^)]*\)/g
 
+// Zonas marcadas /* design-exempt:start … */ … /* design-exempt:end */ no cuentan:
+// son colores fijos a propósito (la vista previa del documento impreso, que
+// debe verse como papel en cualquier tema, y los estilos de impresión).
+const EXEMPT = /\/\* design-exempt:start[\s\S]*?\/\* design-exempt:end \*\//g
+
 export function countCssColors(css: string): number {
-  const sinComentarios = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const sinComentarios = css.replace(EXEMPT, '').replace(/\/\*[\s\S]*?\*\//g, '')
   return (sinComentarios.match(HEX)?.length ?? 0) + (sinComentarios.match(RGB_LITERAL)?.length ?? 0)
 }
 

@@ -392,15 +392,6 @@ select:focus {
     0 0 12px rgba(255, 107, 0, 0.2);
 }
 
-/* Cyberpunk: override all hardcoded white backgrounds in inputs */
-[data-theme='cyberpunk'] input,
-[data-theme='cyberpunk'] textarea,
-[data-theme='cyberpunk'] select {
-  background: var(--input-bg) !important;
-  color: var(--input-color) !important;
-  border-color: var(--input-border) !important;
-}
-
 [data-theme='cyberpunk'] input:focus,
 [data-theme='cyberpunk'] textarea:focus,
 [data-theme='cyberpunk'] select:focus {
@@ -410,14 +401,9 @@ select:focus {
     0 0 12px rgba(255, 107, 0, 0.2) !important;
 }
 
-/* Light: restore white inputs */
-[data-theme='light'] input,
-[data-theme='light'] textarea,
-[data-theme='light'] select {
-  background: var(--input-bg);
-  color: var(--input-color);
-  border-color: var(--input-border);
-}
+/* (Los parches que forzaban colores de inputs en light/cyberpunk se quitaron en F5:
+   todas las pantallas usan tokens, y el parche pisaba estilos propios como las
+   celdas editables del catálogo.) */
 
 /* ── Links ──────────────────────────────────────────────────────── */
 a {

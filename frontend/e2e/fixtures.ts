@@ -16,6 +16,23 @@ export const SCREENS = [
 ] as const
 export type Screen = (typeof SCREENS)[number]
 
+// Respuestas vacías con la forma que espera el Dashboard (objetos, no listas).
+const DASHBOARD_VACIO: Record<string, unknown> = {
+  '/api/dashboard/kpis': {},
+  '/api/dashboard/aging': { aging: [], timestamp: '2026-01-01T00:00:00Z' },
+  '/api/dashboard/cartera': {
+    cartera: {
+      adjudicado_total: 0,
+      pendiente_facturar: 0,
+      facturado_por_cobrar: 0,
+      cobrado_mes: 0,
+    },
+    timestamp: '2026-01-01T00:00:00Z',
+  },
+  '/api/dashboard/cycle-times': { cycle_times: {}, timestamp: '2026-01-01T00:00:00Z' },
+  '/api/dashboard/margin-analysis': { analysis: [], timestamp: '2026-01-01T00:00:00Z' },
+}
+
 // Sesión simulada + API simulada: cada GET responde vacío. Las pantallas se
 // revisan en su estado vacío, que es igual en cualquier entorno.
 export const test = base.extend<{ theme: Theme }>({
@@ -29,8 +46,13 @@ export const test = base.extend<{ theme: Theme }>({
       )
       localStorage.setItem('mc-theme', t)
     }, theme)
-    await page.route('**/api/**', route => {
+    // context.route (no page.route): index.html registra un Service Worker y en
+    // Chromium solo el contexto intercepta también lo que pide el SW.
+    await page.context().route('**/api/**', route => {
       if (route.request().method() !== 'GET') return route.fulfill({ status: 200, json: {} })
+      const path = new URL(route.request().url()).pathname
+      const dashboard = DASHBOARD_VACIO[path]
+      if (dashboard) return route.fulfill({ status: 200, json: dashboard })
       return route.fulfill({ status: 200, json: [] })
     })
     await provide(page)

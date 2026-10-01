@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from 'react'
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
 import './App.css'
 import Login from './pages/Login'
 import { useMaestro } from './stores/maestro-store'
@@ -200,6 +200,23 @@ type Page =
   | 'logistica'
   | 'invoices'
 
+// El header cambia de alto (en tablet/móvil el menú baja a su propia fila):
+// publica su alto real en --header-h para que toasts y vistas de alto
+// completo (Proyectos) se ubiquen debajo sin números fijos.
+function useHeaderHeightVar() {
+  const observer = useRef<ResizeObserver | null>(null)
+  return useCallback((el: HTMLElement | null) => {
+    observer.current?.disconnect()
+    if (!el) return
+    const publish = () =>
+      document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`)
+    publish()
+    if (typeof ResizeObserver === 'undefined') return
+    observer.current = new ResizeObserver(publish)
+    observer.current.observe(el)
+  }, [])
+}
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
@@ -208,6 +225,7 @@ function App() {
   const { theme, setTheme } = useTheme()
   const loadData = useMaestro(s => s.loadData)
   const criticalCount = useProjects(s => s.criticalCount)
+  const headerRef = useHeaderHeightVar()
 
   useEffect(() => {
     const token = localStorage.getItem('authToken')
@@ -244,7 +262,7 @@ function App() {
 
   return (
     <div className="app-container authenticated">
-      <header className="app-header">
+      <header className="app-header" ref={headerRef}>
         <div className="header-left">
           <h1>Maestro Comercial</h1>
         </div>

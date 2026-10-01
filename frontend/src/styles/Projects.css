@@ -7,7 +7,7 @@
 .projects-layout {
   display: flex;
   flex-direction: row;
-  height: calc(100vh - 72px);
+  height: calc(100vh - var(--header-h));
   overflow: hidden;
   background: #0f172a;
 }
@@ -28,10 +28,21 @@
   padding: 1rem;
   border-bottom: 1px solid #334155;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   flex-shrink: 0;
+}
+
+.project-list-header .pj-view-selector {
+  order: 3;
+  flex-basis: 100%;
+}
+
+.project-list-header .pj-view-btn {
+  flex: 1;
+  justify-content: center;
 }
 
 .project-list-header h2 {

@@ -344,7 +344,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Embudo de cartera */}
-      <div className="kpi-grid kpi-grid--4" style={{ marginBottom: 0 }}>
+      <div className="kpi-grid kpi-grid--4">
         <KpiCard
           label="Adjudicado Total"
           value={cartera ? fmtCLP.format(cartera.adjudicado_total) : '—'}

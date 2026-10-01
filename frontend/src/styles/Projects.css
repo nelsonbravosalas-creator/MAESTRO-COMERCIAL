@@ -791,7 +791,9 @@
 }
 .pj-view-btn--active {
   background: var(--info);
-  color: var(--on-accent);
+  /* --on-info (no --on-accent): --info es claro/saturado en los 3 temas,
+     blanco no llega a 4,5:1 sobre él (T-07). */
+  color: var(--on-info);
 }
 .pj-view-btn-icon {
   font-size: 1rem;

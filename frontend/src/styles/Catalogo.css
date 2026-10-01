@@ -276,7 +276,10 @@
   font-family: 'Space Mono', monospace;
   font-size: 0.85rem;
   font-weight: 700;
-  color: rgba(var(--on-strip-rgb), 0.6);
+  /* Opacidad completa (no 0.6): con franjas claras como ELE el techo de
+     contraste ya es ~4,9:1 en blanco puro — cualquier alfa lo hace caer
+     bajo 4,5:1 (T-07). */
+  color: rgb(var(--on-strip-rgb));
   background: rgba(var(--shadow-rgb), 0.25);
   padding: 4px 10px;
   border-radius: 5px;
@@ -292,7 +295,8 @@
 
 .cat-section-stats {
   font-size: 0.72rem;
-  color: rgba(var(--on-strip-rgb), 0.6);
+  /* Idem .cat-abbr: opacidad completa por contraste (T-07). */
+  color: rgb(var(--on-strip-rgb));
   margin-top: 2px;
   font-family: 'Space Mono', monospace;
 }
@@ -314,25 +318,32 @@
   white-space: nowrap;
 }
 
-/* Botones sobre la franja de color de la categoría: siempre claros */
+/* Botones sobre la franja de color de la categoría: siempre claros. Overlay
+   OSCURO, no claro (antes rgba(on-strip-rgb, 0.08)): mismo motivo que
+   .cat-btn-add — uno claro aclara el fondo bajo el texto blanco. */
 .cat-btn-ghost {
-  background: rgba(var(--on-strip-rgb), 0.08);
+  background: rgba(var(--shadow-rgb), 0.08);
   border: 1px solid rgba(var(--on-strip-rgb), 0.18);
-  color: rgba(var(--on-strip-rgb), 0.75);
+  /* Opacidad completa por contraste (T-07): con alfa reducido caía a 3,1:1
+     sobre franjas claras como ELE. */
+  color: rgb(var(--on-strip-rgb));
 }
 .cat-btn-ghost:hover {
-  background: rgba(var(--on-strip-rgb), 0.16);
+  background: rgba(var(--shadow-rgb), 0.16);
   color: rgb(var(--on-strip-rgb));
 }
 
 .cat-btn-add {
-  background: rgba(var(--on-strip-rgb), 0.15);
+  /* Overlay OSCURO, no claro (antes rgba(on-strip-rgb, 0.15)): un overlay
+     claro aclara el fondo bajo el texto blanco y en franjas ya claras como
+     ELE bajaba a 3,72:1 (T-07). Uno oscuro solo puede subir el contraste. */
+  background: rgba(var(--shadow-rgb), 0.2);
   border: 1px solid rgba(var(--on-strip-rgb), 0.3);
   color: rgb(var(--on-strip-rgb));
   font-weight: 700;
 }
 .cat-btn-add:hover {
-  background: rgba(var(--on-strip-rgb), 0.25);
+  background: rgba(var(--shadow-rgb), 0.32);
 }
 
 /* ── Tabla ───────────────────────────────────────────────────────────────── */

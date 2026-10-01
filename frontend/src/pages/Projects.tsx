@@ -4,6 +4,7 @@ import { useProjects, useActiveProject, ProjectFull } from '../stores/projects-s
 import { useMaestro } from '../stores/maestro-store'
 import { usePermissions } from '../hooks/usePermissions'
 import { CategoryId } from '../types'
+import { confirmDialog } from '../stores/uiStore'
 import ProjectsKanban from './ProjectsKanban'
 import ProjectsGantt from './ProjectsGantt'
 
@@ -484,7 +485,8 @@ function CostosTab({ project }: CostosTabProps) {
   }
 
   const handleDelete = async (costId: string) => {
-    if (!window.confirm('¿Eliminar este costo?')) return
+    if (!(await confirmDialog('¿Eliminar este costo?', { danger: true, confirmLabel: 'Eliminar' })))
+      return
     await deleteCost(project.id, costId)
   }
 
@@ -766,7 +768,13 @@ function EquipoTab({ project }: EquipoTabProps) {
   }
 
   const handleRemove = async (uid: string) => {
-    if (!window.confirm('¿Remover este usuario del proyecto?')) return
+    if (
+      !(await confirmDialog('¿Remover este usuario del proyecto?', {
+        danger: true,
+        confirmLabel: 'Remover',
+      }))
+    )
+      return
     await removeAssignment(project.id, uid)
   }
 
@@ -867,8 +875,14 @@ function ProjectDetail({ project, onDelete }: ProjectDetailProps) {
             <button
               type="button"
               className="btn btn-danger btn-sm"
-              onClick={() => {
-                if (window.confirm('¿Eliminar este proyecto?')) onDelete(project.id)
+              onClick={async () => {
+                if (
+                  await confirmDialog('¿Eliminar este proyecto?', {
+                    danger: true,
+                    confirmLabel: 'Eliminar',
+                  })
+                )
+                  onDelete(project.id)
               }}
             >
               Eliminar
@@ -1063,7 +1077,18 @@ export default function Projects() {
               <div
                 key={p.id}
                 className={`project-card ${activeId === p.id ? 'active' : ''}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={activeId === p.id}
                 onClick={() => setActive(p.id)}
+                onKeyDown={e => {
+                  // Sin esto, un div con onClick no se puede operar con teclado:
+                  // tabIndex lo hace enfocable, pero Enter/Espacio no lo "clickean" solos.
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setActive(p.id)
+                  }
+                }}
               >
                 <div className="project-card-header">
                   <span className="project-card-name">{p.name}</span>

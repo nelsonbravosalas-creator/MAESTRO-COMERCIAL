@@ -915,11 +915,24 @@ interface KpiCardProps {
   accent: string
 }
 
+// El acento identifica la tarjeta (franja superior, decorativo, sin
+// requisito de contraste) pero el MISMO color puro no siempre es legible
+// como texto sobre --surface (ej. #2563eb: 2,83:1, bajo el 4,5:1 mínimo AA
+// para texto normal — detectado por axe-core, T-07). Cada acento usa acá la
+// variante "-text" ya pensada para leerse sobre --surface en los 3 temas.
+const ACCENT_TEXT: Record<string, string> = {
+  '#2563eb': 'var(--primary-text)',
+  '#059669': 'var(--success-text)',
+  '#7c3aed': 'var(--violet-text)',
+  '#0891b2': 'var(--info-text)',
+  '#d97706': 'var(--warning-text)',
+}
+
 function KpiCard({ label, value, sub, loading, accent }: KpiCardProps) {
   return (
     <div className="kpi-card" style={{ borderTopColor: accent }}>
       <p className="kpi-label">{label}</p>
-      <p className="kpi-value" style={{ color: accent }}>
+      <p className="kpi-value" style={{ color: ACCENT_TEXT[accent] ?? accent }}>
         {loading ? <span className="kpi-skeleton" /> : value}
       </p>
       <p className="kpi-sub">{sub}</p>

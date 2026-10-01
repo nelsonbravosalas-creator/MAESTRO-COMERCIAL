@@ -25,7 +25,10 @@
 
 .login-header h1 {
   font-size: 2.5rem;
-  color: var(--primary);
+  /* --primary-text (no --primary): contraste 5,75:1 sobre --bg-secondary en
+     tema oscuro — con --primary quedaba en 2,83:1, bajo el 3:1 mínimo AA para
+     texto grande (detectado por axe-core, T-07). */
+  color: var(--primary-text);
   margin: 0;
   margin-bottom: 0.5rem;
 }

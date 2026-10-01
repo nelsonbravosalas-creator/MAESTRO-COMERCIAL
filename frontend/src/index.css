@@ -14,6 +14,10 @@
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
+  /* Ámbar/naranja son colores claros en los 3 temas: el blanco de --on-accent
+     no alcanza 4,5:1 sobre un fondo --warning sólido (detectado por axe-core,
+     T-07) — texto oscuro sí, consistentemente en dark/light/cyberpunk. */
+  --on-warning: #000000;
 
   --bg: #0f172a;
   --bg-secondary: #1e293b;
@@ -75,6 +79,9 @@
   --info: #0ea5e9;
   --info-bg: rgba(59, 130, 246, 0.14);
   --info-text: #93c5fd;
+  /* --info es claro/saturado en los 3 temas: blanco no llega a 4,5:1 sobre
+     un fondo --info sólido (T-07, igual que --on-warning). */
+  --on-info: #000000;
   --violet-bg: rgba(139, 92, 246, 0.16);
   --violet-text: #c4b5fd;
   /* Canales RGB para rgba(var(--x-rgb), alfa) */
@@ -99,6 +106,7 @@
   --success: #059669;
   --danger: #dc2626;
   --warning: #d97706;
+  --on-warning: #000000;
 
   --bg: #f1f5f9;
   --bg-secondary: #ffffff;
@@ -157,6 +165,7 @@
   --danger-bg: #fee2e2;
   --danger-text: #b91c1c;
   --info: #0284c7;
+  --on-info: #000000;
   --info-bg: #eff6ff;
   --info-text: #1d4ed8;
   --violet-bg: #ede9fe;
@@ -200,6 +209,7 @@
   --success: #00ff41;
   --danger: #ff2244;
   --warning: #ff8c00;
+  --on-warning: #000000;
 
   --bg: #000000;
   --bg-secondary: #080808;
@@ -258,6 +268,7 @@
   --danger-bg: rgba(255, 34, 68, 0.12);
   --danger-text: #ff5570;
   --info: #ff9944;
+  --on-info: #000000;
   --info-bg: rgba(255, 107, 0, 0.08);
   --info-text: #ff9944;
   --violet-bg: rgba(255, 0, 255, 0.1);
@@ -404,6 +415,22 @@ select:focus {
 /* (Los parches que forzaban colores de inputs en light/cyberpunk se quitaron en F5:
    todas las pantallas usan tokens, y el parche pisaba estilos propios como las
    celdas editables del catálogo.) */
+
+/* ── Foco visible con teclado (F8) ──────────────────────────────────
+   Varias pantallas quitan el anillo nativo con "outline: none" en :focus
+   y no siempre agregan un reemplazo visible (o agregan uno muy sutil),
+   dejando a quien navega con teclado sin saber dónde está el foco.
+   En vez de revisar archivo por archivo, una sola regla global con
+   box-shadow (una propiedad distinta de outline, así que ningún
+   "outline: none" puntual la anula) y :focus-visible (no :focus, para que
+   solo aparezca al navegar con teclado — un clic de mouse no la dispara).
+   Si un componente ya define su propio box-shadow de foco más específico,
+   ese gana y este solo queda de respaldo donde no hay nada. */
+:is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
 
 /* ── Links ──────────────────────────────────────────────────────── */
 a {

@@ -69,6 +69,8 @@ const PARES: [string, string][] = [
   ['--info-text', '--surface'],
   ['--violet-text', '--surface'],
   ['--on-accent', '--primary'],
+  ['--on-warning', '--warning'],
+  ['--on-info', '--info'],
 ]
 const THEMES: ThemeName[] = ['dark', 'light', 'cyberpunk']
 

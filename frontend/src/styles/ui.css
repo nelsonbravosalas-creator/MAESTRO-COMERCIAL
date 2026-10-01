@@ -1,0 +1,85 @@
+/* ══════════════════════════════════════════════════════════════════
+   ToastHost / ConfirmDialogHost (fase F8) — reemplazan alert()/confirm().
+   El diálogo de confirmación reusa .modal-overlay/.modal-confirm de
+   shared.css; aquí solo va lo propio: el mensaje y la pila de avisos.
+   ══════════════════════════════════════════════════════════════════ */
+
+.ui-confirm-msg {
+  margin: 0 0 20px;
+  font-size: 0.9rem;
+  color: var(--text);
+  white-space: pre-line; /* los mensajes de error traen saltos de línea */
+}
+
+@keyframes ui-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ui-toast-stack {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+}
+
+.ui-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: pre-line;
+  box-shadow: var(--shadow-lg);
+  animation: ui-toast-in 0.2s ease-out;
+}
+
+.ui-toast--success {
+  background: var(--success);
+  color: var(--on-accent);
+}
+
+.ui-toast--error {
+  background: var(--danger);
+  color: var(--on-accent);
+}
+
+.ui-toast-msg {
+  flex: 1;
+}
+
+.ui-toast-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.8;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 2px;
+}
+
+.ui-toast-close:hover {
+  opacity: 1;
+}
+
+@media (max-width: 480px) {
+  .ui-toast-stack {
+    left: 16px;
+    right: 16px;
+    max-width: none;
+  }
+}

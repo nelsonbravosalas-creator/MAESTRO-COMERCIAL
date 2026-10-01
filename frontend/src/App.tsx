@@ -5,6 +5,8 @@ import Login from './pages/Login'
 import { useMaestro } from './stores/maestro-store'
 import { useProjects } from './stores/projects-store'
 import { api } from './api/api'
+import { ToastHost } from './components/ToastHost'
+import { ConfirmDialogHost } from './components/ConfirmDialogHost'
 
 const Quotations = lazy(() => import('./pages/Quotations'))
 const Maintenance = lazy(() => import('./pages/Maintenance'))
@@ -341,6 +343,8 @@ function App() {
           )}
         </Suspense>
       </main>
+      <ToastHost />
+      <ConfirmDialogHost />
     </div>
   )
 }

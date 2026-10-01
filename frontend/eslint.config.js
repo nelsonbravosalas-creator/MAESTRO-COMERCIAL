@@ -47,8 +47,15 @@ export default [
       // de ESLint no entiende el AST de TS y genera falsos positivos masivos.
       'no-unused-vars': 'off',
       'no-undef': 'off',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/no-explicit-any': 'warn',
+      // T-08 (fase F8 del plan de diseño): alert()/confirm()/prompt() bloquean el
+      // hilo, no se pueden estilizar ni recorrer con teclado de forma consistente,
+      // y no respetan el tema. Usar showToast()/confirmDialog() de stores/uiStore.
+      'no-alert': 'error',
     },
   },
 ]

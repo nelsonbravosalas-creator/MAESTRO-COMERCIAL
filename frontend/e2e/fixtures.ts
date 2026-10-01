@@ -68,3 +68,44 @@ export async function openScreen(page: Page, screen: Screen) {
   // Deja terminar la carga diferida de la pantalla (lazy import).
   await page.waitForLoadState('networkidle')
 }
+
+/** Un proyecto completo (forma de ProjectFull) para pruebas que necesitan uno real. */
+export function fakeProject(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'proj-e2e-1',
+    quotation_id: null,
+    client_id: 'cli-e2e-1',
+    client_name: 'Cliente E2E',
+    name: 'Proyecto E2E',
+    status: 'in_progress',
+    start_date: null,
+    end_date: null,
+    budget: 1_000_000,
+    progress_pct: 10,
+    gasto_real: 0,
+    saldo: 1_000_000,
+    assignments: [],
+    costs: [],
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
+/**
+ * Simula tanto la lista (GET /api/projects) como el detalle (GET
+ * /api/projects/:id) de un solo proyecto. Sin el segundo mock, abrir el
+ * proyecto en la UI (que pide su detalle aparte) cae al mock genérico del
+ * fixture ([]) y ProjectDetail confunde ese arreglo vacío con un ProjectFull,
+ * corrompiendo la fila en la lista.
+ */
+export async function mockOneProject(page: Page, project: ReturnType<typeof fakeProject>) {
+  await page.context().route('**/api/projects', route => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({ status: 200, json: [project] })
+  })
+  await page.context().route('**/api/projects/*', route => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({ status: 200, json: project })
+  })
+}

@@ -25,6 +25,7 @@ import { ApiError, api } from '../api/api'
 // bajo demanda en cada handler (fase F7), no junto con el resto de la pantalla.
 import { buildQuotationValuationRows } from '../utils/quotationRows'
 import { useCityDistances } from '../hooks/useCityDistances'
+import { confirmDialog, showToast } from '../stores/uiStore'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -35,8 +36,9 @@ import { useCityDistances } from '../hooks/useCityDistances'
 // otro error (red, validación, sesión) con su mensaje real.
 export async function reportSaveError(err: unknown, reloadActive: () => Promise<void>) {
   if (err instanceof ApiError && err.status === 409) {
-    const shouldReload = window.confirm(
-      `${err.message}\n\n¿Recargar la versión del servidor? Perderás tus cambios locales no guardados.`
+    const shouldReload = await confirmDialog(
+      `${err.message}\n\n¿Recargar la versión del servidor? Perderás tus cambios locales no guardados.`,
+      { confirmLabel: 'Recargar', danger: true }
     )
     if (shouldReload) await reloadActive().catch(() => {})
     return
@@ -48,11 +50,12 @@ export async function reportSaveError(err: unknown, reloadActive: () => Promise<
       ? '\n\nCampos inválidos:\n' +
         details.map(d => `• ${d.path || 'body'}: ${d.message}`).join('\n')
       : ''
-    window.alert(err.message + extra)
+    showToast(err.message + extra, 'error')
     return
   }
-  window.alert(
-    err instanceof Error ? err.message : 'No se pudo guardar la cotización. Verifica tu conexión.'
+  showToast(
+    err instanceof Error ? err.message : 'No se pudo guardar la cotización. Verifica tu conexión.',
+    'error'
   )
 }
 
@@ -697,7 +700,7 @@ function QuotationsList({
           : err instanceof Error
             ? err.message
             : 'No se pudo generar la factura'
-      window.alert(message)
+      showToast(message, 'error')
     } finally {
       setGeneratingIds(prev => {
         const next = new Set(prev)
@@ -759,7 +762,7 @@ function QuotationsList({
       await duplicateQuote(id)
       onEdit()
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'No se pudo duplicar la cotización')
+      showToast(err instanceof Error ? err.message : 'No se pudo duplicar la cotización', 'error')
     }
   }
 
@@ -768,7 +771,7 @@ function QuotationsList({
       await createVersion(id)
       onEdit()
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'No se pudo crear la nueva versión')
+      showToast(err instanceof Error ? err.message : 'No se pudo crear la nueva versión', 'error')
     }
   }
 
@@ -837,11 +840,13 @@ function QuotationsList({
           <input
             className="q-search"
             placeholder="Buscar correlativo, cliente, referencia…"
+            aria-label="Buscar cotizaciones"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
           <select
             className="q-filter"
+            aria-label="Filtrar por estado"
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
           >
@@ -860,6 +865,7 @@ function QuotationsList({
             type="file"
             accept=".json,application/json"
             className="sr-only"
+            aria-label="Importar cotización desde JSON"
             onChange={handleImportFile}
           />
           <button className="btn-outline-sm" onClick={() => importInputRef.current?.click()}>
@@ -2361,9 +2367,10 @@ export const Quotations: React.FC<{
     // queda en true y el punto naranja sigue visible al reabrir esta cotización.
     if (unsaved) {
       saveActive().catch(err => {
-        window.alert(
+        showToast(
           `No se pudo sincronizar con el servidor: ${err instanceof Error ? err.message : 'error desconocido'}.\n` +
-            'Tus cambios quedaron guardados solo en este navegador.'
+            'Tus cambios quedaron guardados solo en este navegador.',
+          'error'
         )
       })
     }

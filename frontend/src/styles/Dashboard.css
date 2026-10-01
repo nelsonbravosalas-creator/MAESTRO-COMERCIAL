@@ -46,12 +46,6 @@
   box-shadow: 0 15px 35px rgba(var(--primary-rgb), 0.2);
 }
 
-.dashboard-card h3 {
-  color: var(--primary);
-  margin-top: 0;
-  margin-bottom: 1rem;
-}
-
 .dashboard-card ul {
   list-style: none;
   padding: 0;

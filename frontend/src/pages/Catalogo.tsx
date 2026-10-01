@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import '../styles/Catalogo.css'
 import { useMaestro, fmtCLP, CatalogSaveError } from '../stores/maestro-store'
 import { CategoryId, CatalogItemUI } from '../types'
+import { showToast } from '../stores/uiStore'
 
 // ── Metadata de categorías ────────────────────────────────────────────────────
 
@@ -160,7 +161,7 @@ function CatTable({ catId, globalSearch, errorIdx, onRowEdited }: CatTableProps)
         const parsed: CatalogItemUI[] = JSON.parse(ev.target?.result as string)
         parsed.forEach(item => addCatalogItem(catId, item))
       } catch {
-        alert('Archivo JSON inválido')
+        showToast('Archivo JSON inválido', 'error')
       }
     }
     reader.readAsText(file)

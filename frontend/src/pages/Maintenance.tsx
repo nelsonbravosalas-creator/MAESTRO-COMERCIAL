@@ -27,6 +27,7 @@ import { usePermissions } from '../hooks/usePermissions'
 import { buildQuotationValuationRows } from '../utils/quotationRows'
 import { ApiError, api } from '../api/api'
 import { primaryContact, quotationContact } from '../utils/contacts'
+import { showToast } from '../stores/uiStore'
 
 // ── Master List ────────────────────────────────────────────────────────────────
 
@@ -115,7 +116,7 @@ function MaintenanceList({
           : err instanceof Error
             ? err.message
             : 'No se pudo generar la factura'
-      window.alert(message)
+      showToast(message, 'error')
     } finally {
       setGeneratingIds(prev => {
         const next = new Set(prev)
@@ -154,7 +155,7 @@ function MaintenanceList({
       await duplicateQuote(id)
       onEdit()
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'No se pudo duplicar el contrato')
+      showToast(err instanceof Error ? err.message : 'No se pudo duplicar el contrato', 'error')
     }
   }
 
@@ -163,7 +164,7 @@ function MaintenanceList({
       await createVersion(id)
       onEdit()
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'No se pudo crear la nueva versión')
+      showToast(err instanceof Error ? err.message : 'No se pudo crear la nueva versión', 'error')
     }
   }
 
@@ -190,6 +191,7 @@ function MaintenanceList({
           />
           <select
             className="q-filter"
+            aria-label="Filtrar por estado"
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
           >
@@ -983,9 +985,10 @@ export const Maintenance: React.FC<{ onNavigateToInvoices?: (quotationId: string
   const goList = () => {
     if (unsaved) {
       saveActive().catch(err => {
-        window.alert(
+        showToast(
           `No se pudo sincronizar con el servidor: ${err instanceof Error ? err.message : 'error desconocido'}.\n` +
-            'Tus cambios quedaron guardados solo en este navegador.'
+            'Tus cambios quedaron guardados solo en este navegador.',
+          'error'
         )
       })
     }

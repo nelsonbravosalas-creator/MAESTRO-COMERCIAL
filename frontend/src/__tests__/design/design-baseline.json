@@ -12,15 +12,18 @@
     "styles/Maintenance.css": 0,
     "styles/Projects.css": 0,
     "styles/Quotations.css": 0,
-    "styles/shared.css": 0
+    "styles/shared.css": 0,
+    "styles/ui.css": 0
   },
   "tsxInlineColors": {
     "App.tsx": 0,
     "components/CatalogAutocomplete.tsx": 0,
+    "components/ConfirmDialogHost.tsx": 0,
     "components/CostIndicator.tsx": 0,
+    "components/ToastHost.tsx": 0,
     "pages/Catalogo.tsx": 7,
     "pages/Clients.tsx": 0,
-    "pages/Dashboard.tsx": 43,
+    "pages/Dashboard.tsx": 48,
     "pages/Invoices.tsx": 0,
     "pages/Login.tsx": 0,
     "pages/Logistica.tsx": 0,

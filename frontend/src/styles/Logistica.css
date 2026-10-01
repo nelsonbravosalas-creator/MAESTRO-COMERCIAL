@@ -64,7 +64,9 @@
   gap: 8px;
   padding: 10px 16px;
   background: var(--warning);
-  color: var(--on-accent);
+  /* --on-warning (no --on-accent): el ámbar es un color claro en los 3
+     temas, texto blanco no llega a 4,5:1 sobre él (T-07). */
+  color: var(--on-warning);
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -75,7 +77,9 @@
   margin-left: auto;
   font-weight: 400;
   font-size: 0.72rem;
-  opacity: 0.65;
+  /* 0.65 (con --on-warning negro) bajaba a 4,02:1 en tema claro, bajo el
+     4,5:1 mínimo AA (T-07); 0.85 deja margen en los 3 temas. */
+  opacity: 0.85;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -154,7 +158,7 @@
 
 /* Placeholder option */
 .log-row-select:invalid,
-.log-row-select option[value=""] {
+.log-row-select option[value=''] {
   color: var(--text-secondary);
   font-weight: 400;
 }
@@ -193,8 +197,14 @@
 }
 
 @keyframes log-pop-in {
-  from { opacity: 0; transform: scale(0.88); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .log-km-none {
@@ -223,7 +233,10 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
   line-height: 1;
   padding: 0;
 }
@@ -237,7 +250,9 @@
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 520px) {
-  .log-page-body { padding: 16px; }
+  .log-page-body {
+    padding: 16px;
+  }
 
   .log-row {
     grid-template-columns: 120px 1fr auto;

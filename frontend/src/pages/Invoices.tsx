@@ -10,6 +10,7 @@ import {
   type InvoiceSummary,
 } from '../api/api'
 import { usePermissions } from '../hooks/usePermissions'
+import { confirmDialog } from '../stores/uiStore'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -131,7 +132,13 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
   }
 
   const eliminarPago = async (id: string) => {
-    if (!window.confirm('¿Eliminar este abono? El saldo de la factura volverá a subir.')) return
+    if (
+      !(await confirmDialog('¿Eliminar este abono? El saldo de la factura volverá a subir.', {
+        danger: true,
+        confirmLabel: 'Eliminar',
+      }))
+    )
+      return
     setGuardando(true)
     try {
       await api.deletePayment(id)
@@ -959,7 +966,12 @@ export default function Invoices({
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
           />
-          <select className="inv-select" value={filtro} onChange={e => setFiltro(e.target.value)}>
+          <select
+            className="inv-select"
+            aria-label="Filtrar por estado"
+            value={filtro}
+            onChange={e => setFiltro(e.target.value)}
+          >
             <option value="">Todos los estados</option>
             <option value="vencida">Vencidas</option>
             <option value="parcial_vencida">Parciales vencidas</option>

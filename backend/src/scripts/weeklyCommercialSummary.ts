@@ -246,7 +246,7 @@ function buildEmailHtml(data: {
     .header p { margin: 4px 0 0 0; font-size: 13px; color: #94a3b8; }
     .content { padding: 24px 30px; }
     .section-title { font-size: 16px; font-weight: 700; color: #0f172a; margin: 24px 0 12px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
-    .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
     .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
     .kpi-card.highlight { background: #ecfdf5; border-color: #a7f3d0; }
     .kpi-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
@@ -285,6 +285,11 @@ function buildEmailHtml(data: {
           <div class="kpi-label">Total Cotizado</div>
           <div class="kpi-value">${Number(kpis.total_quoted_uf).toLocaleString('es-CL')} UF</div>
           <div class="kpi-sub">${kpis.total_quoted_count} cotizaciones (${kpis.projects_count} Proy / ${kpis.maintenance_count} Mant)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Tasa de Conversión</div>
+          <div class="kpi-value">${conversionRate}%</div>
+          <div class="kpi-sub">ganadas / cotizadas (7 días)</div>
         </div>
       </div>
 
@@ -446,12 +451,14 @@ function buildMarkdownSummary(data: {
   topClients: TopClient[]
   execPerformance: ExecutivePerformance[]
 }) {
-  const { todayStr, kpis, wonQuotes, alertQuotes, topClients, execPerformance } = data
+  const { todayStr, kpis, conversionRate, wonQuotes, alertQuotes, topClients, execPerformance } =
+    data
 
   let md = `# 📊 Resumen Comercial Ejecutivo (${todayStr})\n\n`
   md += `### 🔹 1. Indicadores Clave de la Semana\n`
   md += `* **Total Cotizado:** ${Number(kpis.total_quoted_uf).toLocaleString('es-CL')} UF (${kpis.total_quoted_count} cotizaciones: ${kpis.projects_count} Proyectos / ${kpis.maintenance_count} Mantenciones)\n`
-  md += `* **Total Adjudicado (Ganadas):** ${Number(kpis.total_won_uf).toLocaleString('es-CL')} UF (${kpis.total_won_count} cotizaciones)\n\n`
+  md += `* **Total Adjudicado (Ganadas):** ${Number(kpis.total_won_uf).toLocaleString('es-CL')} UF (${kpis.total_won_count} cotizaciones)\n`
+  md += `* **Tasa de Conversión:** ${conversionRate}%\n\n`
 
   md += `### 🏆 2. Ventas Cerradas con OC\n`
   if (wonQuotes.length === 0) {

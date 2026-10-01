@@ -3,15 +3,16 @@
     "App.css": 9,
     "components/CatalogAutocomplete.css": 38,
     "styles/Catalogo.css": 87,
-    "styles/Clients.css": 62,
+    "styles/Clients.css": 60,
     "styles/CostIndicator.css": 7,
-    "styles/Dashboard.css": 39,
-    "styles/Invoices.css": 109,
+    "styles/Dashboard.css": 18,
+    "styles/Invoices.css": 105,
     "styles/Login.css": 16,
     "styles/Logistica.css": 29,
     "styles/Maintenance.css": 3,
-    "styles/Projects.css": 193,
-    "styles/Quotations.css": 299
+    "styles/Projects.css": 189,
+    "styles/Quotations.css": 273,
+    "styles/shared.css": 0
   },
   "tsxInlineColors": {
     "App.tsx": 0,

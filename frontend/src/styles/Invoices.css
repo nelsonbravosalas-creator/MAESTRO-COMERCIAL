@@ -269,13 +269,14 @@
 }
 
 .inv-btn.is-primary {
-  background: #2563eb;
-  border-color: #1d4ed8;
-  color: #fff;
+  background: var(--btn-primary-bg);
+  border-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
 }
 
 .inv-btn.is-primary:hover {
-  background: #1d4ed8;
+  background: var(--btn-primary-bg-hover);
+  border-color: var(--btn-primary-bg-hover);
 }
 
 .inv-btn.is-warning {

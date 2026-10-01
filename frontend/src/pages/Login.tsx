@@ -113,7 +113,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <h1>🚀 BravoCRM</h1>
+          <h1>Maestro Comercial</h1>
           <p>Sistema de Gestión Comercial</p>
         </div>
 

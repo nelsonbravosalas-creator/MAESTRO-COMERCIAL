@@ -972,7 +972,7 @@ export default function Projects() {
         <div className="pj-view-toolbar">
           <h2 className="pj-view-title">Proyectos</h2>
           <ViewSelector current={viewMode} onChange={setViewMode} />
-          <button className="project-add-btn" onClick={() => setShowCreate(true)}>
+          <button className="btn-primary-sm" onClick={() => setShowCreate(true)}>
             + Nuevo
           </button>
         </div>
@@ -1001,7 +1001,7 @@ export default function Projects() {
         <div className="pj-view-toolbar">
           <h2 className="pj-view-title">Proyectos</h2>
           <ViewSelector current={viewMode} onChange={setViewMode} />
-          <button className="project-add-btn" onClick={() => setShowCreate(true)}>
+          <button className="btn-primary-sm" onClick={() => setShowCreate(true)}>
             + Nuevo
           </button>
         </div>

@@ -177,8 +177,9 @@ export const Dashboard: React.FC = () => {
     () => quotations.filter(q => q.status === 'Perdida').length,
     [quotations]
   )
+  // Sin cotizaciones cerradas no hay tasa: se muestra "—" en neutro, no 0% en rojo.
   const tasaExito =
-    adjCount + perdCount > 0 ? Math.round((adjCount / (adjCount + perdCount)) * 100) : 0
+    adjCount + perdCount > 0 ? Math.round((adjCount / (adjCount + perdCount)) * 100) : null
 
   const avgMargin = useMemo(() => {
     const relevant = activeQuotes.filter(q => (q.total ?? 0) > 0)
@@ -289,7 +290,7 @@ export const Dashboard: React.FC = () => {
             {apiReady
               ? 'Conectado al servidor — datos en tiempo real'
               : 'Modo offline — datos locales'}
-            <span className={`badge ${apiReady ? 'dev' : 'offline'}`} style={{ marginLeft: 8 }}>
+            <span className={`badge ${apiReady ? 'online' : 'offline'}`} style={{ marginLeft: 8 }}>
               {apiReady ? 'Online' : 'Offline'}
             </span>
           </p>
@@ -315,10 +316,18 @@ export const Dashboard: React.FC = () => {
         />
         <KpiCard
           label="Tasa de Éxito"
-          value={`${tasaExito}%`}
+          value={tasaExito !== null ? `${tasaExito}%` : '—'}
           sub={`${adjCount} adj. / ${perdCount} perd.`}
           loading={false}
-          accent={tasaExito >= 60 ? '#059669' : tasaExito >= 40 ? '#f59e0b' : '#dc2626'}
+          accent={
+            tasaExito === null
+              ? 'var(--text-muted)'
+              : tasaExito >= 60
+                ? '#059669'
+                : tasaExito >= 40
+                  ? '#f59e0b'
+                  : '#dc2626'
+          }
         />
         <KpiCard
           label="Margen Promedio"

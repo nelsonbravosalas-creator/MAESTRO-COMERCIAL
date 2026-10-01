@@ -1,0 +1,141 @@
+/* ══════════════════════════════════════════════════════════════════
+   Componentes compartidos entre pantallas (botones y modal de confirmación).
+   Se carga globalmente desde App.tsx: antes vivían en Quotations.css, que se
+   carga recién al abrir Cotizaciones, así que Clientes, Facturas y Proyectos
+   los mostraban sin estilo si se abrían primero. Solo tokens del tema.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Botón primario único de la app ("+ Nueva", "+ Nuevo cliente", …) ── */
+.btn-primary-sm {
+  padding: 8px 18px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: 1px solid var(--btn-primary-bg);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: 'Outfit', sans-serif;
+}
+.btn-primary-sm:hover {
+  background: var(--btn-primary-bg-hover);
+  border-color: var(--btn-primary-bg-hover);
+}
+.btn-primary-sm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-outline-sm {
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  font-family: 'Outfit', sans-serif;
+}
+.btn-outline-sm:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+  background: rgba(var(--overlay-rgb), 0.04);
+}
+
+.btn-danger-sm {
+  padding: 8px 18px;
+  background: var(--danger);
+  color: var(--on-accent);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+}
+.btn-danger-sm:hover {
+  filter: brightness(0.9);
+}
+
+/* ── Botón de ícono (editar, borrar, versión) ─────────────────────── */
+.btn-icon {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+.btn-icon:hover {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-icon-version {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.btn-icon-version:hover {
+  background: var(--info-bg);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+.btn-icon.btn-danger:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger-text);
+}
+
+/* ── Modal de confirmación ────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(var(--shadow-rgb), 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.modal-confirm {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+.modal-confirm h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+.modal-confirm p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+}
+.modal-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}

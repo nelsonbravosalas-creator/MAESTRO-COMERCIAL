@@ -22,9 +22,8 @@ import {
   ContactPicker,
 } from './Quotations'
 import { usePermissions } from '../hooks/usePermissions'
-import { downloadDocx } from '../utils/docxExport'
-import { downloadHtml } from '../utils/htmlExport'
-import { downloadPdfFromElement } from '../utils/pdfExport'
+// docx/html2canvas/jsPDF son pesados y solo hacen falta al exportar: se cargan
+// bajo demanda en cada handler (fase F7), no junto con el resto de la pantalla.
 import { buildQuotationValuationRows } from '../utils/quotationRows'
 import { ApiError, api } from '../api/api'
 import { primaryContact, quotationContact } from '../utils/contacts'
@@ -634,6 +633,7 @@ function TabDocumentoMtc() {
   const handleDocx = async () => {
     setLoadingDocx(true)
     try {
+      const { downloadDocx } = await import('../utils/docxExport')
       await downloadDocx({
         q,
         client,
@@ -648,8 +648,9 @@ function TabDocumentoMtc() {
     }
   }
 
-  const handleHtml = () => {
+  const handleHtml = async () => {
     try {
+      const { downloadHtml } = await import('../utils/htmlExport')
       downloadHtml({
         q,
         client,
@@ -666,6 +667,7 @@ function TabDocumentoMtc() {
     if (!docRef.current) return
     setLoadingPdf(true)
     try {
+      const { downloadPdfFromElement } = await import('../utils/pdfExport')
       await downloadPdfFromElement(docRef.current, `Mantencion-${q.correlative}-${q.date}.pdf`)
       showToast('Documento PDF generado')
     } catch {

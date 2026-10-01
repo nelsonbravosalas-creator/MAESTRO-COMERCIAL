@@ -1,30 +1,45 @@
 import { useState } from 'react'
 import '../styles/Logistica.css'
-import { CITIES, getDistance } from '../data/cityDistances'
+import { useCityDistances } from '../hooks/useCityDistances'
 
 function DistanciasCiudades() {
-  const [destino, setDestino]  = useState('')
-  const [origen, setOrigen]    = useState('')
+  const [destino, setDestino] = useState('')
+  const [origen, setOrigen] = useState('')
+  // La tabla de distancias (~400 kB) se carga solo al abrir esta pantalla,
+  // no junto con Cotizaciones (ver hooks/useCityDistances.ts, fase F7).
+  const mod = useCityDistances()
+  const CITIES = mod?.CITIES ?? []
 
-  const distancia = destino && origen ? getDistance(origen, destino) : null
+  const distancia = mod && destino && origen ? mod.getDistance(origen, destino) : null
 
-  const swap = () => { setOrigen(destino); setDestino(origen) }
+  const swap = () => {
+    setOrigen(destino)
+    setDestino(origen)
+  }
 
   return (
     <div className="log-widget">
-
       {/* Header strip */}
       <div className="log-widget-header">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M3 12h18M3 6h18M3 18h18"/>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 12h18M3 6h18M3 18h18" />
         </svg>
         <span>Traslados a regiones</span>
-        <span className="log-widget-cities">{CITIES.length} ciudades</span>
+        <span className="log-widget-cities">{mod ? `${CITIES.length} ciudades` : 'Cargando…'}</span>
       </div>
 
       {/* Ledger table */}
       <div className="log-ledger">
-
         {/* Row 1 — Ciudad destino */}
         <div className="log-row">
           <span className="log-row-label">Ciudad destino</span>
@@ -34,9 +49,14 @@ function DistanciasCiudades() {
               value={destino}
               onChange={e => setDestino(e.target.value)}
               aria-label="Ciudad destino"
+              disabled={!mod}
             >
-              <option value="">— seleccionar —</option>
-              {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+              <option value="">{mod ? '— seleccionar —' : 'Cargando ciudades…'}</option>
+              {CITIES.map(c => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </select>
           </div>
           <div className="log-row-result log-row-result--empty">
@@ -66,9 +86,14 @@ function DistanciasCiudades() {
               value={origen}
               onChange={e => setOrigen(e.target.value)}
               aria-label="Ciudad de origen"
+              disabled={!mod}
             >
-              <option value="">— seleccionar —</option>
-              {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+              <option value="">{mod ? '— seleccionar —' : 'Cargando ciudades…'}</option>
+              {CITIES.map(c => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </select>
           </div>
           <div className="log-row-result">
@@ -84,7 +109,6 @@ function DistanciasCiudades() {
             )}
           </div>
         </div>
-
       </div>
     </div>
   )

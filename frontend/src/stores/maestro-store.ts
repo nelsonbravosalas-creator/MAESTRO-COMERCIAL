@@ -61,6 +61,19 @@ export const DEFAULT_CATALOGS: CatalogsUI = {
   ele: [],
 }
 
+// Error al guardar el Maestro de Precios que dice qué fila falló, para que la
+// pantalla la marque y la enfoque.
+export class CatalogSaveError extends Error {
+  constructor(
+    message: string,
+    readonly catId: CategoryId,
+    readonly idx: number
+  ) {
+    super(message)
+    this.name = 'CatalogSaveError'
+  }
+}
+
 const DEFAULT_CATEGORIES: CostCategory[] = [
   {
     id: 'mo',
@@ -1067,12 +1080,16 @@ export const useMaestro = create<MaestroState>()(
         // (p.ej. recién agregada con "+ Agregar" y sin completar) la rechaza
         // la validación y cortaría el guardado a medias.
         const incompletas = CATS.flatMap(catId =>
-          catalogs[catId].filter(i => !i.desc?.trim() || !i.unidad?.trim()).map(() => catId)
+          catalogs[catId].flatMap((i, idx) =>
+            !i.desc?.trim() || !i.unidad?.trim() ? [{ catId, idx }] : []
+          )
         )
         if (incompletas.length > 0) {
-          const cats = [...new Set(incompletas)].map(catLabel).join(', ')
-          throw new Error(
-            `Hay ${incompletas.length} ítem(s) sin descripción o unidad en ${cats}. Complételos o elimínelos antes de guardar.`
+          const cats = [...new Set(incompletas.map(x => x.catId))].map(catLabel).join(', ')
+          throw new CatalogSaveError(
+            `Hay ${incompletas.length} ítem(s) sin descripción o unidad en ${cats}. Complételos o elimínelos antes de guardar.`,
+            incompletas[0].catId,
+            incompletas[0].idx
           )
         }
 
@@ -1109,7 +1126,11 @@ export const useMaestro = create<MaestroState>()(
             // qué (p.ej. el 409 de descripción duplicada) en vez del genérico
             // "verifique la conexión".
             if (fallo !== null)
-              throw new Error(`No se pudo guardar "${item.desc}" (${catLabel(catId)}): ${fallo}`)
+              throw new CatalogSaveError(
+                `No se pudo guardar "${item.desc}" (${catLabel(catId)}): ${fallo}`,
+                catId,
+                idx
+              )
           }
         }
         set({ catalogDirty: false })

@@ -26,11 +26,16 @@ vi.mock('../../api/api', () => ({
     getElectricalCatalog: vi.fn().mockResolvedValue([]),
     getClients: vi.fn().mockResolvedValue([]),
     getConfig: vi.fn().mockResolvedValue({ uf_value: '39500', iva_pct: '19', dolar_value: '950' }),
+    createCatalogItem: vi.fn(),
+    updateCatalogItem: vi.fn(),
+    createElectricalItem: vi.fn(),
+    updateElectricalItem: vi.fn(),
   },
 }))
 
 import api, { ApiError } from '../../api/api'
 import {
+  CatalogSaveError,
   calcCat,
   calcTotals,
   generateCorrelative,
@@ -321,5 +326,49 @@ describe('loadData — no debe preservar items locales obsoletos', () => {
 
     const result = useMaestro.getState().quotations.find(q => q.id === 'srv-1')
     expect(result?.items.mo[0]?.desc).toBe('Edición local sin guardar')
+  })
+})
+
+describe('saveCatalogs — el error dice qué fila falló (F6)', () => {
+  const vacio = () => ({ mo: [], log: [], mat: [], rep: [], ins: [], mec: [], ele: [] })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('una fila sin descripción se reporta con su categoría e índice, sin llamar a la API', async () => {
+    useMaestro.setState({
+      catalogs: {
+        ...vacio(),
+        mo: [
+          { id: 'a', desc: 'Supervisor', unidad: 'Hora', price: 120000 },
+          { id: 'tmp-1', desc: '  ', unidad: 'Und', price: 0 },
+        ],
+      },
+    })
+    const err = await useMaestro
+      .getState()
+      .saveCatalogs()
+      .catch(e => e)
+    expect(err).toBeInstanceOf(CatalogSaveError)
+    expect(err).toMatchObject({ catId: 'mo', idx: 1 })
+    expect(api.createCatalogItem).not.toHaveBeenCalled()
+    expect(api.updateCatalogItem).not.toHaveBeenCalled()
+  })
+
+  it('si el backend rechaza un ítem (409 duplicado), el error trae su categoría, índice y motivo', async () => {
+    vi.mocked(api.createElectricalItem).mockRejectedValueOnce(
+      new Error('Ya existe el ítem "cable" en Materiales Eléctricos')
+    )
+    useMaestro.setState({
+      catalogs: { ...vacio(), ele: [{ id: 'tmp-9', desc: 'cable', unidad: 'Mt', price: 850 }] },
+    })
+    const err = await useMaestro
+      .getState()
+      .saveCatalogs()
+      .catch(e => e)
+    expect(err).toBeInstanceOf(CatalogSaveError)
+    expect(err).toMatchObject({ catId: 'ele', idx: 0 })
+    expect(err.message).toContain('Ya existe el ítem')
   })
 })

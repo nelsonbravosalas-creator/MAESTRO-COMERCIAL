@@ -5,10 +5,12 @@
 
 .sr-only {
   position: absolute;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
-  clip: rect(0,0,0,0);
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
 }
@@ -22,7 +24,7 @@
 }
 
 /* ── Cyberpunk scanlines overlay ────────────────────────────────── */
-[data-theme="cyberpunk"] .app-container::before {
+[data-theme='cyberpunk'] .app-container::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -68,9 +70,11 @@
 }
 
 /* Cyberpunk title glow */
-[data-theme="cyberpunk"] .header-left h1 {
+[data-theme='cyberpunk'] .header-left h1 {
   color: var(--text);
-  text-shadow: 0 0 15px rgba(0, 255, 65, 0.7), 0 0 30px rgba(0, 255, 65, 0.3);
+  text-shadow:
+    0 0 15px rgba(0, 255, 65, 0.7),
+    0 0 30px rgba(0, 255, 65, 0.3);
   letter-spacing: 0.04em;
 }
 
@@ -118,9 +122,10 @@
 }
 
 /* Cyberpunk nav active: neon border glow */
-[data-theme="cyberpunk"] .nav-btn.active {
-  box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.3),
-              inset 0 0 8px rgba(var(--primary-rgb), 0.05);
+[data-theme='cyberpunk'] .nav-btn.active {
+  box-shadow:
+    0 0 8px rgba(var(--primary-rgb), 0.3),
+    inset 0 0 8px rgba(var(--primary-rgb), 0.05);
 }
 
 .nav-badge {
@@ -168,9 +173,15 @@
   font-weight: 600;
 }
 
-.user-role.admin   { color: var(--primary); }
-.user-role.manager { color: var(--warning); }
-.user-role.user    { color: var(--secondary); }
+.user-role.admin {
+  color: var(--primary);
+}
+.user-role.manager {
+  color: var(--warning);
+}
+.user-role.user {
+  color: var(--secondary);
+}
 
 .btn-logout {
   background: transparent;
@@ -231,13 +242,13 @@
 }
 
 /* Cyberpunk: active theme button glow */
-[data-theme="cyberpunk"] .theme-btn.active {
+[data-theme='cyberpunk'] .theme-btn.active {
   color: var(--text);
   background: rgba(var(--primary-rgb), 0.12);
   box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.3);
 }
 
-[data-theme="cyberpunk"] .theme-toggle {
+[data-theme='cyberpunk'] .theme-toggle {
   border-color: var(--border);
 }
 
@@ -299,8 +310,12 @@
 }
 
 @keyframes nav-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .nav-sync-spin {
@@ -313,6 +328,12 @@
   flex: 1;
   padding: 0;
   overflow: auto;
+}
+
+/* Cada pantalla ocupa todo el alto bajo el header: si no, su panel terminaba
+   donde terminaba el contenido y se veía una "costura" contra el fondo. */
+.app-main.authenticated > * {
+  min-height: calc(100vh - var(--header-h));
 }
 
 .page-placeholder {
@@ -336,10 +357,17 @@
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-hover), 0 15px 35px var(--card-glow);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px var(--border-hover),
+    0 15px 35px var(--card-glow);
 }
 
-.card h2, .card h3 { color: var(--primary); margin-bottom: 1rem; }
+.card h2,
+.card h3 {
+  color: var(--primary);
+  margin-bottom: 1rem;
+}
 
 .status-message {
   padding: 1rem;
@@ -350,8 +378,14 @@
   font-weight: 500;
 }
 
-ul { list-style: none; padding: 0; }
-ul li { padding: 0.5rem 0; color: var(--text-secondary); }
+ul {
+  list-style: none;
+  padding: 0;
+}
+ul li {
+  padding: 0.5rem 0;
+  color: var(--text-secondary);
+}
 
 /* ── Responsive — Escritorio mediano ────────────────────────────── */
 @media (max-width: 1600px) {
@@ -384,7 +418,10 @@ ul li { padding: 0.5rem 0; color: var(--text-secondary); }
     align-items: center;
   }
 
-  .header-left { flex: 1; min-width: 0; }
+  .header-left {
+    flex: 1;
+    min-width: 0;
+  }
 
   .header-left h1 {
     font-size: 1rem;
@@ -402,7 +439,9 @@ ul li { padding: 0.5rem 0; color: var(--text-secondary); }
   }
 
   /* Ocultar nombre/rol en móvil */
-  .user-info { display: none; }
+  .user-info {
+    display: none;
+  }
 
   .btn-logout {
     padding: 5px 10px;
@@ -416,7 +455,9 @@ ul li { padding: 0.5rem 0; color: var(--text-secondary); }
     min-height: 32px;
   }
 
-  .nav-sync-label { display: none; }
+  .nav-sync-label {
+    display: none;
+  }
 
   /* Nav como tab bar horizontal deslizable */
   .header-nav {
@@ -435,7 +476,9 @@ ul li { padding: 0.5rem 0; color: var(--text-secondary); }
     border-top: 1px solid var(--nav-tab-border);
   }
 
-  .header-nav::-webkit-scrollbar { display: none; }
+  .header-nav::-webkit-scrollbar {
+    display: none;
+  }
 
   .nav-btn {
     flex-shrink: 0;
@@ -462,19 +505,30 @@ ul li { padding: 0.5rem 0; color: var(--text-secondary); }
     background: var(--nav-active-bg);
   }
 
-  [data-theme="cyberpunk"] .nav-btn.active {
+  [data-theme='cyberpunk'] .nav-btn.active {
     box-shadow: none;
   }
 
   /* Compactar theme toggle en móvil */
-  .theme-toggle { padding: 2px; }
-  .theme-btn { width: 26px; height: 26px; min-width: 26px; font-size: 12px; }
+  .theme-toggle {
+    padding: 2px;
+  }
+  .theme-btn {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    font-size: 12px;
+  }
 }
 
 @media (max-width: 480px) {
-  .app-header { padding: 8px 12px 0; }
+  .app-header {
+    padding: 8px 12px 0;
+  }
 
-  .header-left h1 { font-size: 0.9rem; }
+  .header-left h1 {
+    font-size: 0.9rem;
+  }
 
   .header-nav {
     width: calc(100% + 24px);
@@ -482,5 +536,8 @@ ul li { padding: 0.5rem 0; color: var(--text-secondary); }
     margin-right: -12px;
   }
 
-  .nav-btn { padding: 9px 13px; font-size: 0.74rem; }
+  .nav-btn {
+    padding: 9px 13px;
+    font-size: 0.74rem;
+  }
 }

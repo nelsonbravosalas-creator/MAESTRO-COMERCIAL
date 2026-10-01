@@ -280,7 +280,7 @@ function DetalleFactura({ invoiceId, onClose, onChanged }: DetalleProps) {
                   <div className="inv-card-label">Saldo</div>
                   <div
                     className="inv-card-value"
-                    style={{ color: saldo > 0 ? '#b91c1c' : '#065f46' }}
+                    style={{ color: saldo > 0 ? 'var(--danger-text)' : 'var(--success-text)' }}
                   >
                     {clp(saldo)}
                   </div>

@@ -58,12 +58,12 @@ const CAT_LABELS: Record<string, string> = {
 }
 
 const TOOLTIP_STYLE: React.CSSProperties = {
-  backgroundColor: '#1e293b',
-  border: '1px solid rgba(255,255,255,0.12)',
+  backgroundColor: 'var(--surface)',
+  border: '1px solid var(--border)',
   borderRadius: '8px',
-  color: '#e2e8f0',
+  color: 'var(--text)',
   fontSize: '12px',
-  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+  boxShadow: 'var(--shadow-lg)',
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -399,15 +399,19 @@ export const Dashboard: React.FC = () => {
               style={{
                 textAlign: 'center',
                 padding: '16px 8px',
-                background: 'rgba(255,255,255,0.03)',
+                background: 'var(--surface-muted)',
                 borderRadius: 8,
               }}
             >
-              <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#e2e8f0' }}>
+              <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text)' }}>
                 {value != null ? value : '—'}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>{unit}</div>
-              <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>{label}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                {unit}
+              </div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                {label}
+              </div>
             </div>
           ))}
         </div>
@@ -429,15 +433,15 @@ export const Dashboard: React.FC = () => {
                   <stop offset="95%" stopColor="#059669" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis
                 dataKey="month"
-                tick={{ fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fill: '#94a3b8', fontSize: 10 }}
+                tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={fmtM}
@@ -542,14 +546,10 @@ export const Dashboard: React.FC = () => {
                 layout="vertical"
                 margin={{ top: 4, right: 80, bottom: 0, left: 8 }}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(255,255,255,0.05)"
-                  horizontal={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                 <XAxis
                   type="number"
-                  tick={{ fill: '#94a3b8', fontSize: 10 }}
+                  tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={fmtM}
@@ -557,7 +557,7 @@ export const Dashboard: React.FC = () => {
                 <YAxis
                   type="category"
                   dataKey="name"
-                  tick={{ fill: '#cbd5e1', fontSize: 11 }}
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   width={120}
@@ -571,7 +571,7 @@ export const Dashboard: React.FC = () => {
                     dataKey="value"
                     position="right"
                     formatter={(v: any) => fmtM(Number(v))}
-                    style={{ fill: '#94a3b8', fontSize: 10 }}
+                    style={{ fill: 'var(--text-muted)', fontSize: 10 }}
                   />
                 </Bar>
               </BarChart>
@@ -586,15 +586,15 @@ export const Dashboard: React.FC = () => {
           {catData.length > 0 ? (
             <ResponsiveContainer width="100%" height={210}>
               <BarChart data={catData} margin={{ top: 4, right: 10, bottom: 0, left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis
                   dataKey="name"
-                  tick={{ fill: '#94a3b8', fontSize: 10 }}
+                  tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: '#94a3b8', fontSize: 10 }}
+                  tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={fmtM}

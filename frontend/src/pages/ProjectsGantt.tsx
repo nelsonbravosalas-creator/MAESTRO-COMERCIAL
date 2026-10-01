@@ -32,19 +32,19 @@ interface RowItem {
 // ── Constants ─────────────────────────────────────────────────
 
 const DAY_PX = 28
-const ROW_H  = 36
+const ROW_H = 36
 const LABEL_W = 280
 const TODAY = new Date().toISOString().slice(0, 10)
 
 const STATUS_COLOR: Record<string, string> = {
-  planning:    '#334155',
+  planning: '#334155',
   in_progress: '#0e7490',
-  completed:   '#16a34a',
-  paused:      '#b45309',
-  cancelled:   '#6b7280',
-  pending:     '#475569',
-  done:        '#16a34a',
-  blocked:     '#dc2626',
+  completed: '#16a34a',
+  paused: '#b45309',
+  cancelled: '#6b7280',
+  pending: '#475569',
+  done: '#16a34a',
+  blocked: '#dc2626',
 }
 
 // ── Date helpers ──────────────────────────────────────────────
@@ -86,9 +86,9 @@ function NewTaskForm({ projectId, onCreated, onCancel }: NewTaskFormProps) {
     setSaving(true)
     try {
       const task = await api.createTask(projectId, {
-        name:       form.name,
+        name: form.name,
         start_date: form.start_date || null,
-        end_date:   form.end_date   || null,
+        end_date: form.end_date || null,
       })
       onCreated(task)
     } finally {
@@ -150,11 +150,14 @@ export default function ProjectsGantt({ projects, onSelect }: Props) {
   useEffect(() => {
     projects.forEach(p => {
       if (!taskMap[p.id]) {
-        api.getTasks(p.id).then(tasks => {
-          setTaskMap(prev => ({ ...prev, [p.id]: tasks }))
-        }).catch(() => {
-          setTaskMap(prev => ({ ...prev, [p.id]: [] }))
-        })
+        api
+          .getTasks(p.id)
+          .then(tasks => {
+            setTaskMap(prev => ({ ...prev, [p.id]: tasks }))
+          })
+          .catch(() => {
+            setTaskMap(prev => ({ ...prev, [p.id]: [] }))
+          })
       }
     })
   }, [projects])
@@ -250,13 +253,17 @@ export default function ProjectsGantt({ projects, onSelect }: Props) {
     <div className="gantt-root">
       {/* Toolbar */}
       <div className="gantt-toolbar">
-        <button className="gantt-nav-btn" onClick={() => navigate(-1)}>‹ Anterior</button>
+        <button className="gantt-nav-btn" onClick={() => navigate(-1)}>
+          ‹ Anterior
+        </button>
         <span className="gantt-range">
           {viewStart.toLocaleDateString('es-CL', { month: 'short', year: 'numeric' })}
           {' — '}
           {viewEnd.toLocaleDateString('es-CL', { month: 'short', year: 'numeric' })}
         </span>
-        <button className="gantt-nav-btn" onClick={() => navigate(1)}>Siguiente ›</button>
+        <button className="gantt-nav-btn" onClick={() => navigate(1)}>
+          Siguiente ›
+        </button>
         <select
           className="gantt-months-sel"
           value={viewMonths}
@@ -269,7 +276,11 @@ export default function ProjectsGantt({ projects, onSelect }: Props) {
         </select>
         <button
           className="gantt-nav-btn"
-          onClick={() => { const d = new Date(); d.setDate(1); setViewStart(d) }}
+          onClick={() => {
+            const d = new Date()
+            d.setDate(1)
+            setViewStart(d)
+          }}
         >
           Hoy
         </button>
@@ -284,23 +295,32 @@ export default function ProjectsGantt({ projects, onSelect }: Props) {
               key={row.id}
               className={`gantt-label-row${row.type === 'task' ? ' gantt-label-row--task' : ''}`}
               style={{ top: i * ROW_H }}
-              onClick={() => row.type === 'project' ? onSelect(row.id) : undefined}
+              onClick={() => (row.type === 'project' ? onSelect(row.id) : undefined)}
             >
               {row.type === 'project' && (
                 <button
                   className="gantt-expand-btn"
-                  onClick={e => { e.stopPropagation(); toggleExpand(row.id) }}
+                  onClick={e => {
+                    e.stopPropagation()
+                    toggleExpand(row.id)
+                  }}
                 >
                   {row.isExpanded ? '▾' : '▸'}
                 </button>
               )}
               {row.type === 'task' && <span className="gantt-task-indent">└</span>}
-              <span className="gantt-label-name" title={row.name}>{row.name}</span>
+              <span className="gantt-label-name" title={row.name}>
+                {row.name}
+              </span>
               {row.type === 'project' && (
                 <button
                   className="gantt-add-task-btn"
                   title="Agregar tarea"
-                  onClick={e => { e.stopPropagation(); setAddingTask(row.id); setExpanded(p => new Set([...p, row.id])) }}
+                  onClick={e => {
+                    e.stopPropagation()
+                    setAddingTask(row.id)
+                    setExpanded(p => new Set([...p, row.id]))
+                  }}
                 >
                   +
                 </button>
@@ -316,10 +336,18 @@ export default function ProjectsGantt({ projects, onSelect }: Props) {
           {addingTask && (
             <div
               className="gantt-label-row gantt-label-row--newtask"
-              style={{ top: (() => {
-                let idx = 0; for (let i = rows.length - 1; i >= 0; i--) { if (rows[i].projectId === addingTask) { idx = i; break } }
-                return (idx + 1) * ROW_H
-              })() }}
+              style={{
+                top: (() => {
+                  let idx = 0
+                  for (let i = rows.length - 1; i >= 0; i--) {
+                    if (rows[i].projectId === addingTask) {
+                      idx = i
+                      break
+                    }
+                  }
+                  return (idx + 1) * ROW_H
+                })(),
+              }}
             >
               <NewTaskForm
                 projectId={addingTask}
@@ -332,28 +360,44 @@ export default function ProjectsGantt({ projects, onSelect }: Props) {
 
         {/* Right SVG chart */}
         <div className="gantt-chart-wrap">
-          <svg
-            ref={svgRef}
-            className="gantt-svg"
-            width={svgW}
-            height={svgH + ROW_H}
-          >
+          <svg ref={svgRef} className="gantt-svg" width={svgW} height={svgH + ROW_H}>
             {/* Background stripes */}
             {rows.map((row, i) => (
               <rect
                 key={`bg-${row.id}`}
-                x={0} y={i * ROW_H + ROW_H}
-                width={svgW} height={ROW_H}
-                fill={i % 2 === 0 ? '#0f172a' : '#1e293b'}
+                x={0}
+                y={i * ROW_H + ROW_H}
+                width={svgW}
+                height={ROW_H}
+                style={{ fill: i % 2 === 0 ? 'var(--surface-strong)' : 'var(--surface)' }}
               />
             ))}
 
             {/* Month grid lines + header */}
-            <rect x={0} y={0} width={svgW} height={ROW_H} fill="#0f172a" />
+            <rect
+              x={0}
+              y={0}
+              width={svgW}
+              height={ROW_H}
+              style={{ fill: 'var(--surface-strong)' }}
+            />
             {months.map(m => (
               <g key={m.x}>
-                <line x1={m.x} y1={0} x2={m.x} y2={svgH + ROW_H} stroke="#334155" strokeWidth={1} />
-                <text x={m.x + 6} y={20} fill="#94a3b8" fontSize={11} fontFamily="Outfit, sans-serif">
+                <line
+                  x1={m.x}
+                  y1={0}
+                  x2={m.x}
+                  y2={svgH + ROW_H}
+                  style={{ stroke: 'var(--border)' }}
+                  strokeWidth={1}
+                />
+                <text
+                  x={m.x + 6}
+                  y={20}
+                  style={{ fill: 'var(--text-muted)' }}
+                  fontSize={11}
+                  fontFamily="Outfit, sans-serif"
+                >
                   {m.label}
                 </text>
               </g>
@@ -362,8 +406,24 @@ export default function ProjectsGantt({ projects, onSelect }: Props) {
             {/* Today line */}
             {todayX >= 0 && todayX <= svgW && (
               <g>
-                <line x1={todayX} y1={0} x2={todayX} y2={svgH + ROW_H} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 3" />
-                <text x={todayX + 4} y={14} fill="#f59e0b" fontSize={9} fontFamily="Outfit, sans-serif">hoy</text>
+                <line
+                  x1={todayX}
+                  y1={0}
+                  x2={todayX}
+                  y2={svgH + ROW_H}
+                  style={{ stroke: 'var(--warning)' }}
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                />
+                <text
+                  x={todayX + 4}
+                  y={14}
+                  style={{ fill: 'var(--warning-text)' }}
+                  fontSize={9}
+                  fontFamily="Outfit, sans-serif"
+                >
+                  hoy
+                </text>
               </g>
             )}
 
@@ -375,29 +435,41 @@ export default function ProjectsGantt({ projects, onSelect }: Props) {
               const barH = row.type === 'project' ? ROW_H - 10 : ROW_H - 14
               const barY = y + (row.type === 'project' ? 5 : 7)
               const color = STATUS_COLOR[row.status] ?? '#475569'
-              const progressW = Math.round(bar.w * row.progress_pct / 100)
+              const progressW = Math.round((bar.w * row.progress_pct) / 100)
 
               return (
-                <g key={`bar-${row.id}`} style={{ cursor: 'pointer' }} onClick={() => row.type === 'project' && onSelect(row.id)}>
+                <g
+                  key={`bar-${row.id}`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => row.type === 'project' && onSelect(row.id)}
+                >
                   {/* Background bar */}
                   <rect
-                    x={bar.x} y={barY}
-                    width={bar.w} height={barH}
-                    rx={3} fill={color}
+                    x={bar.x}
+                    y={barY}
+                    width={bar.w}
+                    height={barH}
+                    rx={3}
+                    fill={color}
                     opacity={0.35}
                   />
                   {/* Progress fill */}
                   <rect
-                    x={bar.x} y={barY}
-                    width={progressW} height={barH}
-                    rx={3} fill={color}
+                    x={bar.x}
+                    y={barY}
+                    width={progressW}
+                    height={barH}
+                    rx={3}
+                    fill={color}
                     opacity={0.9}
                   />
                   {/* Label inside bar */}
                   {bar.w > 50 && (
                     <text
-                      x={bar.x + 6} y={barY + barH / 2 + 4}
-                      fill="#f8fafc" fontSize={10}
+                      x={bar.x + 6}
+                      y={barY + barH / 2 + 4}
+                      fill="#f8fafc"
+                      fontSize={10}
                       fontFamily="Outfit, sans-serif"
                       clipPath={`inset(0 ${bar.w}px 0 0)`}
                     >

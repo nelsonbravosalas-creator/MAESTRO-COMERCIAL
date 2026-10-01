@@ -62,8 +62,8 @@ export type ThemeName = 'dark' | 'light' | 'cyberpunk'
 
 export function themeTokens(theme: ThemeName): Record<string, string> {
   const css = readFileSync(join(SRC, 'index.css'), 'utf-8')
-  const head = `[data-theme="${theme}"] {`
-  const start = css.indexOf(head)
+  // Prettier (hook de pre-commit) puede dejar comillas simples o dobles.
+  const start = css.search(new RegExp(String.raw`\[data-theme=["']${theme}["']\]\s*\{`))
   const block = css.slice(start, css.indexOf('\n}', start))
   const tokens: Record<string, string> = {}
   for (const m of block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) tokens[m[1]] = m[2].trim()

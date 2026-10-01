@@ -7,7 +7,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        // Las pruebas e2e apuntan el proxy a un puerto sin nada escuchando
+        // (VITE_API_PROXY): así un backend local nunca interfiere con la API simulada.
+        target: process.env.VITE_API_PROXY ?? 'http://localhost:3000',
         changeOrigin: true,
       },
     },

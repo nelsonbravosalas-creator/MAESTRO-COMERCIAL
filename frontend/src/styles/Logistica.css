@@ -6,7 +6,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #0d1525;
+  background: var(--bg);
   font-family: 'Outfit', 'Segoe UI', sans-serif;
 }
 
@@ -17,22 +17,22 @@
   align-items: baseline;
   gap: 14px;
   padding: 22px 28px 18px;
-  background: #0f172a;
-  border-bottom: 2px solid #f59e0b;
+  background: var(--surface-strong);
+  border-bottom: 2px solid var(--warning);
   flex-shrink: 0;
 }
 
 .log-page-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text);
   letter-spacing: -0.02em;
   margin: 0;
 }
 
 .log-page-sub {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 400;
 }
 
@@ -49,11 +49,11 @@
 .log-widget {
   width: 100%;
   max-width: 640px;
-  background: #1e293b;
+  background: var(--surface);
   border-radius: 8px;
-  border: 1px solid #334155;
+  border: 1px solid var(--border);
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px rgba(var(--shadow-rgb), 0.35);
 }
 
 /* ── Widget header strip ─────────────────────────────────────────────────── */
@@ -63,8 +63,8 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #f59e0b;
-  color: #1c1400;
+  background: var(--warning);
+  color: var(--on-accent);
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -89,7 +89,7 @@
 
 .log-divider {
   height: 1px;
-  background: #2d3f55;
+  background: var(--bg-tertiary);
   margin: 0 16px;
 }
 
@@ -107,13 +107,13 @@
   padding: 0 16px;
   font-size: 0.8rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: var(--text-muted);
   white-space: nowrap;
-  border-right: 1px solid #2d3f55;
+  border-right: 1px solid var(--border);
   align-self: stretch;
   display: flex;
   align-items: center;
-  background: #172032;
+  background: var(--surface-muted);
 }
 
 /* ── Select ──────────────────────────────────────────────────────────────── */
@@ -130,7 +130,7 @@
   padding: 10px 28px 10px 2px;
   background: transparent;
   border: none;
-  color: #f59e0b;
+  color: var(--warning-text);
   font-family: 'Outfit', 'Segoe UI', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
@@ -143,19 +143,19 @@
 
 .log-row-select:focus {
   outline: none;
-  color: #fbbf24;
+  color: var(--warning-text);
 }
 
 .log-row-select option {
-  background: #1e293b;
-  color: #f1f5f9;
+  background: var(--surface);
+  color: var(--text);
   font-weight: 400;
 }
 
 /* Placeholder option */
 .log-row-select:invalid,
 .log-row-select option[value=""] {
-  color: #475569;
+  color: var(--text-secondary);
   font-weight: 400;
 }
 
@@ -168,7 +168,7 @@
   align-items: center;
   justify-content: flex-end;
   align-self: stretch;
-  border-left: 1px solid #2d3f55;
+  border-left: 1px solid var(--border);
 }
 
 .log-row-result--empty {
@@ -179,7 +179,7 @@
   font-family: 'Space Mono', monospace;
   font-size: 1rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text);
   white-space: nowrap;
   animation: log-pop-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -188,7 +188,7 @@
   font-style: normal;
   font-size: 0.75rem;
   font-weight: 400;
-  color: #f59e0b;
+  color: var(--warning-text);
   margin-left: 4px;
 }
 
@@ -199,23 +199,23 @@
 
 .log-km-none {
   font-size: 0.75rem;
-  color: #ef4444;
+  color: var(--danger-text);
   font-style: italic;
 }
 
 .log-km-placeholder {
   font-family: 'Space Mono', monospace;
   font-size: 0.85rem;
-  color: #2d3f55;
+  color: var(--text-muted);
 }
 
 /* ── Swap button ─────────────────────────────────────────────────────────── */
 
 .log-swap {
   background: none;
-  border: 1px solid #334155;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.9rem;
   width: 28px;
   height: 28px;
@@ -229,9 +229,9 @@
 }
 
 .log-swap:hover {
-  border-color: #f59e0b;
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.08);
+  border-color: var(--warning);
+  color: var(--warning-text);
+  background: rgba(var(--warning-rgb), 0.08);
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */

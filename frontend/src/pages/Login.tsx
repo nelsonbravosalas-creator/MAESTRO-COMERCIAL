@@ -22,7 +22,16 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [mode, setMode] = useState<Mode>(resetTokenFromUrl() ? 'reset' : 'login')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [info, setInfo] = useState('')
+  const [info, setInfo] = useState(() => {
+    // api.ts deja esta marca antes del reload forzado cuando el refresh de
+    // sesión falla, para no devolver al usuario a un login "mudo" sin
+    // explicación de por qué tuvo que volver a entrar.
+    if (sessionStorage.getItem('sessionExpiredMsg')) {
+      sessionStorage.removeItem('sessionExpiredMsg')
+      return 'Tu sesión expiró. Vuelve a iniciar sesión.'
+    }
+    return ''
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

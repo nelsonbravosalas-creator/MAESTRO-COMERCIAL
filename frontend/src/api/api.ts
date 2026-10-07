@@ -60,6 +60,9 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     const refreshed = await tryRefresh()
     if (refreshed) return req<T>(method, path, body)
     clearAuth()
+    // Sobrevive al reload para que Login.tsx explique por qué volvió a pedir
+    // credenciales, en vez de aparecer como si la sesión nunca hubiese existido.
+    sessionStorage.setItem('sessionExpiredMsg', '1')
     window.location.reload()
     throw new ApiError(401, 'Session expired')
   }
@@ -72,7 +75,24 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   return res.json() as Promise<T>
 }
 
+// Las peticiones en paralelo (p.ej. loadData() con Promise.all) pueden recibir
+// 401 casi al mismo tiempo cuando el access token expira. Si cada una llamara
+// a /api/auth/refresh por su cuenta, todas mandarían el MISMO refresh token
+// viejo; el backend rota ese token en la primera llamada y trata a las demás
+// como reuso de un token ya rotado, revocando todas las sesiones del usuario
+// (ver backend/src/api/auth.ts, detección de reuso). Compartir esta promesa
+// entre llamadas concurrentes asegura que solo se dispare un refresh real.
+let refreshPromise: Promise<boolean> | null = null
+
 async function tryRefresh(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise
+  refreshPromise = doRefresh().finally(() => {
+    refreshPromise = null
+  })
+  return refreshPromise
+}
+
+async function doRefresh(): Promise<boolean> {
   const rt = localStorage.getItem('refreshToken')
   if (!rt) return false
   try {

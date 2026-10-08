@@ -69,6 +69,19 @@ export async function openScreen(page: Page, screen: Screen) {
   await page.waitForLoadState('networkidle')
 }
 
+/**
+ * El asistente de cotizaciones no es una pantalla de SCREENS (su botón no
+ * vive en .header-nav, es un lanzador flotante presente en cualquier
+ * pantalla) — se abre aparte para la prueba de accesibilidad de
+ * accessibility.spec.ts.
+ */
+export async function openChatPanel(page: Page) {
+  if (!page.url().startsWith('http')) await page.goto('/')
+  await page.locator('main.app-main').waitFor()
+  await page.getByRole('button', { name: 'Abrir asistente de cotizaciones' }).click()
+  await page.locator('.chat-panel').waitFor()
+}
+
 /** Un proyecto completo (forma de ProjectFull) para pruebas que necesitan uno real. */
 export function fakeProject(overrides: Record<string, unknown> = {}) {
   return {

@@ -449,6 +449,27 @@ export interface ImportQuotationResult {
   reporte_importacion: ImportQuotationReport
 }
 
+// ── Chatbot ───────────────────────────────────────────────────
+export interface ChatbotRule {
+  id: string
+  rule_key: string
+  value: unknown
+  unit: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface ChatMessageResponse {
+  reply: string
+  quotation?: MasterQuotation
+  reporte_importacion?: ImportQuotationReport
+  rule?: ChatbotRule
+  material?: string
+  precio_medio?: number
+  muestras?: Array<{ precio: number; fuente_url: string; tienda: string }>
+  advertencia?: string | null
+}
+
 // ── Facturas ──────────────────────────────────────────────────
 // Espejo del payment_state calculado por v_invoice_balance (ver
 // backend/src/api/invoices.ts).
@@ -734,6 +755,17 @@ export const api = {
       reporte_importacion: raw.reporte_importacion,
     }
   },
+
+  // ── Chat ────────────────────────────────────────────────────
+  sendChatMessage: async (
+    instruction: string,
+    quotationId?: string | null
+  ): Promise<ChatMessageResponse> => {
+    const raw: any = await post('/api/chatbot', { instruction, quotation_id: quotationId ?? null })
+    return { ...raw, quotation: raw.quotation ? toMasterQuotation(raw.quotation) : undefined }
+  },
+
+  getChatbotRules: (): Promise<{ rules: ChatbotRule[] }> => get('/api/chatbot/rules'),
 
   // ── Proyectos ───────────────────────────────────────────────
   getProjects: () => get<any[]>('/api/projects'),

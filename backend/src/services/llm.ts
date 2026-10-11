@@ -1,5 +1,6 @@
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
+import { httpError } from '../utils/httpError'
 
 export interface LlmMessage {
   role: 'system' | 'user' | 'assistant'
@@ -22,9 +23,7 @@ export interface CallLlmOptions {
 // único punto de cambio.
 export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Promise<string> {
   if (!env.GROQ_API_KEY) {
-    const err = new Error('GROQ_API_KEY no configurada') as any
-    err.status = 503
-    throw err
+    throw httpError('GROQ_API_KEY no configurada', 503)
   }
 
   // Mismo patrón que fetchUfValue() en api/quotations.ts: sin timeout propio,
@@ -50,12 +49,11 @@ export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Pro
       }),
       signal: controller.signal,
     })
-  } catch (error: any) {
-    const timedOut = error?.name === 'AbortError'
-    logger.error('LLM call failed', { model: opts.model, timedOut, error: error?.message })
-    const err = new Error(timedOut ? 'LLM call timed out' : 'LLM call failed') as any
-    err.status = 502
-    throw err
+  } catch (error) {
+    const timedOut = error instanceof Error && error.name === 'AbortError'
+    const message = error instanceof Error ? error.message : String(error)
+    logger.error('LLM call failed', { model: opts.model, timedOut, error: message })
+    throw httpError(timedOut ? 'LLM call timed out' : 'LLM call failed', 502)
   } finally {
     clearTimeout(timer)
   }
@@ -67,12 +65,10 @@ export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Pro
       model: opts.model,
       body: text.slice(0, 500),
     })
-    const err = new Error(`LLM call failed (${res.status})`) as any
-    err.status = 502
-    throw err
+    throw httpError(`LLM call failed (${res.status})`, 502)
   }
 
-  const data: any = await res.json()
+  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
   const content = data?.choices?.[0]?.message?.content
   if (typeof content !== 'string' || !content.trim()) {
     throw new Error('Respuesta de LLM sin contenido')

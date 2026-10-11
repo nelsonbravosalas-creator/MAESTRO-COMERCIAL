@@ -61,7 +61,7 @@ export async function teachRule(
     )
     await db.query('COMMIT')
     return inserted.rows[0]
-  } catch (error: any) {
+  } catch (error) {
     await db.query('ROLLBACK').catch(() => {})
     // 23505 = violación del índice único ix_chatbot_rules_current: dos
     // usuarios enseñaron la MISMA regla casi al mismo tiempo. La segunda
@@ -69,7 +69,8 @@ export async function teachRule(
     // COMMIT, y para entonces su propio UPDATE ya no encuentra ninguna fila
     // vigente que marcar — reintentar una vez (ahora sí la hay) basta; no
     // hace falta SELECT FOR UPDATE para un caso this raro.
-    if (error?.code === '23505' && !_retrying) {
+    const code = error instanceof Object ? (error as { code?: string }).code : undefined
+    if (code === '23505' && !_retrying) {
       return teachRule(pool, ruleKey, value, opts, true)
     }
     throw error

@@ -15,6 +15,10 @@ import { callLlm, parseLlmJson } from '../services/llm'
 import { listCurrentRules, teachRule } from '../services/chatbotRules'
 import { buildAutoLineItems, buildManualLineItems } from '../services/chatbotCalc'
 import { applyQuotationImport, applyQuotationUpdate, fullQuotation } from './quotations'
+import { asHttpError } from '../utils/httpError'
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error)
 
 type ReglaKey =
   | 'tarifa_colacion_diaria'
@@ -142,9 +146,9 @@ const logAction = async (
        VALUES ($1, $2, $3, $4, $5)`,
       [userId, instruction.slice(0, 4000), actionType, quotationId, llmProvider]
     )
-  } catch (error: any) {
+  } catch (error) {
     logger.error('Chatbot: no se pudo registrar la accion en chatbot_actions', {
-      error: error.message,
+      error: errorMessage(error),
     })
   }
 }
@@ -192,8 +196,8 @@ export const createChatbotRouter = (pool: Pool) => {
     try {
       const rules = await listCurrentRules(pool)
       return res.json({ rules })
-    } catch (error: any) {
-      logger.error('Chatbot: error al listar reglas', { error: error.message })
+    } catch (error) {
+      logger.error('Chatbot: error al listar reglas', { error: errorMessage(error) })
       return res.status(500).json({ error: 'Failed to fetch chatbot rules' })
     }
   })
@@ -216,9 +220,9 @@ export const createChatbotRouter = (pool: Pool) => {
           json: true,
         })
         parsed = parseLlmJson<ParsedIntent>(raw)
-      } catch (error: any) {
-        logger.error('Chatbot: fallo al parsear intencion', { error: error.message, userId })
-        const status = error.status === 503 ? 503 : 502
+      } catch (error) {
+        logger.error('Chatbot: fallo al parsear intencion', { error: errorMessage(error), userId })
+        const status = asHttpError(error).status === 503 ? 503 : 502
         return res.status(status).json({
           error: 'Asistente no disponible',
           message:
@@ -360,16 +364,18 @@ export const createChatbotRouter = (pool: Pool) => {
 
             // line_items existentes -> mismo shape que espera quotationUpdateSchema
             // (sin id/quotation_id/created_at, que no son parte del input).
-            const existingLineItems = (existing.line_items ?? []).map((li: any) => ({
-              category_id: li.category_id,
-              catalog_item_id: li.catalog_item_id,
-              description: li.description,
-              unit_name: li.unit_name,
-              quantity: li.quantity,
-              days: li.days,
-              unit_price: li.unit_price,
-              sort_order: li.sort_order,
-            }))
+            const existingLineItems = (existing.line_items ?? []).map(
+              (li: Record<string, unknown>) => ({
+                category_id: li.category_id,
+                catalog_item_id: li.catalog_item_id,
+                description: li.description,
+                unit_name: li.unit_name,
+                quantity: li.quantity,
+                days: li.days,
+                unit_price: li.unit_price,
+                sort_order: li.sort_order,
+              })
+            )
             const newLineItems = nuevasLineas.map((linea, idx) => ({
               category_id: linea.category_id,
               catalog_item_id: null,
@@ -437,8 +443,8 @@ export const createChatbotRouter = (pool: Pool) => {
                 reply: `Agregue ${newLineItems.length} item(s) a la cotizacion ${existing.correlative}.${manualItemsWarning(manualLineas)}`,
                 quotation: updated,
               })
-            } catch (error: any) {
-              if (error.status === 409) {
+            } catch (error) {
+              if (asHttpError(error).status === 409) {
                 return res.status(409).json({
                   error: 'Version conflict',
                   message:
@@ -527,15 +533,13 @@ export const createChatbotRouter = (pool: Pool) => {
             let result
             try {
               result = await applyQuotationImport(pool, buildPayload(randomCorrelative), userId)
-            } catch (error: any) {
+            } catch (error) {
               // Colision de correlativo al azar: un solo reintento con el
               // sugerido por el propio /import, igual que haria un humano.
-              if (error.status === 409 && error.payload?.sugerido) {
-                result = await applyQuotationImport(
-                  pool,
-                  buildPayload(error.payload.sugerido),
-                  userId
-                )
+              const err = asHttpError(error)
+              const sugerido = err.payload?.sugerido
+              if (err.status === 409 && typeof sugerido === 'string') {
+                result = await applyQuotationImport(pool, buildPayload(sugerido), userId)
               } else {
                 throw error
               }
@@ -563,11 +567,14 @@ export const createChatbotRouter = (pool: Pool) => {
                 'No estoy seguro de que cotizacion crear. Dame el cliente, los dias y la dotacion.',
             })
         }
-      } catch (error: any) {
-        if (error.payload) return res.status(error.status ?? 500).json(error.payload)
-        if (error.status)
-          return res.status(error.status).json({ error: 'Error', message: error.message })
-        logger.error('Chatbot: error procesando instruccion', { error: error.message, userId })
+      } catch (error) {
+        const err = asHttpError(error)
+        if (err.payload) return res.status(err.status ?? 500).json(err.payload)
+        if (err.status) return res.status(err.status).json({ error: 'Error', message: err.message })
+        logger.error('Chatbot: error procesando instruccion', {
+          error: errorMessage(error),
+          userId,
+        })
         // Los early-return 4xx (cliente ambiguo, sin items, etc.) no son un
         // fallo del sistema — son el usuario corrigiendo su instruccion, y no
         // vale la pena auditarlos uno por uno. Un throw que llega hasta aca si

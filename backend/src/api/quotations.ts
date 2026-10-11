@@ -20,6 +20,11 @@ import {
   quotationOcDocumentSchema,
 } from '../schemas/quotations'
 import { decodeCursor, buildPage } from '../utils/pagination'
+import { httpError, asHttpError } from '../utils/httpError'
+
+const errorCode = (error: unknown): string | undefined => (error as { code?: string })?.code
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error)
 
 const VALID_STATUSES = [
   'Borrador',
@@ -491,10 +496,11 @@ const upsertImportClient = async (db: PoolClient, body: any, userId: string | nu
 export const applyQuotationImport = async (pool: Pool, body: any, userId: string | null) => {
   const validationError = validateImportPayload(body)
   if (validationError) {
-    const err = new Error(String(validationError.payload.error)) as any
-    err.status = validationError.status
-    err.payload = validationError.payload
-    throw err
+    throw httpError(
+      String(validationError.payload.error),
+      validationError.status,
+      validationError.payload
+    )
   }
 
   const db = await pool.connect()
@@ -504,15 +510,12 @@ export const applyQuotationImport = async (pool: Pool, body: any, userId: string
     ])
     if (duplicate.rows.length > 0) {
       const suggested = await suggestNextCorrelative(db, body.correlative)
-      const err = new Error('Correlativo ya existe') as any
-      err.status = 409
-      err.payload = {
+      throw httpError('Correlativo ya existe', 409, {
         error: 'Correlativo ya existe',
         message: `Correlativo ya existe: ${body.correlative}`,
         correlative: body.correlative,
         sugerido: suggested,
-      }
-      throw err
+      })
     }
 
     await db.query('BEGIN')
@@ -521,9 +524,8 @@ export const applyQuotationImport = async (pool: Pool, body: any, userId: string
     let uf
     try {
       uf = await resolveUf(body)
-    } catch (error: any) {
-      const err = new Error('No se pudo obtener UF automatica; reintente o envie uf_manual') as any
-      err.status = 502
+    } catch (error) {
+      const err = httpError('No se pudo obtener UF automatica; reintente o envie uf_manual', 502)
       err.cause = error
       throw err
     }
@@ -635,7 +637,7 @@ export const applyQuotationImport = async (pool: Pool, body: any, userId: string
         advertencias: [],
       },
     }
-  } catch (error: any) {
+  } catch (error) {
     await db.query('ROLLBACK').catch(() => {})
     throw error
   } finally {
@@ -664,19 +666,13 @@ export const applyQuotationUpdate = async (
         [quotationId]
       )
       if (statusCheck.rows.length === 0) {
-        const err = new Error('Quotation not found') as any
-        err.status = 404
-        err.payload = { error: 'Quotation not found' }
-        throw err
+        throw httpError('Quotation not found', 404, { error: 'Quotation not found' })
       }
       if (LOCKED_STATUSES.includes(statusCheck.rows[0].status)) {
-        const err = new Error('Quotation locked') as any
-        err.status = 403
-        err.payload = {
+        throw httpError('Quotation locked', 403, {
           error: 'Forbidden',
           message: `Esta cotización está ${statusCheck.rows[0].status} y no puede ser modificada.`,
-        }
-        throw err
+        })
       }
     }
 
@@ -751,40 +747,31 @@ export const applyQuotationUpdate = async (
       await db.query('ROLLBACK')
 
       if (existing.rows.length === 0) {
-        const err = new Error('Quotation not found') as any
-        err.status = 404
-        err.payload = { error: 'Quotation not found' }
-        throw err
+        throw httpError('Quotation not found', 404, { error: 'Quotation not found' })
       }
-      const err = new Error('Version conflict') as any
-      err.status = 409
-      err.payload = {
+      throw httpError('Version conflict', 409, {
         error: 'Version conflict',
         message:
           'Esta cotización fue modificada por otro usuario. Recarga los datos antes de guardar.',
         current_version: existing.rows[0].version,
-      }
-      throw err
+      })
     }
 
     await replaceChildren(db, quotationId, body)
     await db.query('COMMIT')
 
     return await fullQuotation(pool, quotationId)
-  } catch (error: any) {
+  } catch (error) {
     await db.query('ROLLBACK').catch(() => {})
-    if (error.status) throw error
-    logger.error('Update quotation error', { error: error.message, quotationId })
-    if (error.code === '23505') {
-      const err = new Error('Quotation correlative already exists') as any
-      err.status = 409
-      err.payload = { error: 'Quotation correlative already exists' }
-      throw err
+    const err = asHttpError(error)
+    if (err.status) throw error
+    logger.error('Update quotation error', { error: err.message, quotationId })
+    if (errorCode(error) === '23505') {
+      throw httpError('Quotation correlative already exists', 409, {
+        error: 'Quotation correlative already exists',
+      })
     }
-    const err = new Error('Failed to update quotation') as any
-    err.status = 500
-    err.payload = { error: 'Failed to update quotation' }
-    throw err
+    throw httpError('Failed to update quotation', 500, { error: 'Failed to update quotation' })
   } finally {
     db.release()
   }
@@ -833,8 +820,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         [limit + 1, decoded?.created_at ?? null, decoded?.id ?? null]
       )
       return res.json(buildPage(result.rows, limit))
-    } catch (error: any) {
-      logger.error('Get quotations error', { error: error.message })
+    } catch (error) {
+      logger.error('Get quotations error', { error: errorMessage(error) })
       return res.status(500).json({ error: 'Failed to fetch quotations' })
     }
   })
@@ -843,16 +830,17 @@ export const createQuotationsRouter = (pool: Pool) => {
     try {
       const result = await applyQuotationImport(pool, req.body, req.user?.id ?? null)
       return res.status(201).json(result)
-    } catch (error: any) {
-      if (error.status && error.payload) return res.status(error.status).json(error.payload)
-      logger.error('Import quotation error', { error: error.message, userId: req.user?.id })
-      if (error.status === 502) {
+    } catch (error) {
+      const err = asHttpError(error)
+      if (err.status && err.payload) return res.status(err.status).json(err.payload)
+      logger.error('Import quotation error', { error: err.message, userId: req.user?.id })
+      if (err.status === 502) {
         return res.status(502).json({
           error: 'No se pudo obtener UF automatica; reintente o envie uf_manual',
           message: 'No se pudo obtener UF automatica; reintente o envie uf_manual',
         })
       }
-      if (error.code === '23505') {
+      if (errorCode(error) === '23505') {
         return res
           .status(409)
           .json({ error: 'Correlativo ya existe', message: 'Correlativo ya existe' })
@@ -869,8 +857,8 @@ export const createQuotationsRouter = (pool: Pool) => {
       const quotation = await fullQuotation(pool, quotationId)
       if (!quotation) return res.status(404).json({ error: 'Quotation not found' })
       return res.json(quotation)
-    } catch (error: any) {
-      logger.error('Get quotation error', { error: error.message, quotationId })
+    } catch (error) {
+      logger.error('Get quotation error', { error: errorMessage(error), quotationId })
       return res.status(500).json({ error: 'Failed to fetch quotation' })
     }
   })
@@ -921,10 +909,10 @@ export const createQuotationsRouter = (pool: Pool) => {
 
       const created = await fullQuotation(pool, result.rows[0].id)
       return res.status(201).json(created)
-    } catch (error: any) {
+    } catch (error) {
       await db.query('ROLLBACK')
-      logger.error('Create quotation error', { error: error.message, userId: req.user?.id })
-      if (error.code === '23505')
+      logger.error('Create quotation error', { error: errorMessage(error), userId: req.user?.id })
+      if (errorCode(error) === '23505')
         return res.status(409).json({ error: 'Quotation correlative already exists' })
       return res.status(500).json({ error: 'Failed to create quotation' })
     } finally {
@@ -944,9 +932,13 @@ export const createQuotationsRouter = (pool: Pool) => {
           req.user?.role
         )
         return res.json(updated)
-      } catch (error: any) {
-        if (error.status && error.payload) return res.status(error.status).json(error.payload)
-        logger.error('Update quotation error', { error: error.message, quotationId: req.params.id })
+      } catch (error) {
+        const err = asHttpError(error)
+        if (err.status && err.payload) return res.status(err.status).json(err.payload)
+        logger.error('Update quotation error', {
+          error: err.message,
+          quotationId: req.params.id,
+        })
         return res.status(500).json({ error: 'Failed to update quotation' })
       }
     }
@@ -1009,8 +1001,8 @@ export const createQuotationsRouter = (pool: Pool) => {
       }
 
       return res.json(result.rows[0])
-    } catch (error: any) {
-      logger.error('Update quotation status error', { error: error.message, quotationId })
+    } catch (error) {
+      logger.error('Update quotation status error', { error: errorMessage(error), quotationId })
       return res.status(500).json({ error: 'Failed to update quotation status' })
     }
   }
@@ -1040,8 +1032,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         if (result.rows.length === 0)
           return res.status(404).json({ error: 'Quotation not found or not Adjudicada' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Update billing split error', { error: error.message, quotationId })
+      } catch (error) {
+        logger.error('Update billing split error', { error: errorMessage(error), quotationId })
         return res.status(500).json({ error: 'Failed to update billing split' })
       }
     }
@@ -1069,8 +1061,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         )
         if (!result.rows.length) return res.status(404).json({ error: 'Quotation not found' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Update loss reason error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Update loss reason error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to update loss reason' })
       }
     }
@@ -1099,8 +1091,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         )
         if (!result.rows.length) return res.status(404).json({ error: 'Quotation not found' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Update OC error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Update OC error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to update OC' })
       }
     }
@@ -1137,8 +1129,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         )
         if (!result.rows.length) return res.status(404).json({ error: 'Quotation not found' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Upload OC document error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Upload OC document error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to upload OC document' })
       }
     }
@@ -1161,8 +1153,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         res.setHeader('Content-Type', 'application/pdf')
         res.setHeader('Content-Disposition', `attachment; filename="${name}"`)
         return res.send(row.rows[0].oc_document)
-      } catch (error: any) {
-        logger.error('Download OC document error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Download OC document error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to download OC document' })
       }
     }
@@ -1182,8 +1174,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         )
         if (!result.rows.length) return res.status(404).json({ error: 'Not found' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Update follow-up date error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Update follow-up date error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to update follow-up date' })
       }
     }
@@ -1201,8 +1193,8 @@ export const createQuotationsRouter = (pool: Pool) => {
           [id]
         )
         return res.json({ milestones: result.rows })
-      } catch (error: any) {
-        logger.error('List milestones error', { error: error.message, id })
+      } catch (error) {
+        logger.error('List milestones error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to list milestones' })
       }
     }
@@ -1226,9 +1218,10 @@ export const createQuotationsRouter = (pool: Pool) => {
           [id, num, req.body.description, req.body.pct_of_total ?? null]
         )
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Upsert milestone error', { error: error.message, id, num })
-        if (error.code === '23503') return res.status(404).json({ error: 'Quotation not found' })
+      } catch (error) {
+        logger.error('Upsert milestone error', { error: errorMessage(error), id, num })
+        if (errorCode(error) === '23503')
+          return res.status(404).json({ error: 'Quotation not found' })
         return res.status(500).json({ error: 'Failed to upsert milestone' })
       }
     }
@@ -1247,8 +1240,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         )
         if (!result.rows.length) return res.status(404).json({ error: 'Milestone not found' })
         return res.json({ message: 'Milestone deleted' })
-      } catch (error: any) {
-        logger.error('Delete milestone error', { error: error.message, id, num })
+      } catch (error) {
+        logger.error('Delete milestone error', { error: errorMessage(error), id, num })
         return res.status(500).json({ error: 'Failed to delete milestone' })
       }
     }
@@ -1270,8 +1263,8 @@ export const createQuotationsRouter = (pool: Pool) => {
           [id]
         )
         return res.json({ activities: result.rows })
-      } catch (error: any) {
-        logger.error('List activities error', { error: error.message, id })
+      } catch (error) {
+        logger.error('List activities error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to list activities' })
       }
     }
@@ -1289,9 +1282,10 @@ export const createQuotationsRouter = (pool: Pool) => {
           [id, req.body.activity_type, req.body.content, req.user?.id ?? null]
         )
         return res.status(201).json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Create activity error', { error: error.message, id })
-        if (error.code === '23503') return res.status(404).json({ error: 'Quotation not found' })
+      } catch (error) {
+        logger.error('Create activity error', { error: errorMessage(error), id })
+        if (errorCode(error) === '23503')
+          return res.status(404).json({ error: 'Quotation not found' })
         return res.status(500).json({ error: 'Failed to create activity' })
       }
     }
@@ -1310,8 +1304,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         if (!result.rows.length)
           return res.status(404).json({ error: 'Activity not found or not authorized' })
         return res.json({ message: 'Activity deleted' })
-      } catch (error: any) {
-        logger.error('Delete activity error', { error: error.message, activityId })
+      } catch (error) {
+        logger.error('Delete activity error', { error: errorMessage(error), activityId })
         return res.status(500).json({ error: 'Failed to delete activity' })
       }
     }
@@ -1335,8 +1329,8 @@ export const createQuotationsRouter = (pool: Pool) => {
           [id]
         )
         return res.json({ versions: result.rows })
-      } catch (error: any) {
-        logger.error('Version diff error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Version diff error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to fetch version diff' })
       }
     }
@@ -1361,8 +1355,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         if (!result.rows.length)
           return res.status(404).json({ error: 'Not found or not pending approval' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Approve quotation error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Approve quotation error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to approve quotation' })
       }
     }
@@ -1421,10 +1415,10 @@ export const createQuotationsRouter = (pool: Pool) => {
         await db.query('COMMIT')
 
         return res.status(201).json(await fullQuotation(pool, inserted.rows[0].id))
-      } catch (error: any) {
+      } catch (error) {
         await db.query('ROLLBACK')
-        logger.error('Duplicate quotation error', { error: error.message, quotationId })
-        if (error.code === '23505')
+        logger.error('Duplicate quotation error', { error: errorMessage(error), quotationId })
+        if (errorCode(error) === '23505')
           return res.status(409).json({ error: 'Quotation correlative already exists' })
         return res.status(500).json({ error: 'Failed to duplicate quotation' })
       } finally {
@@ -1450,8 +1444,11 @@ export const createQuotationsRouter = (pool: Pool) => {
 
         if (result.rows.length === 0) return res.status(404).json({ error: 'Quotation not found' })
         return res.json({ message: 'Quotation deleted successfully' })
-      } catch (error: any) {
-        logger.error('Delete quotation error', { error: error.message, quotationId: req.params.id })
+      } catch (error) {
+        logger.error('Delete quotation error', {
+          error: errorMessage(error),
+          quotationId: req.params.id,
+        })
         return res.status(500).json({ error: 'Failed to delete quotation' })
       }
     }

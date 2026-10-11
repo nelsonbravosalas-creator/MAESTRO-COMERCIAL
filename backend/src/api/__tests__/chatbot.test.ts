@@ -329,7 +329,9 @@ function makeFakeDb(seed: Partial<State> = {}) {
   }
 
   return {
-    pool: { query, connect: async () => ({ query, release: () => {} }) } as any,
+    pool: { query, connect: async () => ({ query, release: () => {} }) } as unknown as Parameters<
+      typeof createChatbotRouter
+    >[0],
     getState: () => state,
   }
 }
@@ -460,8 +462,8 @@ describe('POST /api/chatbot', () => {
     expect(res.body.quotation.client_name).toBe('CLIMATEMP SPA')
     const lines = db.getState().lineItems
     expect(lines).toHaveLength(2)
-    const colacion = lines.find((l: any) => l.description.includes('Colacion'))
-    const bono = lines.find((l: any) => l.description.includes('Bonificacion'))
+    const colacion = lines.find(l => l.description.includes('Colacion'))
+    const bono = lines.find(l => l.description.includes('Bonificacion'))
     expect(colacion.quantity).toBe(8)
     expect(colacion.days).toBe(5)
     expect(colacion.unit_price).toBe(6000)
@@ -725,7 +727,7 @@ describe('POST /api/chatbot', () => {
   it('responde 503 si GROQ_API_KEY no esta configurada', async () => {
     const db = makeFakeDb()
     mockedCallLlm.mockImplementationOnce(() => {
-      const err = new Error('GROQ_API_KEY no configurada') as any
+      const err = new Error('GROQ_API_KEY no configurada') as Error & { status: number }
       err.status = 503
       return Promise.reject(err)
     })
@@ -837,13 +839,13 @@ describe('POST /api/chatbot', () => {
     expect(res.status).toBe(200)
     const lines = db
       .getState()
-      .lineItems.filter((l: any) => l.quotation_id === '123e4567-e89b-12d3-a456-426614174000')
+      .lineItems.filter(l => l.quotation_id === '123e4567-e89b-12d3-a456-426614174000')
     expect(lines).toHaveLength(2)
-    expect(lines.some((l: any) => l.description === 'Item original')).toBe(true)
-    expect(lines.some((l: any) => l.description.includes('Colacion'))).toBe(true)
+    expect(lines.some(l => l.description === 'Item original')).toBe(true)
+    expect(lines.some(l => l.description.includes('Colacion'))).toBe(true)
     const quotation = db
       .getState()
-      .quotations.find((q: any) => q.id === '123e4567-e89b-12d3-a456-426614174000')
+      .quotations.find(q => q.id === '123e4567-e89b-12d3-a456-426614174000')
     expect(quotation.version).toBe(2)
   })
 

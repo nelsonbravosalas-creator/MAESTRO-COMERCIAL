@@ -108,6 +108,14 @@
   color: var(--primary-text);
 }
 
+.chat-msg-notes {
+  margin: 8px 0 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 .chat-msg--thinking {
   color: var(--text-muted);
   font-style: italic;

@@ -120,6 +120,13 @@ export function ChatPanel() {
                 ))}
               </ul>
             )}
+            {m.data?.notas && m.data.notas.length > 0 && (
+              <ul className="chat-msg-notes">
+                {m.data.notas.map((n, i) => (
+                  <li key={i}>💡 {n.text}</li>
+                ))}
+              </ul>
+            )}
           </div>
         ))}
         {isSending && <div className="chat-msg chat-msg--bot chat-msg--thinking">Pensando…</div>}

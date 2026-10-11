@@ -1,9 +1,22 @@
 import { z } from 'zod'
 import { uuid } from './common'
 
+// Turnos recientes de ESTA conversacion (los manda el frontend desde su
+// propio historial en memoria, chatStore.ts -- no hay tabla de sesiones
+// nueva en el backend). Se usan solo para resolver referencias ambiguas
+// ("mejor dejalo en 3 dias"), nunca como fuente de hechos de negocio -- esos
+// viven en el grafo de conocimiento (chatbotGraph.ts), no en el historial de
+// texto. max(8) y texto corto porque un `reply` de bot ya es un resumen
+// corto armado por el backend, no el payload estructurado completo.
+export const chatbotRecentTurnSchema = z.object({
+  role: z.enum(['user', 'bot']),
+  text: z.string().trim().min(1).max(500),
+})
+
 export const chatbotMessageSchema = z.object({
   instruction: z.string().trim().min(1).max(4000),
   quotation_id: uuid.nullish(),
+  recent_turns: z.array(chatbotRecentTurnSchema).max(8).optional().default([]),
 })
 
 export const chatbotTeachRuleSchema = z.object({

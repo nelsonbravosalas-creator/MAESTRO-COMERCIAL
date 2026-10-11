@@ -459,8 +459,14 @@ export interface ChatbotRule {
   created_at: string
 }
 
+export interface ChatbotProactiveNote {
+  kind: 'precio_desactualizado' | 'patron_cliente'
+  text: string
+}
+
 export interface ChatMessageResponse {
   reply: string
+  notas?: ChatbotProactiveNote[]
   quotation?: MasterQuotation
   reporte_importacion?: ImportQuotationReport
   rule?: ChatbotRule
@@ -468,6 +474,11 @@ export interface ChatMessageResponse {
   precio_medio?: number
   muestras?: Array<{ precio: number; fuente_url: string; tienda: string }>
   advertencia?: string | null
+}
+
+export interface ChatRecentTurn {
+  role: 'user' | 'bot'
+  text: string
 }
 
 // ── Facturas ──────────────────────────────────────────────────
@@ -759,9 +770,14 @@ export const api = {
   // ── Chat ────────────────────────────────────────────────────
   sendChatMessage: async (
     instruction: string,
-    quotationId?: string | null
+    quotationId?: string | null,
+    recentTurns: ChatRecentTurn[] = []
   ): Promise<ChatMessageResponse> => {
-    const raw: any = await post('/api/chatbot', { instruction, quotation_id: quotationId ?? null })
+    const raw: any = await post('/api/chatbot', {
+      instruction,
+      quotation_id: quotationId ?? null,
+      recent_turns: recentTurns,
+    })
     return { ...raw, quotation: raw.quotation ? toMasterQuotation(raw.quotation) : undefined }
   },
 

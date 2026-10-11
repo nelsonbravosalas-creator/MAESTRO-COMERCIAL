@@ -127,9 +127,9 @@ migrar a npm workspaces o eliminar la duplicación por completo.
 ## A-21 — Chatbot de cotizaciones: minimización de datos frente a un LLM externo
 
 **Contexto:** `POST /api/chatbot` (`backend/src/api/chatbot.ts`) es la primera
-integración de un LLM externo en este código vivo (Groq, ver
-`backend/src/services/llm.ts`). `docs/REGISTRO_TRATAMIENTO.md` dice
-"Destinatarios: Ninguno externo" para datos de cotizaciones/clientes, y
+integración de un LLM externo en este código vivo (Gemini desde oct-2026,
+antes Groq — ver `backend/src/services/llm.ts`). `docs/REGISTRO_TRATAMIENTO.md`
+dice "Destinatarios: Ninguno externo" para datos de cotizaciones/clientes, y
 `docs/CLASIFICACION_DATOS.md` no listaba ningún proveedor de IA como encargado
 de tratamiento.
 
@@ -141,9 +141,8 @@ aparece en el prompt es el texto libre que el propio usuario tecleó (ej.
 "cotización para Climatemp"), no un registro leído de la base — el backend
 resuelve el cliente real DESPUÉS, buscándolo por nombre en `clients`
 (`findClientByName`), sin que el LLM vea el RUT/email/teléfono _que vive en
-esa tabla_. La consulta de precios de materiales (`groq/compound`) recibe
-únicamente el nombre del material, sin ningún contexto de cliente o
-cotización.
+esa tabla_. La consulta de precios de materiales recibe únicamente el nombre
+del material, sin ningún contexto de cliente o cotización.
 
 **Minimizado, no garantizado:** lo anterior cubre los datos que el backend
 LEE de la base, pero no lo que el usuario mismo tipea a mano en el chat — y el
@@ -152,29 +151,44 @@ lo invita a escribir justo ese tipo de dato identificatorio. `buildIntentPrompt`
 pasa el texto por `scrubPii()` (RUT con/sin puntos, email, teléfono de 8-9
 dígitos) antes de interpolarlo, enmascarando los casos comunes — pero es un
 filtro por regex, no un NER, así que no es infalible ante texto libre. Por
-diseño se minimiza la exposición de datos personales hacia Groq; no se
-garantiza en el 100% de los casos. No debería ser necesario tratar a Groq como
-un nuevo "encargado de tratamiento de datos personales" para el flujo normal,
-pero esa es una afirmación de "casi siempre", no de "nunca" — se documenta
-igual en `docs/CLASIFICACION_DATOS.md` como proveedor técnico, por
-transparencia.
+diseño se minimiza la exposición de datos personales hacia el LLM; no se
+garantiza en el 100% de los casos. No debería ser necesario tratar al
+proveedor del LLM como un nuevo "encargado de tratamiento de datos
+personales" para el flujo normal, pero esa es una afirmación de "casi
+siempre", no de "nunca" — se documenta igual en `docs/CLASIFICACION_DATOS.md`
+como proveedor técnico, por transparencia.
+
+**Segundo mecanismo de minimización (desde la memoria/grafo de conocimiento
+del chatbot, oct-2026):** `backend/src/services/chatbotGraph.ts` guarda
+nodos/aristas deterministas (cliente, comuna, material, regla) para que el
+chatbot "recuerde" patrones de negocio entre conversaciones. La frontera de
+privacidad es **estructural, no una convención**: `buildLlmGraphContext()` —
+la única función que puede terminar en un prompt — filtra internamente a
+`LLM_SAFE_NODE_TYPES = ['comuna', 'material', 'regla']`, sin parámetro que
+permita ampliar esa lista ni pasarle `'cliente'`. Los patrones específicos de
+un cliente (ej. dotación/comuna habitual) se leen y se aplican con
+`applyClientPatterns()`, una función completamente distinta que nunca
+construye texto de prompt y nunca es importada por nada que sí lo haga — el
+mismo principio que ya aplicaba `isComunaEnSantiago()` antes de esta feature,
+ahora generalizado. Hay un test dedicado (`chatbotGraph.test.ts`) que siembra
+un nodo tipo `cliente` dentro del radio de búsqueda y verifica que
+`buildLlmGraphContext()` nunca lo devuelve.
 
 **No implementado — revisar si el alcance crece:**
 
 - Si en el futuro el chatbot necesita enviar datos de contacto real (ej. para
   redactar un correo), esa expansión requiere actualizar
-  `docs/REGISTRO_TRATAMIENTO.md` y conseguir el DPA de Groq primero — no asumir
-  que la minimización de hoy sigue aplicando sin revisarlo.
-- El free tier de Groq (30 req/min, 6.000 tok/min, 14.400 req/día por cuenta,
-  compartido con la skill de desarrollo `/asistente-groq`) no está pensado
-  para volumen de producción real — `backend/src/services/llm.ts` es
-  deliberadamente un wrapper delgado para poder cambiar de proveedor sin
-  reescribir el router si esto se vuelve un cuello de botella.
+  `docs/REGISTRO_TRATAMIENTO.md` y conseguir el DPA del proveedor del LLM
+  primero — no asumir que la minimización de hoy sigue aplicando sin
+  revisarlo.
+- `backend/src/services/llm.ts` es deliberadamente un wrapper delgado para
+  poder cambiar de proveedor sin reescribir el router si el free tier actual
+  deja de ser suficiente para el volumen real de uso.
 
 **Revisión sugerida:** antes de un lanzamiento con uso intensivo, confirmar
-con Groq su política de retención/entrenamiento sobre el contenido de los
-prompts (ninguno es dato personal hoy, pero sigue siendo información
-comercial del negocio del cliente).
+con el proveedor del LLM su política de retención/entrenamiento sobre el
+contenido de los prompts (ninguno es dato personal hoy, pero sigue siendo
+información comercial del negocio del cliente).
 
 ## Riesgo operacional a vigilar (no es una vulnerabilidad)
 

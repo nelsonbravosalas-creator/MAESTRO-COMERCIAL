@@ -21,7 +21,7 @@ exports.up = pgm => {
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS chatbot_graph_nodes (
       id          TEXT PRIMARY KEY,
-      type        TEXT NOT NULL,
+      type        TEXT NOT NULL CHECK (type IN ('comuna', 'material', 'regla', 'cliente')),
       label       TEXT NOT NULL,
       properties  JSONB NOT NULL DEFAULT '{}',
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -33,7 +33,7 @@ exports.up = pgm => {
       target_id   TEXT NOT NULL REFERENCES chatbot_graph_nodes(id) ON DELETE CASCADE,
       relation    TEXT NOT NULL,
       weight      REAL NOT NULL DEFAULT 1.0,
-      metadata    JSONB DEFAULT '{}',
+      metadata    JSONB NOT NULL DEFAULT '{}',
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (source_id, target_id, relation)
     );

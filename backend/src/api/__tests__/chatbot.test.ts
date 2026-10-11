@@ -1041,6 +1041,84 @@ describe('POST /api/chatbot', () => {
     expect(promptSent).toContain('cotiza 5 dias en Rancagua')
   })
 
+  it('A-21: el nombre real del cliente (resuelto desde la base) nunca llega al prompt via recent_turns, usando el reply REAL de crear_cotizacion (no uno sintetico)', async () => {
+    const db = makeFakeDb({
+      clients: [
+        {
+          id: 'cli-1',
+          name: 'CLIMATEMP SPA',
+          rut: '77.381.030-3',
+          activity: null,
+          address: null,
+          city: null,
+          deleted_at: null,
+        },
+      ],
+    })
+
+    // Turno 1: crea la cotizacion de verdad y toma el `reply` REAL que
+    // produce el backend -- no uno escrito a mano para el test, que es
+    // justo lo que dejo pasar este bug la primera vez (los tests de
+    // historial/persona usaban replies sinteticos sin nombre).
+    mockedCallLlm.mockResolvedValueOnce(
+      JSON.stringify({
+        intent: 'crear_cotizacion',
+        cliente_nombre: 'Climatemp',
+        dias: 5,
+        dotacion: 8,
+        comuna: null,
+        descripcion_trabajo: 'Mantencion',
+        items_mencionados: ['tubo de cobre'],
+        regla_key: null,
+        regla_valor: null,
+        material_consultado: null,
+        respuesta_conversacional: null,
+      })
+    )
+    const firstRes = await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({ instruction: 'cotiza para Climatemp' })
+    expect(firstRes.status).toBe(201)
+    const realReply = firstRes.body.reply as string
+    // El propio nombre del cliente NO debe estar en el reply (ese es el fix:
+    // vive solo en `.data.quotation.client_name`, nunca en `.text`).
+    expect(realReply).not.toContain('CLIMATEMP')
+
+    // Turno 2: el frontend manda ese reply real como recent_turns (chatStore.ts
+    // manda solo `.text`, y `.text` de un mensaje de bot ES el `reply`).
+    mockedCallLlm.mockResolvedValueOnce(
+      JSON.stringify({
+        intent: 'conversar',
+        respuesta_conversacional: 'ok',
+        cliente_nombre: null,
+        dias: null,
+        dotacion: null,
+        comuna: null,
+        descripcion_trabajo: null,
+        items_mencionados: null,
+        regla_key: null,
+        regla_valor: null,
+        material_consultado: null,
+      })
+    )
+    await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({
+        instruction: 'gracias',
+        recent_turns: [
+          { role: 'user', text: 'cotiza para Climatemp' },
+          { role: 'bot', text: realReply },
+        ],
+      })
+
+    const lastCall = mockedCallLlm.mock.calls[mockedCallLlm.mock.calls.length - 1]
+    const promptSent = lastCall[0][0].content as string
+    expect(promptSent).not.toContain('CLIMATEMP')
+    expect(promptSent).not.toContain('77.381.030-3')
+  })
+
   it('crear_cotizacion usa el patron habitual del cliente si faltan dias/dotacion, y avisa en la respuesta', async () => {
     const db = makeFakeDb({
       clients: [

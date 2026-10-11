@@ -103,6 +103,13 @@ export function ChatPanel() {
         {messages.map(m => (
           <div key={m.id} className={`chat-msg chat-msg--${m.role}`}>
             {m.text}
+            {/* El nombre del cliente se muestra desde datos estructurados
+                (m.data), nunca desde m.text -- m.text es lo unico que se
+                reenvia al LLM como recent_turns (ver chatStore.ts), y un
+                nombre resuelto desde la base ahi violaria A-21. */}
+            {m.data?.quotation?.client_name && (
+              <p className="chat-msg-meta">Cliente: {m.data.quotation.client_name}</p>
+            )}
             {m.data?.muestras && m.data.muestras.length > 0 && (
               <ul className="chat-msg-sources">
                 {m.data.muestras.map((s, i) => (

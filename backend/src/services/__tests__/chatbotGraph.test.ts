@@ -38,25 +38,20 @@ function makeFakeGraphPool(seed: Partial<FakeState> = {}) {
   async function query(sql: string, params: any[] = []) {
     const s = sql.trim()
 
-    if (s.startsWith('SELECT id, description FROM catalog_items WHERE lower(description) = $1')) {
+    if (s.startsWith('SELECT id, description FROM catalog_items WHERE description ILIKE $1')) {
+      const needle = String(params[0]).replace(/%/g, '').toLowerCase()
       const rows = state.catalogItems.filter(
-        c => c.description.toLowerCase() === params[0] && c.is_active
+        c => c.is_active && c.description.toLowerCase().includes(needle)
       )
       return { rows }
     }
     if (
       s.startsWith(
-        'SELECT id, description FROM electrical_catalog_items WHERE lower(description) = $1'
+        'SELECT id, description FROM electrical_catalog_items WHERE description ILIKE $1'
       )
     ) {
-      const rows = state.electricalCatalogItems.filter(
-        c => c.description.toLowerCase() === params[0] && c.is_active
-      )
-      return { rows }
-    }
-    if (s.startsWith('SELECT id, description FROM catalog_items WHERE description ILIKE $1')) {
       const needle = String(params[0]).replace(/%/g, '').toLowerCase()
-      const rows = state.catalogItems.filter(
+      const rows = state.electricalCatalogItems.filter(
         c => c.is_active && c.description.toLowerCase().includes(needle)
       )
       return { rows }

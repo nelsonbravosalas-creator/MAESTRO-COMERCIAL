@@ -65,55 +65,68 @@ export interface CatalogMatch {
  * libre que un link equivocado al catalogo). Nunca lanza: una falla de
  * catalogo no deberia impedir registrar el nodo de material libre.
  */
+async function findCatalogMatch(
+  pool: Pool | PoolClient,
+  table: 'catalog_items' | 'electrical_catalog_items',
+  normalized: string,
+  rawNeedle: string
+): Promise<CatalogMatch | null> {
+  // ILIKE (no exige coincidencia exacta de acentos) sobre el texto crudo
+  // trae los candidatos; la igualdad EXACTA se decide en JS comparando
+  // normalizado-contra-normalizado -- comparar `lower(description) = $1`
+  // directo en SQL contra un `normalized` sin tildes fallaba para
+  // descripciones con tildes en la base (ej. "Cañeria" en catalogo vs
+  // "caneria" normalizado nunca calzaban).
+  const candidates = await pool.query<{ id: string; description: string }>(
+    `SELECT id, description FROM ${table} WHERE description ILIKE $1 AND is_active = true LIMIT 10`,
+    [`%${rawNeedle}%`]
+  )
+  const exactMatches = candidates.rows.filter(
+    r => normalizeMaterialLabel(r.description) === normalized
+  )
+  if (exactMatches.length === 1) {
+    return {
+      catalogItemId: exactMatches[0].id,
+      source: table,
+      description: exactMatches[0].description,
+    }
+  }
+  if (exactMatches.length === 0 && candidates.rows.length === 1) {
+    return {
+      catalogItemId: candidates.rows[0].id,
+      source: table,
+      description: candidates.rows[0].description,
+    }
+  }
+  return null
+}
+
+/**
+ * Busca un item real del catalogo (mecanico o electrico) para un texto libre
+ * de material. Match confiable = igualdad exacta normalizada (sin tildes,
+ * sin mayusculas), o ILIKE con EXACTAMENTE un resultado -- ambiguo (2+
+ * resultados) se deja sin matchear (mejor un nodo libre que un link
+ * equivocado al catalogo). Nunca lanza: una falla de catalogo no deberia
+ * impedir registrar el nodo de material libre.
+ */
 export async function matchCatalogItem(
   pool: Pool | PoolClient,
   materialText: string
 ): Promise<CatalogMatch | null> {
   const normalized = normalizeMaterialLabel(materialText)
   if (!normalized) return null
+  const rawNeedle = materialText.trim().replace(/%/g, '')
   try {
-    const exact = await pool.query<{ id: string; description: string }>(
-      `SELECT id, description FROM catalog_items WHERE lower(description) = $1 AND is_active = true LIMIT 2`,
-      [normalized]
+    return (
+      (await findCatalogMatch(pool, 'catalog_items', normalized, rawNeedle)) ??
+      (await findCatalogMatch(pool, 'electrical_catalog_items', normalized, rawNeedle))
     )
-    if (exact.rows.length === 1) {
-      return {
-        catalogItemId: exact.rows[0].id,
-        source: 'catalog_items',
-        description: exact.rows[0].description,
-      }
-    }
-
-    const exactElectrical = await pool.query<{ id: string; description: string }>(
-      `SELECT id, description FROM electrical_catalog_items WHERE lower(description) = $1 AND is_active = true LIMIT 2`,
-      [normalized]
-    )
-    if (exactElectrical.rows.length === 1) {
-      return {
-        catalogItemId: exactElectrical.rows[0].id,
-        source: 'electrical_catalog_items',
-        description: exactElectrical.rows[0].description,
-      }
-    }
-
-    const fuzzy = await pool.query<{ id: string; description: string }>(
-      `SELECT id, description FROM catalog_items WHERE description ILIKE $1 AND is_active = true LIMIT 2`,
-      [`%${materialText.trim()}%`]
-    )
-    if (fuzzy.rows.length === 1) {
-      return {
-        catalogItemId: fuzzy.rows[0].id,
-        source: 'catalog_items',
-        description: fuzzy.rows[0].description,
-      }
-    }
   } catch (error) {
     logger.error('chatbotGraph: fallo buscando en el catalogo', {
       error: error instanceof Error ? error.message : String(error),
     })
     return null
   }
-  return null
 }
 
 // ── Escritura (upsert idempotente) ───────────────────────────
@@ -194,15 +207,23 @@ export async function recordGraphFacts(pool: Pool, facts: GraphFactsInput): Prom
     if (facts.intent === 'consultar_precio' && facts.materiales?.[0]) {
       const material = facts.materiales[0]
       const match = await matchCatalogItem(pool, material)
+      // last_price_at marca "cuando se confirmo un precio valido", no "cuando
+      // se intento buscarlo" -- si la busqueda no encontro nada confiable
+      // (precioMedio null/0), no se actualiza, para que la nota proactiva de
+      // "precio desactualizado" sepa seguir avisando en vez de creer que el
+      // precio esta fresco porque hubo un intento fallido reciente.
+      const properties: Record<string, unknown> = {
+        catalog_item_id: match?.catalogItemId ?? null,
+      }
+      if (facts.precioMedio) {
+        properties.last_price = facts.precioMedio
+        properties.last_price_at = new Date().toISOString()
+      }
       await upsertNode(pool, {
         id: materialNodeId(material),
         type: 'material',
         label: material,
-        properties: {
-          last_price: facts.precioMedio ?? null,
-          last_price_at: new Date().toISOString(),
-          catalog_item_id: match?.catalogItemId ?? null,
-        },
+        properties,
       })
       return
     }
@@ -265,7 +286,13 @@ export async function recordGraphFacts(pool: Pool, facts: GraphFactsInput): Prom
   }
 }
 
-/** Lectura puntual de un nodo por id -- ej. para comparar el precio previo de un material antes de sobrescribirlo. */
+/**
+ * Lectura puntual de un nodo por id -- ej. para comparar el precio previo de
+ * un material antes de sobrescribirlo. Devuelve el nodo SIN filtrar por tipo
+ * (puede ser 'cliente'). NO USAR el resultado para construir un prompt de
+ * LLM -- para eso existe exclusivamente buildLlmGraphContext(). Esta funcion
+ * es backend-only, igual que applyClientPatterns().
+ */
 export async function getGraphNode(pool: Pool | PoolClient, id: string): Promise<GraphNode | null> {
   const result = await pool.query<GraphNode>(
     `SELECT id, type, label, properties, updated_at FROM chatbot_graph_nodes WHERE id = $1`,
@@ -297,7 +324,10 @@ const DEFAULT_MAX_EDGES_PER_SOURCE = 8
  * BFS en TypeScript puro (sin LLM) de 1-2 saltos desde seedIds, acotado por
  * nodos/aristas totales. No filtra por tipo -- ese filtro (frontera PII) es
  * responsabilidad exclusiva de buildLlmGraphContext(), no de esta funcion de
- * recorrido generico.
+ * recorrido generico. Por eso el resultado SIEMPRE puede incluir nodos
+ * tipo='cliente' con datos identificatorios. NO USAR el resultado de esta
+ * funcion para construir un prompt de LLM directamente -- pasar siempre por
+ * buildLlmGraphContext(), que es quien aplica LLM_SAFE_NODE_TYPES.
  */
 export async function walkGraph(
   pool: Pool | PoolClient,

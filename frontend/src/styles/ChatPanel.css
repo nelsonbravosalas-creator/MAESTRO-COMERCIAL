@@ -108,6 +108,12 @@
   color: var(--primary-text);
 }
 
+.chat-msg-meta {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 .chat-msg-notes {
   margin: 8px 0 0;
   padding-left: 0;

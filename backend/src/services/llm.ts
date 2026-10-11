@@ -100,10 +100,10 @@ export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Pro
 }
 
 /**
- * Parsea la respuesta del LLM como JSON. La busqueda con grounding entrelaza
- * tool-use con el texto final y a veces lo envuelve en una frase o un bloque
- * ```json pese a pedir JSON puro en el prompt — este fallback busca el
- * primer objeto `{...}` del texto antes de rendirse.
+ * Parsea la respuesta del LLM como JSON. Aunque se pida `json: true`
+ * (responseMimeType: application/json), el modelo a veces igual envuelve el
+ * JSON en una frase o un bloque ```json — este fallback busca el primer
+ * objeto `{...}` del texto antes de rendirse.
  */
 export function parseLlmJson<T>(raw: string): T {
   try {

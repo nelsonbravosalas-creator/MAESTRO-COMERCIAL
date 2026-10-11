@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { test as base } from '@playwright/test'
-import { test, expect, openScreen, SCREENS, THEMES } from './fixtures'
+import { test, expect, openScreen, openChatPanel, SCREENS, THEMES } from './fixtures'
 
 // T-07 (fase F8 del plan de diseño): las 8 pantallas autenticadas + Login,
 // en los 3 temas, sin violaciones de nivel "serious" o "critical". Los
@@ -37,5 +37,18 @@ for (const theme of THEMES) {
         )
       })
     }
+
+    // El panel flotante del asistente de cotizaciones no es una SCREENS (su
+    // botón no vive en .header-nav) — se prueba aparte, abierto sobre el
+    // Dashboard.
+    test(`Asistente de cotizaciones (tema ${theme}): sin violaciones graves de accesibilidad`, async ({
+      page,
+    }) => {
+      await openChatPanel(page)
+      const results = await new AxeBuilder({ page }).analyze()
+      expect(soloGraves(results.violations), JSON.stringify(results.violations, null, 2)).toEqual(
+        []
+      )
+    })
   })
 }

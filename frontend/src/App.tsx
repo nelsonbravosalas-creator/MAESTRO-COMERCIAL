@@ -7,8 +7,10 @@ import { useProjects } from './stores/projects-store'
 import { api } from './api/api'
 import { ToastHost } from './components/ToastHost'
 import { ConfirmDialogHost } from './components/ConfirmDialogHost'
+import { useChatStore, toggleChat } from './stores/chatStore'
 
 const Quotations = lazy(() => import('./pages/Quotations'))
+const ChatPanel = lazy(() => import('./components/ChatPanel'))
 const Maintenance = lazy(() => import('./pages/Maintenance'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Clients = lazy(() => import('./pages/Clients'))
@@ -222,6 +224,7 @@ function useHeaderHeightVar() {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const chatOpen = useChatStore(s => s.isOpen)
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
   const [invoicesQuotationId, setInvoicesQuotationId] = useState<string | undefined>(undefined)
   const [user, setUser] = useState<any>(null)
@@ -345,6 +348,19 @@ function App() {
       </main>
       <ToastHost />
       <ConfirmDialogHost />
+      <button
+        type="button"
+        className="chat-launcher-btn"
+        onClick={() => toggleChat()}
+        aria-label="Abrir asistente de cotizaciones"
+      >
+        💬
+      </button>
+      {chatOpen && (
+        <Suspense fallback={null}>
+          <ChatPanel />
+        </Suspense>
+      )}
     </div>
   )
 }

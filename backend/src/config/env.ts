@@ -24,6 +24,12 @@ export const envSchema = z.object({
   SMTP_SECURE: z.string().optional(),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
+  // Chatbot de cotizaciones: sin esta key el router responde 503 explicando
+  // el motivo en vez de fallar la extracción de intención a ciegas (igual
+  // que RESEND_API_KEY, degrada en vez de tumbar el arranque).
+  GROQ_API_KEY: z.string().optional(),
+  CHATBOT_PARSE_MODEL: z.string().default('openai/gpt-oss-120b'),
+  CHATBOT_PRICE_MODEL: z.string().default('groq/compound'),
 })
 
 export type Env = z.infer<typeof envSchema>

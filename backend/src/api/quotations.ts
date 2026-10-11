@@ -20,6 +20,11 @@ import {
   quotationOcDocumentSchema,
 } from '../schemas/quotations'
 import { decodeCursor, buildPage } from '../utils/pagination'
+import { httpError, asHttpError } from '../utils/httpError'
+
+const errorCode = (error: unknown): string | undefined => (error as { code?: string })?.code
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error)
 
 const VALID_STATUSES = [
   'Borrador',
@@ -102,7 +107,7 @@ const totalsFor = async (db: Pool | PoolClient, quotationId: string, ivaPctOverr
   }
 }
 
-const fullQuotation = async (db: Pool | PoolClient, quotationId: string) => {
+export const fullQuotation = async (db: Pool | PoolClient, quotationId: string) => {
   const quotation = await db.query(
     `${quotationSelect}
       WHERE q.id = $1
@@ -483,6 +488,295 @@ const upsertImportClient = async (db: PoolClient, body: any, userId: string | nu
   return { action, clientId: clientRow.id as string, contactId }
 }
 
+// Extraido del handler de POST /import para que el router de chatbot
+// (backend/src/api/chatbot.ts) pueda crear cotizaciones por el mismo camino
+// sin un round-trip HTTP interno. Lanza un Error con `.status`/`.payload`
+// cuando corresponde responder algo distinto de 500 — el router HTTP original
+// y el router de chatbot deciden cada uno qué hacer con eso.
+export const applyQuotationImport = async (pool: Pool, body: any, userId: string | null) => {
+  const validationError = validateImportPayload(body)
+  if (validationError) {
+    throw httpError(
+      String(validationError.payload.error),
+      validationError.status,
+      validationError.payload
+    )
+  }
+
+  const db = await pool.connect()
+  try {
+    const duplicate = await db.query('SELECT id FROM quotations WHERE correlative = $1 LIMIT 1', [
+      body.correlative,
+    ])
+    if (duplicate.rows.length > 0) {
+      const suggested = await suggestNextCorrelative(db, body.correlative)
+      throw httpError('Correlativo ya existe', 409, {
+        error: 'Correlativo ya existe',
+        message: `Correlativo ya existe: ${body.correlative}`,
+        correlative: body.correlative,
+        sugerido: suggested,
+      })
+    }
+
+    await db.query('BEGIN')
+
+    const client = await upsertImportClient(db, body, userId)
+    let uf
+    try {
+      uf = await resolveUf(body)
+    } catch (error) {
+      const err = httpError('No se pudo obtener UF automatica; reintente o envie uf_manual', 502)
+      err.cause = error
+      throw err
+    }
+
+    const inserted = await db.query(
+      `INSERT INTO quotations
+        (correlative, client_id, contact_id, enduser, ref, date, valid_until,
+         status, oper_state, uf_value, iva_pct, notes, created_by)
+       VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, 'Borrador', NULL, $7, $8, $9, $10)
+       RETURNING *`,
+      [
+        body.correlative,
+        client.clientId,
+        client.contactId,
+        body.enduser || null,
+        body.ref || null,
+        body.valid_until || null,
+        uf.valor,
+        Number(body.iva_pct) || 19,
+        body.notes || null,
+        userId,
+      ]
+    )
+    const quotationId = inserted.rows[0].id
+
+    const categoryInput = new Map<string, any>()
+    for (const category of body.categorias ?? []) {
+      if (CATEGORY_IDS.includes(category?.category_id))
+        categoryInput.set(category.category_id, category)
+    }
+    for (const line of body.lineas) {
+      if (!categoryInput.has(line.category_id)) {
+        categoryInput.set(line.category_id, {
+          category_id: line.category_id,
+          label: CATEGORY_LABELS[line.category_id] ?? line.category_id,
+          margin_pct: 30,
+        })
+      }
+    }
+
+    for (const categoryId of CATEGORY_IDS) {
+      const category = categoryInput.get(categoryId)
+      if (!category) continue
+      await db.query(
+        `INSERT INTO quotation_categories
+          (quotation_id, category_id, label, margin_pct, color, note, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          quotationId,
+          categoryId,
+          category.label || CATEGORY_LABELS[categoryId] || categoryId,
+          Number(category.margin_pct) || 30,
+          category.color || CATEGORY_COLORS[categoryId] || null,
+          category.note || null,
+          CATEGORY_IDS.indexOf(categoryId),
+        ]
+      )
+    }
+
+    const unmatched: Array<{ descripcion: string; motivo: string }> = []
+    let linkedCount = 0
+    for (const [idx, line] of body.lineas.entries()) {
+      const match = await findCatalogMatch(db, line.category_id, line.descripcion)
+      if (match.catalogItemId) linkedCount++
+      else unmatched.push({ descripcion: line.descripcion, motivo: match.motivo ?? 'sin_match' })
+
+      await db.query(
+        `INSERT INTO quotation_line_items
+          (quotation_id, category_id, catalog_item_id, description, unit_name,
+           quantity, days, unit_price, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          quotationId,
+          line.category_id,
+          match.catalogItemId,
+          line.descripcion,
+          line.unidad || 'Und',
+          Number(line.cantidad) || 0,
+          Math.max(1, Number(line.dias) || 1),
+          Number(line.precio_unitario) || 0,
+          idx,
+        ]
+      )
+    }
+
+    for (const termType of TERM_TYPES) {
+      const terms = body.terminos?.[termType] ?? []
+      for (const [idx, content] of terms.entries()) {
+        if (!content) continue
+        await db.query(
+          `INSERT INTO quotation_terms (quotation_id, term_type, content, sort_order)
+           VALUES ($1, $2, $3, $4)`,
+          [quotationId, termType, String(content), idx]
+        )
+      }
+    }
+
+    await db.query('COMMIT')
+
+    const created = await fullQuotation(pool, quotationId)
+    return {
+      quotation: created,
+      reporte_importacion: {
+        cliente: { accion: client.action, client_id: client.clientId },
+        uf,
+        lineas_total: body.lineas.length,
+        lineas_vinculadas_catalogo: linkedCount,
+        lineas_sin_match: unmatched,
+        advertencias: [],
+      },
+    }
+  } catch (error) {
+    await db.query('ROLLBACK').catch(() => {})
+    throw error
+  } finally {
+    db.release()
+  }
+}
+
+const LOCKED_STATUSES = ['Adjudicada', 'Perdida', 'Anulada', 'Cerrada']
+
+// Extraido del handler de PUT /:id por la misma razon que applyQuotationImport:
+// el router de chatbot (backend/src/api/chatbot.ts) necesita el mismo camino
+// de actualizacion con lock optimista para agregar items a una cotizacion ya
+// abierta, sin reimplementarlo ni pegarle por HTTP interno.
+export const applyQuotationUpdate = async (
+  pool: Pool,
+  quotationId: string,
+  body: any,
+  userRole?: string
+) => {
+  const db = await pool.connect()
+  try {
+    // Bloquear edición si la cotización está en estado final y el usuario no es admin
+    if (userRole !== 'admin') {
+      const statusCheck = await pool.query(
+        'SELECT status FROM quotations WHERE id = $1 AND deleted_at IS NULL',
+        [quotationId]
+      )
+      if (statusCheck.rows.length === 0) {
+        throw httpError('Quotation not found', 404, { error: 'Quotation not found' })
+      }
+      if (LOCKED_STATUSES.includes(statusCheck.rows[0].status)) {
+        throw httpError('Quotation locked', 403, {
+          error: 'Forbidden',
+          message: `Esta cotización está ${statusCheck.rows[0].status} y no puede ser modificada.`,
+        })
+      }
+    }
+
+    const expectedVersion = Number(body.version) || 1
+
+    await db.query('BEGIN')
+    // El WHERE version = $23 es el chequeo de concurrencia optimista: si otro
+    // usuario guardó esta cotización entre que la cargamos y la guardamos,
+    // el número de filas afectadas es 0 y lo tratamos como conflicto (409),
+    // no como "no encontrado".
+    const result = await db.query(
+      `UPDATE quotations
+        SET correlative = $1,
+            client_id = $2,
+            contact_id = $3,
+            enduser = $4,
+            ref = $5,
+            date = $6,
+            valid_until = $7,
+            status = $8,
+            oper_state = $9,
+            uf_value = $10,
+            iva_pct = $11,
+            notes = $12,
+            kind = $13,
+            equipment_count = $14,
+            equipment_description = $15,
+            frequency = $16,
+            visits_per_year = $17,
+            contract_start_date = $18,
+            show_uf_equivalent = $19,
+            show_usd_equivalent = $20,
+            usd_value = $21,
+            version = version + 1,
+            updated_at = NOW()
+      WHERE id = $22
+        AND deleted_at IS NULL
+        AND version = $23
+      RETURNING *`,
+      [
+        body.correlative,
+        body.client_id,
+        body.contact_id || null,
+        body.enduser || null,
+        body.ref || null,
+        body.date || new Date().toISOString().slice(0, 10),
+        body.valid_until || null,
+        normalizeStatus(body.status),
+        normalizeOperState(body.oper_state),
+        Number(body.uf_value) || 0,
+        Number(body.iva_pct) || 19,
+        body.notes || null,
+        normalizeKind(body.kind),
+        body.equipment_count ?? null,
+        body.equipment_description || null,
+        normalizeFrequency(body.frequency),
+        body.visits_per_year ?? null,
+        body.contract_start_date || null,
+        Boolean(body.show_uf_equivalent),
+        Boolean(body.show_usd_equivalent),
+        body.usd_value ?? null,
+        quotationId,
+        expectedVersion,
+      ]
+    )
+
+    if (result.rows.length === 0) {
+      const existing = await db.query(
+        'SELECT version FROM quotations WHERE id = $1 AND deleted_at IS NULL',
+        [quotationId]
+      )
+      await db.query('ROLLBACK')
+
+      if (existing.rows.length === 0) {
+        throw httpError('Quotation not found', 404, { error: 'Quotation not found' })
+      }
+      throw httpError('Version conflict', 409, {
+        error: 'Version conflict',
+        message:
+          'Esta cotización fue modificada por otro usuario. Recarga los datos antes de guardar.',
+        current_version: existing.rows[0].version,
+      })
+    }
+
+    await replaceChildren(db, quotationId, body)
+    await db.query('COMMIT')
+
+    return await fullQuotation(pool, quotationId)
+  } catch (error) {
+    await db.query('ROLLBACK').catch(() => {})
+    const err = asHttpError(error)
+    if (err.status) throw error
+    logger.error('Update quotation error', { error: err.message, quotationId })
+    if (errorCode(error) === '23505') {
+      throw httpError('Quotation correlative already exists', 409, {
+        error: 'Quotation correlative already exists',
+      })
+    }
+    throw httpError('Failed to update quotation', 500, { error: 'Failed to update quotation' })
+  } finally {
+    db.release()
+  }
+}
+
 export const createQuotationsRouter = (pool: Pool) => {
   const router = Router()
   router.use(authMiddleware)
@@ -526,164 +820,27 @@ export const createQuotationsRouter = (pool: Pool) => {
         [limit + 1, decoded?.created_at ?? null, decoded?.id ?? null]
       )
       return res.json(buildPage(result.rows, limit))
-    } catch (error: any) {
-      logger.error('Get quotations error', { error: error.message })
+    } catch (error) {
+      logger.error('Get quotations error', { error: errorMessage(error) })
       return res.status(500).json({ error: 'Failed to fetch quotations' })
     }
   })
 
   router.post('/import', async (req: AuthRequest, res) => {
-    const validationError = validateImportPayload(req.body)
-    if (validationError) return res.status(validationError.status).json(validationError.payload)
-
-    const db = await pool.connect()
     try {
-      const body = req.body
-      const duplicate = await db.query('SELECT id FROM quotations WHERE correlative = $1 LIMIT 1', [
-        body.correlative,
-      ])
-      if (duplicate.rows.length > 0) {
-        const suggested = await suggestNextCorrelative(db, body.correlative)
-        return res.status(409).json({
-          error: 'Correlativo ya existe',
-          message: `Correlativo ya existe: ${body.correlative}`,
-          correlative: body.correlative,
-          sugerido: suggested,
-        })
-      }
-
-      await db.query('BEGIN')
-
-      const client = await upsertImportClient(db, body, req.user?.id ?? null)
-      let uf
-      try {
-        uf = await resolveUf(body)
-      } catch (error: any) {
-        const err = new Error(
-          'No se pudo obtener UF automatica; reintente o envie uf_manual'
-        ) as any
-        err.status = 502
-        err.cause = error
-        throw err
-      }
-
-      const inserted = await db.query(
-        `INSERT INTO quotations
-          (correlative, client_id, contact_id, enduser, ref, date, valid_until,
-           status, oper_state, uf_value, iva_pct, notes, created_by)
-         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, 'Borrador', NULL, $7, $8, $9, $10)
-         RETURNING *`,
-        [
-          body.correlative,
-          client.clientId,
-          client.contactId,
-          body.enduser || null,
-          body.ref || null,
-          body.valid_until || null,
-          uf.valor,
-          Number(body.iva_pct) || 19,
-          body.notes || null,
-          req.user?.id ?? null,
-        ]
-      )
-      const quotationId = inserted.rows[0].id
-
-      const categoryInput = new Map<string, any>()
-      for (const category of body.categorias ?? []) {
-        if (CATEGORY_IDS.includes(category?.category_id))
-          categoryInput.set(category.category_id, category)
-      }
-      for (const line of body.lineas) {
-        if (!categoryInput.has(line.category_id)) {
-          categoryInput.set(line.category_id, {
-            category_id: line.category_id,
-            label: CATEGORY_LABELS[line.category_id] ?? line.category_id,
-            margin_pct: 30,
-          })
-        }
-      }
-
-      for (const categoryId of CATEGORY_IDS) {
-        const category = categoryInput.get(categoryId)
-        if (!category) continue
-        await db.query(
-          `INSERT INTO quotation_categories
-            (quotation_id, category_id, label, margin_pct, color, note, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            quotationId,
-            categoryId,
-            category.label || CATEGORY_LABELS[categoryId] || categoryId,
-            Number(category.margin_pct) || 30,
-            category.color || CATEGORY_COLORS[categoryId] || null,
-            category.note || null,
-            CATEGORY_IDS.indexOf(categoryId),
-          ]
-        )
-      }
-
-      const unmatched: Array<{ descripcion: string; motivo: string }> = []
-      let linkedCount = 0
-      for (const [idx, line] of body.lineas.entries()) {
-        const match = await findCatalogMatch(db, line.category_id, line.descripcion)
-        if (match.catalogItemId) linkedCount++
-        else unmatched.push({ descripcion: line.descripcion, motivo: match.motivo ?? 'sin_match' })
-
-        await db.query(
-          `INSERT INTO quotation_line_items
-            (quotation_id, category_id, catalog_item_id, description, unit_name,
-             quantity, days, unit_price, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [
-            quotationId,
-            line.category_id,
-            match.catalogItemId,
-            line.descripcion,
-            line.unidad || 'Und',
-            Number(line.cantidad) || 0,
-            Math.max(1, Number(line.dias) || 1),
-            Number(line.precio_unitario) || 0,
-            idx,
-          ]
-        )
-      }
-
-      for (const termType of TERM_TYPES) {
-        const terms = body.terminos?.[termType] ?? []
-        for (const [idx, content] of terms.entries()) {
-          if (!content) continue
-          await db.query(
-            `INSERT INTO quotation_terms (quotation_id, term_type, content, sort_order)
-             VALUES ($1, $2, $3, $4)`,
-            [quotationId, termType, String(content), idx]
-          )
-        }
-      }
-
-      await db.query('COMMIT')
-
-      const created = await fullQuotation(pool, quotationId)
-      return res.status(201).json({
-        quotation: created,
-        reporte_importacion: {
-          cliente: { accion: client.action, client_id: client.clientId },
-          uf,
-          lineas_total: body.lineas.length,
-          lineas_vinculadas_catalogo: linkedCount,
-          lineas_sin_match: unmatched,
-          advertencias: [],
-        },
-      })
-    } catch (error: any) {
-      await db.query('ROLLBACK').catch(() => {})
-      logger.error('Import quotation error', { error: error.message, userId: req.user?.id })
-      if (error.status === 502) {
+      const result = await applyQuotationImport(pool, req.body, req.user?.id ?? null)
+      return res.status(201).json(result)
+    } catch (error) {
+      const err = asHttpError(error)
+      if (err.status && err.payload) return res.status(err.status).json(err.payload)
+      logger.error('Import quotation error', { error: err.message, userId: req.user?.id })
+      if (err.status === 502) {
         return res.status(502).json({
           error: 'No se pudo obtener UF automatica; reintente o envie uf_manual',
           message: 'No se pudo obtener UF automatica; reintente o envie uf_manual',
         })
       }
-      if (error.code === '23505') {
+      if (errorCode(error) === '23505') {
         return res
           .status(409)
           .json({ error: 'Correlativo ya existe', message: 'Correlativo ya existe' })
@@ -691,8 +848,6 @@ export const createQuotationsRouter = (pool: Pool) => {
       return res
         .status(500)
         .json({ error: 'Failed to import quotation', message: 'No se pudo importar la cotizacion' })
-    } finally {
-      db.release()
     }
   })
 
@@ -702,8 +857,8 @@ export const createQuotationsRouter = (pool: Pool) => {
       const quotation = await fullQuotation(pool, quotationId)
       if (!quotation) return res.status(404).json({ error: 'Quotation not found' })
       return res.json(quotation)
-    } catch (error: any) {
-      logger.error('Get quotation error', { error: error.message, quotationId })
+    } catch (error) {
+      logger.error('Get quotation error', { error: errorMessage(error), quotationId })
       return res.status(500).json({ error: 'Failed to fetch quotation' })
     }
   })
@@ -754,10 +909,10 @@ export const createQuotationsRouter = (pool: Pool) => {
 
       const created = await fullQuotation(pool, result.rows[0].id)
       return res.status(201).json(created)
-    } catch (error: any) {
+    } catch (error) {
       await db.query('ROLLBACK')
-      logger.error('Create quotation error', { error: error.message, userId: req.user?.id })
-      if (error.code === '23505')
+      logger.error('Create quotation error', { error: errorMessage(error), userId: req.user?.id })
+      if (errorCode(error) === '23505')
         return res.status(409).json({ error: 'Quotation correlative already exists' })
       return res.status(500).json({ error: 'Failed to create quotation' })
     } finally {
@@ -765,129 +920,26 @@ export const createQuotationsRouter = (pool: Pool) => {
     }
   })
 
-  const LOCKED_STATUSES = ['Adjudicada', 'Perdida', 'Anulada', 'Cerrada']
-
   router.put(
     '/:id',
     validate({ params: uuidParams('id'), body: quotationUpdateSchema }),
     async (req: AuthRequest, res) => {
-      const db = await pool.connect()
-      const quotationId = paramString(req.params.id)
       try {
-        const body = req.body as any
-
-        // Bloquear edición si la cotización está en estado final y el usuario no es admin
-        if (req.user?.role !== 'admin') {
-          const statusCheck = await pool.query(
-            'SELECT status FROM quotations WHERE id = $1 AND deleted_at IS NULL',
-            [quotationId]
-          )
-          if (statusCheck.rows.length === 0) {
-            db.release()
-            return res.status(404).json({ error: 'Quotation not found' })
-          }
-          if (LOCKED_STATUSES.includes(statusCheck.rows[0].status)) {
-            db.release()
-            return res.status(403).json({
-              error: 'Forbidden',
-              message: `Esta cotización está ${statusCheck.rows[0].status} y no puede ser modificada.`,
-            })
-          }
-        }
-
-        const expectedVersion = Number(body.version) || 1
-
-        await db.query('BEGIN')
-        // El WHERE version = $14 es el chequeo de concurrencia optimista: si otro
-        // usuario guardó esta cotización entre que la cargamos y la guardamos,
-        // el número de filas afectadas es 0 y lo tratamos como conflicto (409),
-        // no como "no encontrado".
-        const result = await db.query(
-          `UPDATE quotations
-            SET correlative = $1,
-                client_id = $2,
-                contact_id = $3,
-                enduser = $4,
-                ref = $5,
-                date = $6,
-                valid_until = $7,
-                status = $8,
-                oper_state = $9,
-                uf_value = $10,
-                iva_pct = $11,
-                notes = $12,
-                kind = $13,
-                equipment_count = $14,
-                equipment_description = $15,
-                frequency = $16,
-                visits_per_year = $17,
-                contract_start_date = $18,
-                show_uf_equivalent = $19,
-                show_usd_equivalent = $20,
-                usd_value = $21,
-                version = version + 1,
-                updated_at = NOW()
-          WHERE id = $22
-            AND deleted_at IS NULL
-            AND version = $23
-          RETURNING *`,
-          [
-            body.correlative,
-            body.client_id,
-            body.contact_id || null,
-            body.enduser || null,
-            body.ref || null,
-            body.date || new Date().toISOString().slice(0, 10),
-            body.valid_until || null,
-            normalizeStatus(body.status),
-            normalizeOperState(body.oper_state),
-            Number(body.uf_value) || 0,
-            Number(body.iva_pct) || 19,
-            body.notes || null,
-            normalizeKind(body.kind),
-            body.equipment_count ?? null,
-            body.equipment_description || null,
-            normalizeFrequency(body.frequency),
-            body.visits_per_year ?? null,
-            body.contract_start_date || null,
-            Boolean(body.show_uf_equivalent),
-            Boolean(body.show_usd_equivalent),
-            body.usd_value ?? null,
-            quotationId,
-            expectedVersion,
-          ]
+        const updated = await applyQuotationUpdate(
+          pool,
+          paramString(req.params.id),
+          req.body,
+          req.user?.role
         )
-
-        if (result.rows.length === 0) {
-          const existing = await db.query(
-            'SELECT version FROM quotations WHERE id = $1 AND deleted_at IS NULL',
-            [quotationId]
-          )
-          await db.query('ROLLBACK')
-
-          if (existing.rows.length === 0) {
-            return res.status(404).json({ error: 'Quotation not found' })
-          }
-          return res.status(409).json({
-            error: 'Version conflict',
-            message:
-              'Esta cotización fue modificada por otro usuario. Recarga los datos antes de guardar.',
-            current_version: existing.rows[0].version,
-          })
-        }
-
-        await replaceChildren(db, quotationId, body)
-        await db.query('COMMIT')
-
-        return res.json(await fullQuotation(pool, quotationId))
-      } catch (error: any) {
-        await db.query('ROLLBACK')
-        logger.error('Update quotation error', { error: error.message, quotationId })
-        if (error.code === '23505')
-          return res.status(409).json({ error: 'Quotation correlative already exists' })
+        return res.json(updated)
+      } catch (error) {
+        const err = asHttpError(error)
+        if (err.status && err.payload) return res.status(err.status).json(err.payload)
+        logger.error('Update quotation error', {
+          error: err.message,
+          quotationId: req.params.id,
+        })
         return res.status(500).json({ error: 'Failed to update quotation' })
-      } finally {
-        db.release()
       }
     }
   )
@@ -949,8 +1001,8 @@ export const createQuotationsRouter = (pool: Pool) => {
       }
 
       return res.json(result.rows[0])
-    } catch (error: any) {
-      logger.error('Update quotation status error', { error: error.message, quotationId })
+    } catch (error) {
+      logger.error('Update quotation status error', { error: errorMessage(error), quotationId })
       return res.status(500).json({ error: 'Failed to update quotation status' })
     }
   }
@@ -980,8 +1032,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         if (result.rows.length === 0)
           return res.status(404).json({ error: 'Quotation not found or not Adjudicada' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Update billing split error', { error: error.message, quotationId })
+      } catch (error) {
+        logger.error('Update billing split error', { error: errorMessage(error), quotationId })
         return res.status(500).json({ error: 'Failed to update billing split' })
       }
     }
@@ -1009,8 +1061,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         )
         if (!result.rows.length) return res.status(404).json({ error: 'Quotation not found' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Update loss reason error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Update loss reason error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to update loss reason' })
       }
     }
@@ -1039,8 +1091,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         )
         if (!result.rows.length) return res.status(404).json({ error: 'Quotation not found' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Update OC error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Update OC error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to update OC' })
       }
     }
@@ -1077,8 +1129,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         )
         if (!result.rows.length) return res.status(404).json({ error: 'Quotation not found' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Upload OC document error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Upload OC document error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to upload OC document' })
       }
     }
@@ -1101,8 +1153,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         res.setHeader('Content-Type', 'application/pdf')
         res.setHeader('Content-Disposition', `attachment; filename="${name}"`)
         return res.send(row.rows[0].oc_document)
-      } catch (error: any) {
-        logger.error('Download OC document error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Download OC document error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to download OC document' })
       }
     }
@@ -1122,8 +1174,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         )
         if (!result.rows.length) return res.status(404).json({ error: 'Not found' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Update follow-up date error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Update follow-up date error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to update follow-up date' })
       }
     }
@@ -1141,8 +1193,8 @@ export const createQuotationsRouter = (pool: Pool) => {
           [id]
         )
         return res.json({ milestones: result.rows })
-      } catch (error: any) {
-        logger.error('List milestones error', { error: error.message, id })
+      } catch (error) {
+        logger.error('List milestones error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to list milestones' })
       }
     }
@@ -1166,9 +1218,10 @@ export const createQuotationsRouter = (pool: Pool) => {
           [id, num, req.body.description, req.body.pct_of_total ?? null]
         )
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Upsert milestone error', { error: error.message, id, num })
-        if (error.code === '23503') return res.status(404).json({ error: 'Quotation not found' })
+      } catch (error) {
+        logger.error('Upsert milestone error', { error: errorMessage(error), id, num })
+        if (errorCode(error) === '23503')
+          return res.status(404).json({ error: 'Quotation not found' })
         return res.status(500).json({ error: 'Failed to upsert milestone' })
       }
     }
@@ -1187,8 +1240,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         )
         if (!result.rows.length) return res.status(404).json({ error: 'Milestone not found' })
         return res.json({ message: 'Milestone deleted' })
-      } catch (error: any) {
-        logger.error('Delete milestone error', { error: error.message, id, num })
+      } catch (error) {
+        logger.error('Delete milestone error', { error: errorMessage(error), id, num })
         return res.status(500).json({ error: 'Failed to delete milestone' })
       }
     }
@@ -1210,8 +1263,8 @@ export const createQuotationsRouter = (pool: Pool) => {
           [id]
         )
         return res.json({ activities: result.rows })
-      } catch (error: any) {
-        logger.error('List activities error', { error: error.message, id })
+      } catch (error) {
+        logger.error('List activities error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to list activities' })
       }
     }
@@ -1229,9 +1282,10 @@ export const createQuotationsRouter = (pool: Pool) => {
           [id, req.body.activity_type, req.body.content, req.user?.id ?? null]
         )
         return res.status(201).json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Create activity error', { error: error.message, id })
-        if (error.code === '23503') return res.status(404).json({ error: 'Quotation not found' })
+      } catch (error) {
+        logger.error('Create activity error', { error: errorMessage(error), id })
+        if (errorCode(error) === '23503')
+          return res.status(404).json({ error: 'Quotation not found' })
         return res.status(500).json({ error: 'Failed to create activity' })
       }
     }
@@ -1250,8 +1304,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         if (!result.rows.length)
           return res.status(404).json({ error: 'Activity not found or not authorized' })
         return res.json({ message: 'Activity deleted' })
-      } catch (error: any) {
-        logger.error('Delete activity error', { error: error.message, activityId })
+      } catch (error) {
+        logger.error('Delete activity error', { error: errorMessage(error), activityId })
         return res.status(500).json({ error: 'Failed to delete activity' })
       }
     }
@@ -1275,8 +1329,8 @@ export const createQuotationsRouter = (pool: Pool) => {
           [id]
         )
         return res.json({ versions: result.rows })
-      } catch (error: any) {
-        logger.error('Version diff error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Version diff error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to fetch version diff' })
       }
     }
@@ -1301,8 +1355,8 @@ export const createQuotationsRouter = (pool: Pool) => {
         if (!result.rows.length)
           return res.status(404).json({ error: 'Not found or not pending approval' })
         return res.json(result.rows[0])
-      } catch (error: any) {
-        logger.error('Approve quotation error', { error: error.message, id })
+      } catch (error) {
+        logger.error('Approve quotation error', { error: errorMessage(error), id })
         return res.status(500).json({ error: 'Failed to approve quotation' })
       }
     }
@@ -1361,10 +1415,10 @@ export const createQuotationsRouter = (pool: Pool) => {
         await db.query('COMMIT')
 
         return res.status(201).json(await fullQuotation(pool, inserted.rows[0].id))
-      } catch (error: any) {
+      } catch (error) {
         await db.query('ROLLBACK')
-        logger.error('Duplicate quotation error', { error: error.message, quotationId })
-        if (error.code === '23505')
+        logger.error('Duplicate quotation error', { error: errorMessage(error), quotationId })
+        if (errorCode(error) === '23505')
           return res.status(409).json({ error: 'Quotation correlative already exists' })
         return res.status(500).json({ error: 'Failed to duplicate quotation' })
       } finally {
@@ -1390,8 +1444,11 @@ export const createQuotationsRouter = (pool: Pool) => {
 
         if (result.rows.length === 0) return res.status(404).json({ error: 'Quotation not found' })
         return res.json({ message: 'Quotation deleted successfully' })
-      } catch (error: any) {
-        logger.error('Delete quotation error', { error: error.message, quotationId: req.params.id })
+      } catch (error) {
+        logger.error('Delete quotation error', {
+          error: errorMessage(error),
+          quotationId: req.params.id,
+        })
         return res.status(500).json({ error: 'Failed to delete quotation' })
       }
     }

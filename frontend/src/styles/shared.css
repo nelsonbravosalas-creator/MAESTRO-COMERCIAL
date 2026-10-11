@@ -16,7 +16,9 @@
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
   font-family: 'Outfit', sans-serif;
 }
 .btn-primary-sm:hover {
@@ -99,6 +101,34 @@
   background: var(--danger-bg);
   border-color: var(--danger);
   color: var(--danger-text);
+}
+
+/* ── Lanzador del asistente de cotizaciones ───────────────────────── */
+/* Eager a propósito (vive en shared.css, no en ChatPanel.css): el panel
+   completo es lazy, pero el botón que lo abre tiene que estar visible desde
+   el primer render. bottom-left para no competir con ui-toast-stack
+   (bottom-right, ui.css). */
+.chat-launcher-btn {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 1400;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: none;
+  box-shadow: var(--shadow-lg);
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.chat-launcher-btn:hover {
+  background: var(--btn-primary-bg-hover);
 }
 
 /* ── Modal de confirmación ────────────────────────────────────────── */

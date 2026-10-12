@@ -86,6 +86,16 @@ export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Pro
       model: opts.model,
       body: text.slice(0, 500),
     })
+    // 429 (RESOURCE_EXHAUSTED) es cupo/facturacion de la API de Gemini, no un
+    // error del sistema -- un 502 generico confundia esto con un bug. Mismo
+    // status (503) y espiritu que el caso de GEMINI_API_KEY no configurada:
+    // mensaje explicito en vez de fallar a ciegas.
+    if (res.status === 429) {
+      throw httpError(
+        'El asistente esta sin cupo de uso en la API de Gemini por ahora (limite de cuota alcanzado). Intenta de nuevo en unos minutos.',
+        503
+      )
+    }
     throw httpError(`LLM call failed (${res.status})`, 502)
   }
 

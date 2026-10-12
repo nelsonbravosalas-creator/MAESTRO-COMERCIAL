@@ -72,6 +72,20 @@ describe('callLlm (Gemini)', () => {
     ).rejects.toMatchObject({ status: 502 })
   })
 
+  it('lanza 503 con mensaje explicito si Gemini responde 429 (cupo agotado), no 502 generico', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        text: async () => '{"error":{"code":429,"status":"RESOURCE_EXHAUSTED"}}',
+      })
+    )
+    await expect(
+      callLlm([{ role: 'user', content: 'hola' }], { model: 'gemini-3.6-flash' })
+    ).rejects.toMatchObject({ status: 503, message: expect.stringContaining('cupo') })
+  })
+
   it('lanza 502 si el fetch falla (red/timeout)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
     await expect(

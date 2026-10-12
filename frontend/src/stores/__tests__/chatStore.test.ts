@@ -82,6 +82,22 @@ describe('sendChatMessage — memoria corta de la conversacion', () => {
     expect(recentTurns.map(t => t.text)).toEqual(['m3', 'r3', 'm4', 'r4'])
   })
 
+  it('recorta un reply largo (p.ej. manualItemsWarning con varios items) a 500 chars antes de reenviarlo como historial', async () => {
+    const replyLargo = 'Cotizacion SYM-001 creada con 3 item(s).' + ' x'.repeat(300)
+    expect(replyLargo.length).toBeGreaterThan(500)
+
+    sendChatMessageMock.mockResolvedValueOnce({ reply: replyLargo })
+    await sendChatMessage('crea la cotizacion')
+    sendChatMessageMock.mockResolvedValueOnce({ reply: 'listo' })
+    await sendChatMessage('gracias')
+
+    const lastCall = sendChatMessageMock.mock.calls[sendChatMessageMock.mock.calls.length - 1]
+    const recentTurns = lastCall[2] as { role: string; text: string }[]
+    const turnoLargo = recentTurns.find(t => t.text.startsWith('Cotizacion'))
+
+    expect(turnoLargo?.text.length).toBeLessThanOrEqual(500)
+  })
+
   it('agrega el mensaje del usuario y la respuesta del bot al historial visible', async () => {
     sendChatMessageMock.mockResolvedValueOnce({ reply: 'hola, como ayudo' })
     await sendChatMessage('hola')

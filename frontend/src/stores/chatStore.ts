@@ -14,6 +14,11 @@ import { api, ApiError, type ChatMessageResponse, type ChatRecentTurn } from '..
 // mandan junto con cada instruccion nueva.
 const RECENT_TURNS_LIMIT = 4
 
+// El backend acepta hasta 500 chars por turno (los recorta si se pasa), pero
+// un reply de bot con manualItemsWarning() (varios items sin precio listados)
+// puede superarlo. Se recorta aqui tambien para no mandar bytes de mas.
+const RECENT_TURN_TEXT_LIMIT = 500
+
 export interface ChatMessage {
   id: number
   role: 'user' | 'bot' | 'error'
@@ -53,7 +58,7 @@ export async function sendChatMessage(instruction: string, quotationId?: string 
     .getState()
     .messages.filter((m): m is ChatMessage & { role: 'user' | 'bot' } => m.role !== 'error')
     .slice(-RECENT_TURNS_LIMIT)
-    .map(m => ({ role: m.role, text: m.text }))
+    .map(m => ({ role: m.role, text: m.text.slice(0, RECENT_TURN_TEXT_LIMIT) }))
 
   useChatStore.setState(s => ({
     isSending: true,

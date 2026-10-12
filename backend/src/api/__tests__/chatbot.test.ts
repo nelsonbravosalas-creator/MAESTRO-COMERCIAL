@@ -1041,6 +1041,38 @@ describe('POST /api/chatbot', () => {
     expect(promptSent).toContain('cotiza 5 dias en Rancagua')
   })
 
+  it('un turno reciente de mas de 500 chars se recorta en vez de rechazar la request (antes bloqueaba el chat permanentemente)', async () => {
+    const db = makeFakeDb()
+    mockedCallLlm.mockResolvedValueOnce(
+      JSON.stringify({
+        intent: 'conversar',
+        respuesta_conversacional: 'Hola',
+        cliente_nombre: null,
+        dias: null,
+        dotacion: null,
+        comuna: null,
+        descripcion_trabajo: null,
+        items_mencionados: null,
+        regla_key: null,
+        regla_valor: null,
+        material_consultado: null,
+      })
+    )
+
+    const replyLargo = 'Cotizacion SYM-001 creada.' + ' x'.repeat(300)
+    expect(replyLargo.length).toBeGreaterThan(500)
+
+    const res = await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({
+        instruction: 'gracias',
+        recent_turns: [{ role: 'bot', text: replyLargo }],
+      })
+
+    expect(res.status).toBe(200)
+  })
+
   it('A-21: el nombre real del cliente (resuelto desde la base) nunca llega al prompt via recent_turns, usando el reply REAL de crear_cotizacion (no uno sintetico)', async () => {
     const db = makeFakeDb({
       clients: [

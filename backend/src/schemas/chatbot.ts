@@ -8,9 +8,18 @@ import { uuid } from './common'
 // viven en el grafo de conocimiento (chatbotGraph.ts), no en el historial de
 // texto. max(8) y texto corto porque un `reply` de bot ya es un resumen
 // corto armado por el backend, no el payload estructurado completo.
+//
+// Se recorta en vez de rechazar (.max() fallaba la request entera cuando un
+// reply pasaba de 500 chars, p.ej. manualItemsWarning() con varios items --
+// eso bloqueaba el chat permanentemente, porque ese mismo reply largo vuelve
+// como recent_turns en el siguiente turno sin que el usuario pueda evitarlo).
 export const chatbotRecentTurnSchema = z.object({
   role: z.enum(['user', 'bot']),
-  text: z.string().trim().min(1).max(500),
+  text: z
+    .string()
+    .trim()
+    .min(1)
+    .transform(s => s.slice(0, 500)),
 })
 
 export const chatbotMessageSchema = z.object({

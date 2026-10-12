@@ -37,6 +37,15 @@ type Client = {
   deleted_at: null
 }
 
+type GraphNode = { id: string; type: string; label: string; properties: Record<string, unknown> }
+type GraphEdge = {
+  source_id: string
+  target_id: string
+  relation: string
+  weight: number
+  metadata: Record<string, unknown>
+}
+
 type State = {
   rules: Rule[]
   actions: any[]
@@ -47,6 +56,8 @@ type State = {
   lineItems: any[]
   terms: any[]
   appConfig: Record<string, string>
+  graphNodes: GraphNode[]
+  graphEdges: GraphEdge[]
 }
 
 function cloneState(state: State): State {
@@ -64,6 +75,8 @@ function makeFakeDb(seed: Partial<State> = {}) {
     lineItems: seed.lineItems ?? [],
     terms: seed.terms ?? [],
     appConfig: seed.appConfig ?? { uf_value: '39500' },
+    graphNodes: seed.graphNodes ?? [],
+    graphEdges: seed.graphEdges ?? [],
   }
   let tx: State | null = null
   let idSeq = 1
@@ -134,6 +147,81 @@ function makeFakeDb(seed: Partial<State> = {}) {
       })
       return { rows: [] }
     }
+
+    // ── chatbot_graph_nodes / chatbot_graph_edges (chatbotGraph.ts) ──
+    if (s.startsWith('INSERT INTO chatbot_graph_nodes')) {
+      const [id, type, label, propertiesJson] = params
+      const properties = JSON.parse(propertiesJson)
+      const existing = db.graphNodes.find(n => n.id === id)
+      if (existing) {
+        existing.label = label
+        existing.properties = { ...existing.properties, ...properties }
+      } else {
+        db.graphNodes.push({ id, type, label, properties })
+      }
+      return { rows: [] }
+    }
+    if (s.startsWith('INSERT INTO chatbot_graph_edges')) {
+      const [sourceId, targetId, relation, weight, metadataJson] = params
+      const metadata = JSON.parse(metadataJson)
+      const existing = db.graphEdges.find(
+        e => e.source_id === sourceId && e.target_id === targetId && e.relation === relation
+      )
+      if (existing) {
+        existing.weight += weight
+        existing.metadata = { ...existing.metadata, ...metadata }
+      } else {
+        db.graphEdges.push({ source_id: sourceId, target_id: targetId, relation, weight, metadata })
+      }
+      return { rows: [] }
+    }
+    if (
+      s.startsWith(
+        'SELECT id, type, label, properties, updated_at FROM chatbot_graph_nodes WHERE id = $1'
+      )
+    ) {
+      const row = db.graphNodes.find(n => n.id === params[0])
+      return { rows: row ? [{ ...row, updated_at: new Date().toISOString() }] : [] }
+    }
+    if (
+      s.startsWith(
+        'SELECT id, type, label, properties, updated_at FROM chatbot_graph_nodes WHERE id = ANY'
+      )
+    ) {
+      const ids: string[] = params[0]
+      return {
+        rows: db.graphNodes
+          .filter(n => ids.includes(n.id))
+          .map(n => ({ ...n, updated_at: new Date().toISOString() })),
+      }
+    }
+    if (s.startsWith('SELECT id, label FROM chatbot_graph_nodes WHERE type = ANY')) {
+      const types: string[] = params[0]
+      return { rows: db.graphNodes.filter(n => types.includes(n.type)) }
+    }
+    if (s.startsWith('SELECT id, label FROM chatbot_graph_nodes WHERE id = ANY')) {
+      const ids: string[] = params[0]
+      return { rows: db.graphNodes.filter(n => ids.includes(n.id)) }
+    }
+    if (s.startsWith('SELECT source_id, target_id, relation, weight, metadata, updated_at')) {
+      const now = new Date().toISOString()
+      if (s.includes('source_id = ANY($1::text[])')) {
+        const ids: string[] = params[0]
+        return {
+          rows: db.graphEdges
+            .filter(e => ids.includes(e.source_id))
+            .map(e => ({ ...e, updated_at: now })),
+        }
+      }
+      if (s.includes('source_id = $1')) {
+        return {
+          rows: db.graphEdges
+            .filter(e => e.source_id === params[0])
+            .map(e => ({ ...e, updated_at: now })),
+        }
+      }
+    }
+    if (s.startsWith('SELECT id, description FROM electrical_catalog_items')) return { rows: [] }
 
     // ── clients (busqueda por nombre) ─────────────────────────────
     if (s.startsWith('SELECT id, name, rut FROM clients')) {
@@ -468,6 +556,15 @@ describe('POST /api/chatbot', () => {
     expect(colacion.days).toBe(5)
     expect(colacion.unit_price).toBe(6000)
     expect(bono.unit_price).toBe(15000)
+
+    // El grafo de conocimiento (chatbotGraph.ts) se pobla de verdad, no solo
+    // "no explota" -- cliente/comuna quedan como nodos y conectados.
+    const state = db.getState()
+    expect(state.graphNodes.find(n => n.id === 'cliente:cli-1')?.type).toBe('cliente')
+    expect(state.graphNodes.find(n => n.id === 'comuna:rancagua')).toBeTruthy()
+    expect(
+      state.graphEdges.some(e => e.source_id === 'cliente:cli-1' && e.relation === 'cotiza_en')
+    ).toBe(true)
   })
 
   it('items_mencionados a mano quedan sin precio y el reply avisa explicitamente', async () => {
@@ -703,6 +800,9 @@ describe('POST /api/chatbot', () => {
           respuesta_conversacional: null,
         })
       )
+      // Paso 1 (busqueda con grounding): texto libre, no JSON.
+      .mockResolvedValueOnce('Sodimac $5000, Construmart $6000 para tubo de cobre 1/2 pulgada.')
+      // Paso 2 (extraccion): reformatea el texto de arriba a JSON.
       .mockResolvedValueOnce(
         JSON.stringify({
           precio_medio: 5500,
@@ -724,10 +824,10 @@ describe('POST /api/chatbot', () => {
     expect(res.body.muestras).toHaveLength(2)
   })
 
-  it('responde 503 si GROQ_API_KEY no esta configurada', async () => {
+  it('responde 503 si GEMINI_API_KEY no esta configurada', async () => {
     const db = makeFakeDb()
     mockedCallLlm.mockImplementationOnce(() => {
-      const err = new Error('GROQ_API_KEY no configurada') as Error & { status: number }
+      const err = new Error('GEMINI_API_KEY no configurada') as Error & { status: number }
       err.status = 503
       return Promise.reject(err)
     })
@@ -903,5 +1003,254 @@ describe('POST /api/chatbot', () => {
 
     expect(res.status).toBe(200)
     expect(res.body.reply).toContain('No tengo una cotizacion abierta')
+  })
+
+  it('el prompt de intencion incluye la persona y, si hay turnos recientes, el bloque de historial', async () => {
+    const db = makeFakeDb()
+    mockedCallLlm.mockResolvedValueOnce(
+      JSON.stringify({
+        intent: 'conversar',
+        respuesta_conversacional: 'Hola',
+        cliente_nombre: null,
+        dias: null,
+        dotacion: null,
+        comuna: null,
+        descripcion_trabajo: null,
+        items_mencionados: null,
+        regla_key: null,
+        regla_valor: null,
+        material_consultado: null,
+      })
+    )
+
+    await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({
+        instruction: 'mejor dejalo en 3 dias',
+        recent_turns: [
+          { role: 'user', text: 'cotiza 5 dias en Rancagua' },
+          { role: 'bot', text: 'Cotizacion SYM-001 creada' },
+        ],
+      })
+
+    const lastCall = mockedCallLlm.mock.calls[mockedCallLlm.mock.calls.length - 1]
+    const promptSent = lastCall[0][0].content as string
+    expect(promptSent).toContain('ingeniero en climatizacion')
+    expect(promptSent).toContain('## Historial reciente')
+    expect(promptSent).toContain('cotiza 5 dias en Rancagua')
+  })
+
+  it('un turno reciente de mas de 500 chars se recorta en vez de rechazar la request (antes bloqueaba el chat permanentemente)', async () => {
+    const db = makeFakeDb()
+    mockedCallLlm.mockResolvedValueOnce(
+      JSON.stringify({
+        intent: 'conversar',
+        respuesta_conversacional: 'Hola',
+        cliente_nombre: null,
+        dias: null,
+        dotacion: null,
+        comuna: null,
+        descripcion_trabajo: null,
+        items_mencionados: null,
+        regla_key: null,
+        regla_valor: null,
+        material_consultado: null,
+      })
+    )
+
+    const replyLargo = 'Cotizacion SYM-001 creada.' + ' x'.repeat(300)
+    expect(replyLargo.length).toBeGreaterThan(500)
+
+    const res = await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({
+        instruction: 'gracias',
+        recent_turns: [{ role: 'bot', text: replyLargo }],
+      })
+
+    expect(res.status).toBe(200)
+  })
+
+  it('A-21: el nombre real del cliente (resuelto desde la base) nunca llega al prompt via recent_turns, usando el reply REAL de crear_cotizacion (no uno sintetico)', async () => {
+    const db = makeFakeDb({
+      clients: [
+        {
+          id: 'cli-1',
+          name: 'CLIMATEMP SPA',
+          rut: '77.381.030-3',
+          activity: null,
+          address: null,
+          city: null,
+          deleted_at: null,
+        },
+      ],
+    })
+
+    // Turno 1: crea la cotizacion de verdad y toma el `reply` REAL que
+    // produce el backend -- no uno escrito a mano para el test, que es
+    // justo lo que dejo pasar este bug la primera vez (los tests de
+    // historial/persona usaban replies sinteticos sin nombre).
+    mockedCallLlm.mockResolvedValueOnce(
+      JSON.stringify({
+        intent: 'crear_cotizacion',
+        cliente_nombre: 'Climatemp',
+        dias: 5,
+        dotacion: 8,
+        comuna: null,
+        descripcion_trabajo: 'Mantencion',
+        items_mencionados: ['tubo de cobre'],
+        regla_key: null,
+        regla_valor: null,
+        material_consultado: null,
+        respuesta_conversacional: null,
+      })
+    )
+    const firstRes = await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({ instruction: 'cotiza para Climatemp' })
+    expect(firstRes.status).toBe(201)
+    const realReply = firstRes.body.reply as string
+    // El propio nombre del cliente NO debe estar en el reply (ese es el fix:
+    // vive solo en `.data.quotation.client_name`, nunca en `.text`).
+    expect(realReply).not.toContain('CLIMATEMP')
+
+    // Turno 2: el frontend manda ese reply real como recent_turns (chatStore.ts
+    // manda solo `.text`, y `.text` de un mensaje de bot ES el `reply`).
+    mockedCallLlm.mockResolvedValueOnce(
+      JSON.stringify({
+        intent: 'conversar',
+        respuesta_conversacional: 'ok',
+        cliente_nombre: null,
+        dias: null,
+        dotacion: null,
+        comuna: null,
+        descripcion_trabajo: null,
+        items_mencionados: null,
+        regla_key: null,
+        regla_valor: null,
+        material_consultado: null,
+      })
+    )
+    await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({
+        instruction: 'gracias',
+        recent_turns: [
+          { role: 'user', text: 'cotiza para Climatemp' },
+          { role: 'bot', text: realReply },
+        ],
+      })
+
+    const lastCall = mockedCallLlm.mock.calls[mockedCallLlm.mock.calls.length - 1]
+    const promptSent = lastCall[0][0].content as string
+    expect(promptSent).not.toContain('CLIMATEMP')
+    expect(promptSent).not.toContain('77.381.030-3')
+  })
+
+  it('crear_cotizacion usa el patron habitual del cliente si faltan dias/dotacion, y avisa en la respuesta', async () => {
+    const db = makeFakeDb({
+      clients: [
+        {
+          id: 'cli-1',
+          name: 'CLIMATEMP SPA',
+          rut: '77.381.030-3',
+          activity: null,
+          address: null,
+          city: null,
+          deleted_at: null,
+        },
+      ],
+      rules: [
+        {
+          id: 'r1',
+          rule_key: 'tarifa_colacion_diaria',
+          value: 6000,
+          unit: 'CLP/persona/dia',
+          notes: null,
+          created_at: '2026-01-01T00:00:00Z',
+          superseded_at: null,
+        },
+      ],
+      graphEdges: [
+        {
+          source_id: 'cliente:cli-1',
+          target_id: 'comuna:colina',
+          relation: 'cotiza_en',
+          weight: 5,
+          metadata: { dotacion: 4, dias: 3 },
+        },
+      ],
+      graphNodes: [{ id: 'comuna:colina', type: 'comuna', label: 'Colina', properties: {} }],
+    })
+    mockedCallLlm.mockResolvedValueOnce(
+      JSON.stringify({
+        intent: 'crear_cotizacion',
+        cliente_nombre: 'Climatemp',
+        dias: null,
+        dotacion: null,
+        comuna: null,
+        descripcion_trabajo: 'Mantencion',
+        items_mencionados: null,
+        regla_key: null,
+        regla_valor: null,
+        material_consultado: null,
+        respuesta_conversacional: null,
+      })
+    )
+
+    const res = await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({ instruction: 'cotiza para Climatemp' })
+
+    expect(res.status).toBe(201)
+    expect(res.body.notas?.[0]).toMatchObject({ kind: 'patron_cliente' })
+    expect(res.body.notas[0].text).toContain('CLIMATEMP SPA')
+  })
+
+  it('consultar_precio avisa si el precio en el grafo tiene mas de 25 dias', async () => {
+    const oldDate = new Date(Date.now() - 30 * 86_400_000).toISOString()
+    const db = makeFakeDb({
+      graphNodes: [
+        {
+          id: 'material:tubo-de-cobre',
+          type: 'material',
+          label: 'Tubo de cobre',
+          properties: { last_price: 5000, last_price_at: oldDate },
+        },
+      ],
+    })
+    mockedCallLlm
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          intent: 'consultar_precio',
+          material_consultado: 'Tubo de cobre',
+          cliente_nombre: null,
+          dias: null,
+          dotacion: null,
+          comuna: null,
+          descripcion_trabajo: null,
+          items_mencionados: null,
+          regla_key: null,
+          regla_valor: null,
+          respuesta_conversacional: null,
+        })
+      )
+      .mockResolvedValueOnce('Tubo de cobre: $5500 en promedio.')
+      .mockResolvedValueOnce(
+        JSON.stringify({ precio_medio: 5500, muestras: [], advertencia: null })
+      )
+
+    const res = await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({ instruction: 'cuanto cuesta el tubo de cobre' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.notas?.[0]).toMatchObject({ kind: 'precio_desactualizado' })
   })
 })

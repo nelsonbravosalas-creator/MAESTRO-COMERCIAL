@@ -439,4 +439,75 @@ describe('applyClientPatterns', () => {
       diasHabitual: 3,
     })
   })
+
+  it('dotacionHabitual/diasHabitual son la MODA entre todas las cotizaciones, no el ultimo valor de la comuna con mas weight', async () => {
+    const db = makeFakeGraphPool()
+    // 3 cotizaciones reales via recordGraphFacts (mismo flujo que chatbot.ts):
+    // Colina una vez (dotacion 4), Providencia dos veces (dotacion 4 y luego 6).
+    // Providencia termina con mas weight (2) y su ULTIMO escalar seria 6 --
+    // si el codigo viejo (edge de mayor weight, ultimo valor) decidiera, diria
+    // dotacionHabitual=6. La moda real entre las 3 cotizaciones es 4 (aparece
+    // 2 veces: Colina y la primera de Providencia).
+    await recordGraphFacts(db as unknown as Pool, {
+      intent: 'crear_cotizacion',
+      clientId: 'cli-1',
+      comuna: 'Colina',
+      materiales: [],
+      dotacion: 4,
+      dias: 2,
+    })
+    await recordGraphFacts(db as unknown as Pool, {
+      intent: 'crear_cotizacion',
+      clientId: 'cli-1',
+      comuna: 'Providencia',
+      materiales: [],
+      dotacion: 4,
+      dias: 2,
+    })
+    await recordGraphFacts(db as unknown as Pool, {
+      intent: 'crear_cotizacion',
+      clientId: 'cli-1',
+      comuna: 'Providencia',
+      materiales: [],
+      dotacion: 6,
+      dias: 9,
+    })
+
+    const providenciaEdge = db
+      .getState()
+      .edges.find(e => e.target_id === comunaNodeId('Providencia'))
+    expect(providenciaEdge?.weight).toBe(2) // confirma que de verdad tiene mas weight que Colina
+
+    const pattern = await applyClientPatterns(db as unknown as Pool, 'cli-1')
+    expect(pattern?.dotacionHabitual).toBe(4)
+    expect(pattern?.diasHabitual).toBe(2)
+  })
+
+  it('aristas escritas antes del fix (solo escalar dotacion/dias, sin counts) se migran solas al volver a escribirse', async () => {
+    const db = makeFakeGraphPool({
+      edges: [
+        {
+          source_id: 'cliente:cli-1',
+          target_id: comunaNodeId('Colina'),
+          relation: 'cotiza_en',
+          weight: 1,
+          metadata: { dotacion: 4, dias: 2 }, // formato legado, sin *_counts
+          updated_at: 'now',
+        },
+      ],
+    })
+    await recordGraphFacts(db as unknown as Pool, {
+      intent: 'modificar_cotizacion',
+      clientId: 'cli-1',
+      comuna: 'Colina',
+      materiales: [],
+      dotacion: 6,
+      dias: 9,
+    })
+    const pattern = await applyClientPatterns(db as unknown as Pool, 'cli-1')
+    // 4 y 6 empatan en 1 -- modeFromCounts se queda con el primero que ve
+    // mayor estrictamente, asi que el legado (4) gana el empate. Lo que
+    // importa acá es que el valor legado no se perdió: sigue contando.
+    expect(pattern?.dotacionHabitual).toBe(4)
+  })
 })

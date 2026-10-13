@@ -173,6 +173,66 @@ export async function upsertEdge(
   )
 }
 
+// dotacion/dias de "cotiza_en" se guardaban como escalar (ultimo valor, se
+// pisa en cada cotizacion -- sin histograma ni moda, confirmado en QA del
+// 2026-10-13). countsFromMetadata() lee el contador acumulado si existe, o
+// lo "arranca" en 1 desde el escalar legado (aristas escritas antes de este
+// fix) para no perder el dato ya recolectado -- self-healing, sin migracion.
+function countsFromMetadata(
+  metadata: Record<string, unknown> | undefined,
+  countsKey: 'dotacion_counts' | 'dias_counts',
+  legacyKey: 'dotacion' | 'dias'
+): Record<string, number> {
+  const counts = metadata?.[countsKey] as Record<string, number> | undefined
+  if (counts && Object.keys(counts).length > 0) return { ...counts }
+  const legacy = metadata?.[legacyKey]
+  return typeof legacy === 'number' ? { [String(legacy)]: 1 } : {}
+}
+
+async function nextDotacionDiasCounts(
+  pool: Pool | PoolClient,
+  clienteId: string,
+  comunaId: string,
+  updates: { dotacion?: number | null; dias?: number | null }
+): Promise<{ dotacion_counts: Record<string, number>; dias_counts: Record<string, number> }> {
+  // Reusa la misma consulta "por source_id" que applyClientPatterns() -- no
+  // hay WHERE por target_id+relation en el esquema de queries existente, y
+  // el volumen de aristas por cliente es chico, asi que filtrar en JS alcanza.
+  const existing = await pool.query<GraphEdge>(
+    `SELECT source_id, target_id, relation, weight, metadata, updated_at
+       FROM chatbot_graph_edges
+      WHERE source_id = $1`,
+    [clienteId]
+  )
+  const edge = existing.rows.find(e => e.target_id === comunaId && e.relation === 'cotiza_en')
+
+  const dotacionCounts = countsFromMetadata(edge?.metadata, 'dotacion_counts', 'dotacion')
+  if (typeof updates.dotacion === 'number' && updates.dotacion > 0) {
+    const key = String(updates.dotacion)
+    dotacionCounts[key] = (dotacionCounts[key] ?? 0) + 1
+  }
+
+  const diasCounts = countsFromMetadata(edge?.metadata, 'dias_counts', 'dias')
+  if (typeof updates.dias === 'number' && updates.dias > 0) {
+    const key = String(updates.dias)
+    diasCounts[key] = (diasCounts[key] ?? 0) + 1
+  }
+
+  return { dotacion_counts: dotacionCounts, dias_counts: diasCounts }
+}
+
+function modeFromCounts(counts: Record<string, number>): number | undefined {
+  let bestKey: string | undefined
+  let bestCount = 0
+  for (const [key, count] of Object.entries(counts)) {
+    if (count > bestCount) {
+      bestCount = count
+      bestKey = key
+    }
+  }
+  return bestKey !== undefined ? Number(bestKey) : undefined
+}
+
 export interface GraphFactsInput {
   intent: 'ensenar_regla' | 'consultar_precio' | 'crear_cotizacion' | 'modificar_cotizacion'
   clientId?: string | null
@@ -248,6 +308,10 @@ export async function recordGraphFacts(pool: Pool, facts: GraphFactsInput): Prom
           properties: {},
         })
         if (clienteId) {
+          const counts = await nextDotacionDiasCounts(pool, clienteId, comunaId, {
+            dotacion: facts.dotacion ?? null,
+            dias: facts.dias ?? null,
+          })
           await upsertEdge(pool, {
             sourceId: clienteId,
             targetId: comunaId,
@@ -256,6 +320,7 @@ export async function recordGraphFacts(pool: Pool, facts: GraphFactsInput): Prom
               quotationId: facts.quotationId ?? null,
               dotacion: facts.dotacion ?? null,
               dias: facts.dias ?? null,
+              ...counts,
             },
           })
         }
@@ -502,10 +567,27 @@ export async function applyClientPatterns(
     }
   }
 
-  const dotacionEdge = result.rows.find(e => typeof e.metadata?.dotacion === 'number')
-  if (dotacionEdge) pattern.dotacionHabitual = dotacionEdge.metadata.dotacion as number
-  const diasEdge = result.rows.find(e => typeof e.metadata?.dias === 'number')
-  if (diasEdge) pattern.diasHabitual = diasEdge.metadata.dias as number
+  // Moda real entre TODAS las aristas cotiza_en del cliente (puede cotizar
+  // en varias comunas) -- no solo la de mayor weight, que antes mezclaba
+  // "comuna mas frecuente" con "ultimo valor de dotacion/dias de ESA comuna".
+  const dotacionCounts: Record<string, number> = {}
+  const diasCounts: Record<string, number> = {}
+  for (const edge of result.rows.filter(e => e.relation === 'cotiza_en')) {
+    for (const [key, count] of Object.entries(
+      countsFromMetadata(edge.metadata, 'dotacion_counts', 'dotacion')
+    )) {
+      dotacionCounts[key] = (dotacionCounts[key] ?? 0) + count
+    }
+    for (const [key, count] of Object.entries(
+      countsFromMetadata(edge.metadata, 'dias_counts', 'dias')
+    )) {
+      diasCounts[key] = (diasCounts[key] ?? 0) + count
+    }
+  }
+  const dotacionHabitual = modeFromCounts(dotacionCounts)
+  if (dotacionHabitual !== undefined) pattern.dotacionHabitual = dotacionHabitual
+  const diasHabitual = modeFromCounts(diasCounts)
+  if (diasHabitual !== undefined) pattern.diasHabitual = diasHabitual
 
   return Object.keys(pattern).length > 0 ? pattern : null
 }

@@ -128,15 +128,18 @@ export const createProjectsRouter = (pool: Pool) => {
       )
 
       const projectId = result.rows[0].id
-      if (Array.isArray(assigned_to)) {
-        for (const userId of assigned_to) {
-          await db.query(
-            `INSERT INTO project_assignments (project_id, user_id, assigned_by)
-             VALUES ($1, $2, $3)
-             ON CONFLICT DO NOTHING`,
-            [projectId, userId, req.user?.id ?? null]
-          )
-        }
+      if (Array.isArray(assigned_to) && assigned_to.length > 0) {
+        // Un solo INSERT multi-fila en vez de un INSERT por usuario asignado
+        // (N+1 real, unico encontrado en el QA del 2026-10-13). $1=projectId,
+        // $2=assigned_by son compartidos por todas las filas; cada userId
+        // ocupa su propio placeholder desde $3 en adelante.
+        const values = assigned_to.map((_, i) => `($1, $${i + 3}, $2)`).join(', ')
+        await db.query(
+          `INSERT INTO project_assignments (project_id, user_id, assigned_by)
+           VALUES ${values}
+           ON CONFLICT DO NOTHING`,
+          [projectId, req.user?.id ?? null, ...assigned_to]
+        )
       }
 
       await db.query('COMMIT')

@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { logger } from '../utils/logger'
 import { env } from '../config/env'
+import { validatePasswordPolicy } from '../utils/passwordPolicy'
 
 // Compara en tiempo constante para evitar timing attacks sobre el secret
 const secretMatches = (provided: string, expected: string) => {
@@ -37,15 +38,26 @@ export const createAdminRouter = (pool: Pool) => {
         return res.status(401).json({ error: 'Unauthorized', message: 'Secret inválido' })
       }
 
-      const normalizedEmail = String(email ?? '').trim().toLowerCase()
+      const normalizedEmail = String(email ?? '')
+        .trim()
+        .toLowerCase()
       if (!normalizedEmail) {
         return res.status(400).json({ error: 'Bad request', message: 'Email es requerido' })
       }
-      if (!password || String(password).length < 4) {
+      // A-04: /setup crea o promueve un admin con password NUEVO -- no es el
+      // login de una cuenta vieja que A-04 grandfatherea con PIN de 4 digitos
+      // (ver passwordPolicy.ts). Un admin nuevo con PIN debil seria peor que
+      // el caso que A-04 ya cerro para change-password/reset-password
+      // (QA 2026-10-13: antes aceptaba min 4, inconsistente con el resto).
+      if (!password) {
         return res.status(400).json({
           error: 'Bad request',
-          message: 'password/PIN de al menos 4 caracteres es requerido',
+          message: 'password es requerido',
         })
+      }
+      const policy = validatePasswordPolicy(String(password))
+      if (!policy.valid) {
+        return res.status(400).json({ error: 'Bad request', message: policy.message })
       }
 
       const passwordHash = await bcrypt.hash(String(password), 10)
@@ -91,7 +103,9 @@ export const createAdminRouter = (pool: Pool) => {
       return res.json({ ok: true, user })
     } catch (error: any) {
       logger.error('Admin setup error', { error: error.message })
-      return res.status(500).json({ error: 'Internal server error', message: 'No se pudo completar el setup' })
+      return res
+        .status(500)
+        .json({ error: 'Internal server error', message: 'No se pudo completar el setup' })
     }
   })
 

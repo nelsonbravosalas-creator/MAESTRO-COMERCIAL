@@ -158,6 +158,19 @@ personales" para el flujo normal, pero esa es una afirmación de "casi
 siempre", no de "nunca" — se documenta igual en `docs/CLASIFICACION_DATOS.md`
 como proveedor técnico, por transparencia.
 
+**Vector encontrado y corregido (2026-10-11, PR #61):** el residual de arriba
+hablaba solo de lo que el usuario tipea a mano, pero una revisión multi-agente
+encontró uno más grave — generado por el propio backend, no por el usuario.
+El `reply` de `crear_cotizacion` incluía el nombre del cliente **resuelto
+desde la base** (`client.name`); el frontend (`chatStore.ts`) reenvía ese
+mismo `reply` como `recent_turns` en el siguiente turno, y `buildIntentPrompt`
+lo manda a Gemini sin que `scrubPii()` lo filtre (esa función cubre
+RUT/email/teléfono, nunca nombres). Fix: el `reply` ya no lleva el nombre —
+la UI lo muestra desde `data.quotation.client_name` (dato estructurado que
+nunca entra a `recent_turns`). Hay un test de regresión
+(`chatbot.test.ts`, caso "A-21") que usa el `reply` REAL de
+`crear_cotizacion`, no uno sintético, para que esto no se repita.
+
 **Segundo mecanismo de minimización (desde la memoria/grafo de conocimiento
 del chatbot, oct-2026):** `backend/src/services/chatbotGraph.ts` guarda
 nodos/aristas deterministas (cliente, comuna, material, regla) para que el
@@ -183,7 +196,15 @@ un nodo tipo `cliente` dentro del radio de búsqueda y verifica que
   revisarlo.
 - `backend/src/services/llm.ts` es deliberadamente un wrapper delgado para
   poder cambiar de proveedor sin reescribir el router si el free tier actual
-  deja de ser suficiente para el volumen real de uso.
+  deja de ser suficiente para el volumen real de uso. **Esto ya ocurrió**
+  (2026-10-12): la API de Gemini devolvió `429 RESOURCE_EXHAUSTED` en
+  producción real, y el error llegaba al usuario como un `502` genérico
+  indistinguible de un bug (PR #62: ahora es un `503` con mensaje explícito).
+  Causa raíz probable, confirmada en vivo (PR #63): `gemini-3.6-flash` traía
+  "thinking" prendido por defecto sin que el código lo configurara — un
+  `"responde OK"` gastaba 88 de 98 tokens en razonamiento interno facturable
+  e invisible. Se apagó (`thinkingBudget: 0`) para toda llamada transaccional
+  del chatbot.
 
 **Revisión sugerida:** antes de un lanzamiento con uso intensivo, confirmar
 con el proveedor del LLM su política de retención/entrenamiento sobre el

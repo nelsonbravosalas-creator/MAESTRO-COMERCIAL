@@ -212,7 +212,7 @@ interface OverviewTabProps {
   project: ProjectFull
 }
 
-function OverviewTab({ project }: OverviewTabProps) {
+export function OverviewTab({ project }: OverviewTabProps) {
   const { updateProject } = useProjects()
   const [form, setForm] = useState({
     name: project.name,
@@ -225,7 +225,15 @@ function OverviewTab({ project }: OverviewTabProps) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  // Sync when project changes
+  // Sync when project changes. Dependia solo de project.id -- ProjectDetail
+  // dispara loadProject(project.id) al montar, que reemplaza la version
+  // liviana (de la lista) por la version completa con el MISMO id pero
+  // valores distintos (budget/progress_pct/status); con solo project.id de
+  // dependencia, este form nunca se actualizaba cuando llegaba esa version
+  // completa, mostrando datos obsoletos sin que el usuario lo notara (QA
+  // 2026-10-13). Depende de los campos primitivos usados, no del objeto
+  // `project` completo (su identidad puede cambiar cada render sin que
+  // cambien los valores).
   useEffect(() => {
     setForm({
       name: project.name,
@@ -235,7 +243,15 @@ function OverviewTab({ project }: OverviewTabProps) {
       budget: String(project.budget),
       progress_pct: String(project.progress_pct),
     })
-  }, [project.id])
+  }, [
+    project.id,
+    project.name,
+    project.status,
+    project.start_date,
+    project.end_date,
+    project.budget,
+    project.progress_pct,
+  ])
 
   const patch = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 

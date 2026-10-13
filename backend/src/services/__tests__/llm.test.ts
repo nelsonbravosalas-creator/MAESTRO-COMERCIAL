@@ -38,6 +38,16 @@ describe('callLlm (Gemini)', () => {
     expect(body.generationConfig.responseMimeType).toBe('application/json')
   })
 
+  it('apaga el thinking (thinkingBudget: 0) en toda llamada -- gemini-3.6-flash lo factura por defecto', async () => {
+    const fetchMock = mockFetchOk('hola')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await callLlm([{ role: 'user', content: 'hola' }], { model: 'gemini-3.6-flash' })
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 })
+  })
+
   it('no incluye responseMimeType si json no se pide', async () => {
     const fetchMock = mockFetchOk('hola')
     vi.stubGlobal('fetch', fetchMock)

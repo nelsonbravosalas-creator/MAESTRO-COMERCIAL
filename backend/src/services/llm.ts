@@ -63,6 +63,13 @@ export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Pro
           contents,
           generationConfig: {
             temperature: opts.temperature ?? 0.2,
+            // gemini-3.6-flash viene con "thinking" prendido por defecto y SIN
+            // esto se factura como tokens de salida sin que nadie lo vea --
+            // verificado en vivo: un "responde OK" gasto 88 de 98 tokens en
+            // thoughtsTokenCount. Un bot transaccional (parsear intencion,
+            // armar cotizacion) no necesita razonamiento multi-paso; esto lo
+            // apaga para no pagar ni agregar latencia por el.
+            thinkingConfig: { thinkingBudget: 0 },
             ...(opts.json ? { responseMimeType: 'application/json' } : {}),
           },
           ...(opts.tools ? { tools: opts.tools } : {}),

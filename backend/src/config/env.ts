@@ -37,6 +37,15 @@ export const envSchema = z.object({
     .transform(v => v === true || v === 'true' || v === '1')
     .default(false),
   AGENT_MODEL: z.string().default('gemini-3.6-flash'),
+  // OmniRoute AI Gateway (opcional para desarrollo local o delegación de modelos pesados).
+  // Si está presente, callLlm y callLlmWithTools delegan a OmniRoute (ej. http://127.0.0.1:20128/v1)
+  // y si falla o no responde, degradan automáticamente a Gemini directo.
+  OMNIROUTE_URL: z
+    .string()
+    .optional()
+    .transform(v => (v?.trim() ? v.trim() : undefined)),
+  OMNIROUTE_API_KEY: z.string().optional(),
+  OMNIROUTE_MODEL: z.string().default('gemini/gemini-3.6-flash'),
 })
 
 export type Env = z.infer<typeof envSchema>

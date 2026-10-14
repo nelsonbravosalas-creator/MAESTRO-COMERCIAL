@@ -106,12 +106,94 @@ const generationConfigFor = (opts: {
   ...(opts.json ? { responseMimeType: 'application/json' } : {}),
 })
 
+interface OmniRouteResponse {
+  choices?: Array<{
+    message?: {
+      role?: string
+      content?: string | null
+      tool_calls?: Array<{
+        id?: string
+        type?: string
+        function?: {
+          name?: string
+          arguments?: string
+        }
+      }>
+    }
+    finish_reason?: string
+  }>
+  usage?: {
+    prompt_tokens?: number
+    completion_tokens?: number
+    total_tokens?: number
+  }
+}
+
+async function postOmniRoute(
+  body: Record<string, unknown>,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
+): Promise<OmniRouteResponse> {
+  if (!env.OMNIROUTE_URL) {
+    throw new Error('OMNIROUTE_URL no configurada')
+  }
+  const baseUrl = env.OMNIROUTE_URL.replace(/\/+$/, '')
+  const endpoint = `${baseUrl}/chat/completions`
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    if (env.OMNIROUTE_API_KEY) {
+      headers.Authorization = `Bearer ${env.OMNIROUTE_API_KEY}`
+    }
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '')
+      throw new Error(`OmniRoute error status ${res.status}: ${errBody.slice(0, 200)}`)
+    }
+    return (await res.json()) as OmniRouteResponse
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // Wrapper deliberadamente delgado sobre la API de Gemini via fetch nativo de
-// Node -- sin SDK nuevo, mismo espiritu que tenia el wrapper de Groq que
-// reemplaza (OmniRoute, el gateway local del usuario en 127.0.0.1, no es
-// alcanzable desde las funciones serverless de Vercel -- solo serviria para
-// dev local, nunca para produccion).
+// Node -- sin SDK nuevo. Si OMNIROUTE_URL está configurada, delega primero a
+// OmniRoute (http://127.0.0.1:20128/v1) para absorber el trabajo pesado con
+// modelos locales/avanzados y degrada automáticamente a Gemini directo si falla.
 export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Promise<string> {
+  if (env.OMNIROUTE_URL) {
+    try {
+      const omniMessages = messages.map(m => ({
+        role: m.role,
+        content: m.content,
+      }))
+      const data = await postOmniRoute(
+        {
+          model: env.OMNIROUTE_MODEL || opts.model,
+          messages: omniMessages,
+          temperature: opts.temperature ?? 0.2,
+          ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
+        },
+        opts.timeoutMs
+      )
+      const content = data?.choices?.[0]?.message?.content
+      if (typeof content === 'string' && content.trim()) {
+        return content
+      }
+    } catch (omniErr) {
+      const msg = omniErr instanceof Error ? omniErr.message : String(omniErr)
+      logger.warn('OmniRoute falló en callLlm; degradando a Gemini directo', { error: msg })
+    }
+  }
+
   // Gemini separa la instruccion de sistema de los `contents` (no hay un rol
   // 'system' dentro de contents) -- se concatenan los mensajes role:'system'
   // en `systemInstruction`. El resto mapea user->user, assistant->model (asi
@@ -188,13 +270,129 @@ export interface LlmToolTurn {
 /**
  * Una vuelta del bucle agentico: manda la conversacion (con los
  * functionResponse acumulados) y devuelve lo que el modelo decidio -- llamar
- * herramientas o responder en texto. El turno del modelo se devuelve crudo
- * porque Gemini exige que se reenvie con sus thoughtSignature intactas.
+ * herramientas o responder en texto.
+ * Si OMNIROUTE_URL está configurada, delega primero a OmniRoute con formato
+ * OpenAI Function Calling y degrada a Gemini directo ante cualquier error.
  */
 export async function callLlmWithTools(
   contents: GeminiContent[],
   opts: CallLlmWithToolsOptions
 ): Promise<LlmToolTurn> {
+  if (env.OMNIROUTE_URL) {
+    try {
+      const openAiMessages: Array<Record<string, unknown>> = []
+      if (opts.systemInstruction) {
+        openAiMessages.push({ role: 'system', content: opts.systemInstruction })
+      }
+      for (const c of contents) {
+        if (c.role === 'user') {
+          const textParts = c.parts.filter(p => p.text)
+          if (textParts.length > 0) {
+            openAiMessages.push({
+              role: 'user',
+              content: textParts.map(p => p.text).join('\n'),
+            })
+          }
+          for (const p of c.parts) {
+            if (p.functionResponse) {
+              openAiMessages.push({
+                role: 'tool',
+                tool_call_id: p.functionResponse.id || `call_${p.functionResponse.name}`,
+                content: JSON.stringify(p.functionResponse.response ?? {}),
+              })
+            }
+          }
+        } else if (c.role === 'model') {
+          const textParts = c.parts.filter(p => p.text)
+          const fnParts = c.parts.filter(p => p.functionCall?.name)
+          if (fnParts.length > 0) {
+            openAiMessages.push({
+              role: 'assistant',
+              content: textParts.length > 0 ? textParts.map(p => p.text).join('\n') : null,
+              tool_calls: fnParts.map(p => ({
+                id: p.functionCall!.id || `call_${p.functionCall!.name}`,
+                type: 'function',
+                function: {
+                  name: p.functionCall!.name,
+                  arguments: JSON.stringify(p.functionCall!.args ?? {}),
+                },
+              })),
+            })
+          } else if (textParts.length > 0) {
+            openAiMessages.push({
+              role: 'assistant',
+              content: textParts.map(p => p.text).join('\n'),
+            })
+          }
+        }
+      }
+
+      const openAiTools =
+        opts.functionDeclarations.length > 0
+          ? opts.functionDeclarations.map(fd => ({
+              type: 'function',
+              function: {
+                name: fd.name,
+                description: fd.description,
+                parameters: fd.parameters,
+              },
+            }))
+          : undefined
+
+      const data = await postOmniRoute(
+        {
+          model: env.OMNIROUTE_MODEL || opts.model,
+          messages: openAiMessages,
+          ...(openAiTools ? { tools: openAiTools } : {}),
+          temperature: opts.temperature ?? 0.2,
+        },
+        opts.timeoutMs
+      )
+
+      const choice = data?.choices?.[0]
+      const msg = choice?.message
+      const parts: GeminiPart[] = []
+      if (msg?.content) {
+        parts.push({ text: msg.content })
+      }
+      const functionCalls: Array<{ name: string; args: Record<string, unknown>; id?: string }> = []
+      if (Array.isArray(msg?.tool_calls)) {
+        for (const tc of msg.tool_calls) {
+          let args: Record<string, unknown> = {}
+          try {
+            args =
+              typeof tc.function?.arguments === 'string'
+                ? (JSON.parse(tc.function.arguments) as Record<string, unknown>)
+                : ((tc.function?.arguments as unknown as Record<string, unknown>) ?? {})
+          } catch {
+            args = {}
+          }
+          const fnName = tc.function?.name ?? ''
+          parts.push({
+            functionCall: { name: fnName, args, id: tc.id },
+          })
+          functionCalls.push({ name: fnName, args, id: tc.id })
+        }
+      }
+
+      const text = msg?.content ?? ''
+      if (functionCalls.length > 0 || text.trim()) {
+        return {
+          modelContent: { role: 'model', parts },
+          functionCalls,
+          text,
+          usage: {
+            tokensIn: data?.usage?.prompt_tokens ?? 0,
+            tokensOut: data?.usage?.completion_tokens ?? 0,
+          },
+        }
+      }
+    } catch (omniErr) {
+      const msg = omniErr instanceof Error ? omniErr.message : String(omniErr)
+      logger.warn('OmniRoute with tools falló; degradando a Gemini directo', { error: msg })
+    }
+  }
+
   const data = await postGemini(
     opts.model,
     {

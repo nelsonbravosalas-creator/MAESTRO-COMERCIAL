@@ -31,6 +31,12 @@ export const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   CHATBOT_PARSE_MODEL: z.string().default('gemini-3.6-flash'),
   CHATBOT_PRICE_MODEL: z.string().default('gemini-3.6-flash'),
+  AGENT_MODE: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform(v => v === true || v === 'true' || v === '1')
+    .default(false),
+  AGENT_MODEL: z.string().default('gemini-3.6-flash'),
 })
 
 export type Env = z.infer<typeof envSchema>

@@ -1,9 +1,11 @@
+import { randomUUID } from 'crypto'
 import { Router } from 'express'
 import { Pool } from 'pg'
 import { logger } from '../utils/logger'
 import { env } from '../config/env'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
+import { runAgentLoop } from '../agent/loop'
 import { createAuthThrottle } from '../middleware/authThrottle'
 import {
   chatbotMessageSchema,
@@ -323,6 +325,51 @@ export const createChatbotRouter = (pool: Pool) => {
       const graphContext = seedIds.length
         ? await buildLlmGraphContext(pool, seedIds).catch(() => '')
         : ''
+
+      const isAgentMode =
+        env.AGENT_MODE || Boolean((req.body as Record<string, unknown>)?.agent_mode)
+      if (isAgentMode) {
+        try {
+          const agentResult = await runAgentLoop({
+            pool,
+            userId,
+            userRole: req.user?.role,
+            instruction,
+            quotationId,
+            recentTurns,
+            graphContext,
+            runId: randomUUID(),
+            model: env.AGENT_MODEL,
+          })
+
+          const statusCode =
+            agentResult.quotation && (agentResult.quotation as { id?: string })?.id && !quotationId
+              ? 201
+              : 200
+          return res.status(statusCode).json({
+            reply: agentResult.reply,
+            pasos: agentResult.steps.map(s => s.summary),
+            steps: agentResult.steps,
+            notas: agentResult.notas,
+            quotation: agentResult.quotation,
+            rule: agentResult.rule,
+            material: agentResult.material,
+            precio_medio: agentResult.precio_medio,
+            muestras: agentResult.muestras,
+            advertencia: agentResult.advertencia,
+          })
+        } catch (error) {
+          logger.error('Chatbot: error en modo agente', { error: errorMessage(error), userId })
+          const status = asHttpError(error).status === 503 ? 503 : 502
+          return res.status(status).json({
+            error: 'Asistente no disponible',
+            message:
+              status === 503
+                ? 'El asistente no esta configurado (falta GEMINI_API_KEY) o supero el limite de cuota.'
+                : 'No se pudo procesar la instruccion en modo agente.',
+          })
+        }
+      }
 
       let parsed: ParsedIntent
       try {

@@ -466,6 +466,8 @@ export interface ChatbotProactiveNote {
 
 export interface ChatMessageResponse {
   reply: string
+  pasos?: string[]
+  steps?: Array<{ tool: string; summary: string; durationMs?: number }>
   notas?: ChatbotProactiveNote[]
   quotation?: MasterQuotation
   reporte_importacion?: ImportQuotationReport
@@ -771,12 +773,14 @@ export const api = {
   sendChatMessage: async (
     instruction: string,
     quotationId?: string | null,
-    recentTurns: ChatRecentTurn[] = []
+    recentTurns: ChatRecentTurn[] = [],
+    agentMode?: boolean
   ): Promise<ChatMessageResponse> => {
     const raw: any = await post('/api/chatbot', {
       instruction,
       quotation_id: quotationId ?? null,
       recent_turns: recentTurns,
+      ...(agentMode != null ? { agent_mode: agentMode } : {}),
     })
     return { ...raw, quotation: raw.quotation ? toMasterQuotation(raw.quotation) : undefined }
   },

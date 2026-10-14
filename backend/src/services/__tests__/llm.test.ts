@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 
 vi.mock('../../config/env', () => ({ env: { GEMINI_API_KEY: 'test-gemini-key' } }))
-import { callLlm, parseLlmJson } from '../llm'
+import { callLlm, callLlmWithTools, parseLlmJson } from '../llm'
 
 const mockFetchOk = (text: string) =>
   vi.fn().mockResolvedValue({
@@ -101,6 +101,49 @@ describe('callLlm (Gemini)', () => {
     await expect(
       callLlm([{ role: 'user', content: 'hola' }], { model: 'gemini-3.6-flash' })
     ).rejects.toMatchObject({ status: 502 })
+  })
+
+  it('callLlmWithTools envia functionDeclarations y parsea llamadas de herramientas', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [
+                {
+                  functionCall: {
+                    name: 'buscar_catalogo',
+                    args: { termino: 'cobre' },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        usageMetadata: { promptTokenCount: 15, candidatesTokenCount: 8 },
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const turn = await callLlmWithTools([{ role: 'user', parts: [{ text: 'busca cobre' }] }], {
+      model: 'gemini-3.6-flash',
+      systemInstruction: 'Instruccion',
+      functionDeclarations: [
+        {
+          name: 'buscar_catalogo',
+          description: 'Busca en catalogo',
+          parameters: { type: 'object', properties: { termino: { type: 'string' } } },
+        },
+      ],
+    })
+
+    expect(turn.functionCalls).toEqual([{ name: 'buscar_catalogo', args: { termino: 'cobre' } }])
+    expect(turn.usage.tokensIn).toBe(15)
+    expect(turn.usage.tokensOut).toBe(8)
+    const reqBody = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(reqBody.tools[0].functionDeclarations).toHaveLength(1)
   })
 
   it('lanza 503 si GEMINI_API_KEY no esta configurada', async () => {

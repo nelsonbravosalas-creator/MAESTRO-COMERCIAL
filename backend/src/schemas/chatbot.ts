@@ -26,6 +26,7 @@ export const chatbotMessageSchema = z.object({
   instruction: z.string().trim().min(1).max(4000),
   quotation_id: uuid.nullish(),
   recent_turns: z.array(chatbotRecentTurnSchema).max(8).optional().default([]),
+  agent_mode: z.boolean().optional(),
 })
 
 export const chatbotTeachRuleSchema = z.object({

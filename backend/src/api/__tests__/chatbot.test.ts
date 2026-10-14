@@ -8,10 +8,12 @@ const JWT_SECRET = 'test-secret-test-secret-test-secret'
 
 vi.mock('../../services/llm', () => ({
   callLlm: vi.fn(),
+  callLlmWithTools: vi.fn(),
   parseLlmJson: (raw: string) => JSON.parse(raw),
 }))
-import { callLlm } from '../../services/llm'
+import { callLlm, callLlmWithTools } from '../../services/llm'
 const mockedCallLlm = callLlm as unknown as ReturnType<typeof vi.fn>
+const mockedCallLlmWithTools = callLlmWithTools as unknown as ReturnType<typeof vi.fn>
 
 const authHeader = (role = 'admin') => {
   const token = jwt.sign({ id: 'u1', email: 'test@test.com', name: 'Test', role }, JWT_SECRET)
@@ -147,6 +149,11 @@ function makeFakeDb(seed: Partial<State> = {}) {
       })
       return { rows: [] }
     }
+
+    // ── agent_runs / agent_steps ─────────────────────────────────────
+    if (s.startsWith('INSERT INTO agent_runs')) return { rows: [] }
+    if (s.startsWith('UPDATE agent_runs')) return { rows: [] }
+    if (s.startsWith('INSERT INTO agent_steps')) return { rows: [] }
 
     // ── chatbot_graph_nodes / chatbot_graph_edges (chatbotGraph.ts) ──
     if (s.startsWith('INSERT INTO chatbot_graph_nodes')) {
@@ -1252,5 +1259,27 @@ describe('POST /api/chatbot', () => {
 
     expect(res.status).toBe(200)
     expect(res.body.notas?.[0]).toMatchObject({ kind: 'precio_desactualizado' })
+  })
+
+  it('procesa la instruccion mediante el bucle agentico cuando agent_mode es true', async () => {
+    const db = makeFakeDb()
+    mockedCallLlmWithTools.mockResolvedValueOnce({
+      modelContent: {
+        role: 'model',
+        parts: [{ text: 'Hola! Soy tu agente comercial. En que te ayudo hoy?' }],
+      },
+      functionCalls: [],
+      text: 'Hola! Soy tu agente comercial. En que te ayudo hoy?',
+      usage: { tokensIn: 10, tokensOut: 12 },
+    })
+
+    const res = await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({ instruction: 'hola agente', agent_mode: true })
+
+    expect(res.status).toBe(200)
+    expect(res.body.reply).toContain('Soy tu agente comercial')
+    expect(Array.isArray(res.body.pasos)).toBe(true)
   })
 })

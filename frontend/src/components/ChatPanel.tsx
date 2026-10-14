@@ -127,6 +127,16 @@ export function ChatPanel() {
                 ))}
               </ul>
             )}
+            {m.data?.pasos && m.data.pasos.length > 0 && (
+              <details className="chat-msg-steps">
+                <summary>⚡ Pasos del agente ({m.data.pasos.length})</summary>
+                <ul>
+                  {m.data.pasos.map((p, i) => (
+                    <li key={i}>{p}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
             {m.data?.notas && m.data.notas.length > 0 && (
               <ul className="chat-msg-notes">
                 {m.data.notas.map((n, i) => (

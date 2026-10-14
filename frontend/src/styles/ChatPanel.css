@@ -122,6 +122,27 @@
   color: var(--text-muted);
 }
 
+.chat-msg-steps {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+}
+
+.chat-msg-steps summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--primary-text);
+  outline: none;
+}
+
+.chat-msg-steps ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: var(--text-muted);
+}
+
 .chat-msg--thinking {
   color: var(--text-muted);
   font-style: italic;

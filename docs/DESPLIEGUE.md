@@ -27,9 +27,20 @@ login no anda".
 | `RESEND_API_KEY`      | Opcional    | Sin definir, el mailer solo loguea — ver `docs/EMAIL_SETUP.md`.                   |
 | `MAIL_FROM`           | Opcional    | Requerida si se define `RESEND_API_KEY`.                                          |
 | `LOG_LEVEL`           | Opcional    | Por defecto `info`.                                                               |
+| `GEMINI_API_KEY`      | Opcional    | Llave de Google Gemini para el asistente chatbot y agente comercial.              |
+| `AGENT_MODE`          | Opcional    | `true`/`false` (default `false`). Activa globalmente el agente ReAct multi-paso.  |
+| `AGENT_MODEL`         | Opcional    | Por defecto `gemini-3.6-flash`.                                                   |
+| `OMNIROUTE_URL`       | Opcional    | Endpoint OmniRoute para inferencia pesada (con degradación a Gemini).             |
+| `OMNIROUTE_API_KEY`   | Opcional    | Token de autenticación de OmniRoute.                                              |
 
 `PORT` **no** se configura en Vercel: no hay un servidor escuchando un puerto,
 la plataforma invoca la función directamente.
+
+> **Presupuesto de ejecución del Agente:** El bucle autónomo ReAct (`backend/src/agent/loop.ts`)
+> tiene un límite interno de **40 segundos** (`BUDGET_MS = 40_000`). En `vercel.json`, la función
+> serverless `api/index.ts` está configurada con `maxDuration: 60`, garantizando 20 segundos de
+> margen antes de que la plataforma corte la conexión. Además, la interfaz (`ChatPanel.tsx`)
+> incluye un selector interactivo para activar el Modo Agente bajo demanda durante pruebas piloto.
 
 Cambiar una variable de entorno **no** redespliega solo. Después de guardarlas
 hay que forzar un redeploy (Deployments → último → Redeploy) para que la

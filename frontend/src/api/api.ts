@@ -18,6 +18,14 @@ import type {
   CarteraData,
   CycleTimes,
   MarginAnalysisRow,
+  ExecutionCost,
+  User,
+  LoginResponse,
+  QuoteStatus,
+  OperState,
+  QuotationKind,
+  MtcFrequency,
+  TermType,
 } from '../types'
 
 // ── Base URL ──────────────────────────────────────────────────
@@ -144,10 +152,194 @@ async function getAllPages<T>(basePath: string, limit = 200): Promise<T[]> {
   return items
 }
 
+// ── Contratos canónicos del backend (Raw DTOs) ───────────────
+
+export interface RawCatalogItem {
+  id: string
+  category_id?: string
+  description: string
+  unit_name: string
+  unit_price: number | string
+  is_active?: boolean
+  sort_order?: number
+}
+
+export interface RawClient {
+  id: string
+  name: string
+  rut: string | null
+  activity?: string | null
+  address?: string | null
+  city?: string | null
+  created_at?: string
+  updated_at?: string
+  contacts?: ClientContact[]
+}
+
+export interface RawQuotationLineItem {
+  id?: string
+  category_id: string
+  description: string
+  unit_name: string
+  quantity: number
+  days?: number
+  unit_price: number
+  sort_order?: number
+}
+
+export interface RawQuotationCategory {
+  category_id: string
+  label?: string
+  margin_pct?: number
+  color?: string
+  note?: string
+  sort_order?: number
+}
+
+export interface RawQuotationTerm {
+  term_type: string
+  content: string
+  sort_order: number
+}
+
+export interface RawQuotation {
+  id: string
+  correlative: string
+  client_id: string
+  client_name?: string
+  contact_id?: string | null
+  contact_name?: string | null
+  enduser?: string | null
+  ref?: string | null
+  date?: string
+  valid_until?: string | null
+  status: QuoteStatus
+  oper_state?: OperState | null
+  uf_value: number
+  iva_pct: number
+  notes?: string | null
+  version?: number
+  created_at: string
+  updated_at: string
+  kind?: QuotationKind
+  equipment_count?: number | null
+  equipment_description?: string | null
+  frequency?: MtcFrequency | null
+  visits_per_year?: number | null
+  contract_start_date?: string | null
+  usd_value?: number | string | null
+  show_uf_equivalent?: boolean
+  show_usd_equivalent?: boolean
+  invoice_count?: number
+  invoice_count_max?: number
+  total_con_iva?: number
+  invoiced_total?: number
+  oc_number?: string | null
+  oc_date?: string | null
+  oc_conditions?: string | null
+  oc_document_name?: string | null
+  oc_document_size?: number | null
+  loss_reason?: string | null
+  loss_competitor?: string | null
+  loss_notes?: string | null
+  follow_up_date?: string | null
+  sent_at?: string | null
+  awarded_at?: string | null
+  closed_at?: string | null
+  version_reason?: string | null
+  parent_version_id?: string | null
+  approved_by?: string | null
+  approved_at?: string | null
+  approval_notes?: string | null
+  categories?: RawQuotationCategory[]
+  line_items?: RawQuotationLineItem[]
+  terms?: RawQuotationTerm[]
+  totals?: { venta_neta?: number | string }
+  venta_neta?: number | string
+}
+
+export interface ProjectAssignmentItem {
+  project_id: string
+  user_id: string
+  name: string
+  email: string
+  assigned_at: string
+}
+
+export interface ProjectTask {
+  id: string
+  project_id: string
+  name: string
+  description?: string | null
+  assignee_id?: string | null
+  assignee_name: string | null
+  category_id?: CategoryId | null
+  start_date: string | null
+  end_date: string | null
+  progress_pct: number
+  status: string
+  sort_order?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ProjectTaskPayload {
+  name: string
+  description?: string | null
+  assignee_id?: string | null
+  category_id?: CategoryId | null
+  start_date?: string | null
+  end_date?: string | null
+  progress_pct?: number
+  status?: string
+  sort_order?: number
+}
+
+export interface ProjectItemResponse {
+  id: string
+  quotation_id: string | null
+  client_id: string
+  client_name?: string
+  name: string
+  status: 'planning' | 'in_progress' | 'completed' | 'paused' | 'cancelled'
+  start_date: string | null
+  end_date: string | null
+  budget: number
+  progress_pct: number
+  gasto_real?: number
+  saldo?: number
+  assignments?: Array<{
+    project_id: string
+    user_id: string
+    name: string
+    email: string
+    assigned_at: string
+  }>
+  costs?: Array<{
+    id: string
+    project_id: string
+    category_id: CategoryId | null
+    description: string
+    quantity: number
+    unit_price: number
+    created_at: string
+    created_by: string | null
+  }>
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectCostPayload {
+  category_id?: CategoryId | null
+  description: string
+  quantity: number
+  unit_price: number
+}
+
 // ── Mapeos backend ↔ UI ───────────────────────────────────────
 
-function toCatalogItemUI(i: any): CatalogItemUI {
-  return { id: i.id, desc: i.description, unidad: i.unit_name, price: i.unit_price }
+function toCatalogItemUI(i: RawCatalogItem): CatalogItemUI {
+  return { id: i.id, desc: i.description, unidad: i.unit_name, price: Number(i.unit_price) }
 }
 
 function fromCatalogItemUI(catId: CategoryId, i: CatalogItemUI, sortOrder = 0) {
@@ -211,7 +403,7 @@ function fromElectricalItemUI(i: CatalogItemUI, sortOrder = 0) {
   }
 }
 
-function toMasterClient(c: any): MasterClient {
+function toMasterClient(c: RawClient): MasterClient {
   const contacts: MasterContact[] = (c.contacts ?? []).map(toMasterContact)
   const primary: Partial<MasterContact> = contacts.find(ct => ct.is_primary) ?? contacts[0] ?? {}
   return {
@@ -226,18 +418,18 @@ function toMasterClient(c: any): MasterClient {
     email: primary.email ?? '',
     phone: primary.phone ?? '',
     contacts,
-    created_at: c.created_at,
-    updated_at: c.updated_at,
+    created_at: c.created_at ?? '',
+    updated_at: c.updated_at ?? '',
   }
 }
 
-function quotationVentaNeta(q: any): number {
+function quotationVentaNeta(q: RawQuotation): number {
   return Number(q.totals?.venta_neta ?? q.venta_neta ?? 0) || 0
 }
 
-function toMasterQuotation(q: any): MasterQuotation {
+function toMasterQuotation(q: RawQuotation): MasterQuotation {
   // Reconstruir categorías desde quotation_categories
-  const catMap: Record<string, any> = {}
+  const catMap: Record<string, RawQuotationCategory> = {}
   for (const qc of q.categories ?? []) catMap[qc.category_id] = qc
 
   const catIds: CategoryId[] = ['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele']
@@ -290,7 +482,7 @@ function toMasterQuotation(q: any): MasterQuotation {
     const cid = li.category_id as CategoryId
     if (!items[cid]) items[cid] = []
     items[cid].push({
-      id: li.id,
+      id: li.id ?? '',
       desc: li.description,
       unidad: li.unit_name,
       cant: li.quantity,
@@ -303,7 +495,9 @@ function toMasterQuotation(q: any): MasterQuotation {
   const scope: string[] = []
   const exclusions: string[] = []
   const commercial: string[] = []
-  for (const t of (q.terms ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order)) {
+  for (const t of (q.terms ?? []).sort(
+    (a: RawQuotationTerm, b: RawQuotationTerm) => a.sort_order - b.sort_order
+  )) {
     if (t.term_type === 'scope') scope.push(t.content)
     if (t.term_type === 'exclusion') exclusions.push(t.content)
     if (t.term_type === 'commercial') commercial.push(t.content)
@@ -377,7 +571,16 @@ function fromMasterQuotation(q: MasterQuotation) {
     sort_order: idx,
   }))
 
-  const line_items: any[] = []
+  const line_items: Array<{
+    id?: string
+    category_id: CategoryId
+    description: string
+    unit_name: string
+    quantity: number
+    days: number
+    unit_price: number
+    sort_order: number
+  }> = []
   for (const cid of Object.keys(q.items) as CategoryId[]) {
     q.items[cid].forEach((item, idx) => {
       if (!item.desc?.trim()) return // omite filas sin descripción (fallarían min(1))
@@ -394,16 +597,20 @@ function fromMasterQuotation(q: MasterQuotation) {
     })
   }
 
-  const terms: any[] = [
+  const terms: Array<{
+    term_type: TermType
+    content: string
+    sort_order: number
+  }> = [
     ...q.scope
       .filter(c => c?.trim())
-      .map((c, i) => ({ term_type: 'scope', content: c, sort_order: i })),
+      .map((c, i) => ({ term_type: 'scope' as const, content: c, sort_order: i })),
     ...q.exclusions
       .filter(c => c?.trim())
-      .map((c, i) => ({ term_type: 'exclusion', content: c, sort_order: i })),
+      .map((c, i) => ({ term_type: 'exclusion' as const, content: c, sort_order: i })),
     ...q.commercial
       .filter(c => c?.trim())
-      .map((c, i) => ({ term_type: 'commercial', content: c, sort_order: i })),
+      .map((c, i) => ({ term_type: 'commercial' as const, content: c, sort_order: i })),
   ]
 
   return {
@@ -602,15 +809,15 @@ export interface InvoiceFactoringPayload {
 
 export const api = {
   // ── Auth ────────────────────────────────────────────────────
-  login: async (email: string, password: string) => {
-    const data: any = await post('/api/auth/login', { email, password })
+  login: async (email: string, password: string): Promise<LoginResponse> => {
+    const data = await post<LoginResponse>('/api/auth/login', { email, password })
     localStorage.setItem('authToken', data.token)
     localStorage.setItem('refreshToken', data.refresh_token)
     localStorage.setItem('user', JSON.stringify(data.user))
     return data
   },
 
-  me: () => get<any>('/api/auth/me'),
+  me: () => get<User>('/api/auth/me'),
 
   logout: async () => {
     const rt = localStorage.getItem('refreshToken')
@@ -631,21 +838,24 @@ export const api = {
 
   // ── Catálogo ────────────────────────────────────────────────
   getCatalog: async (): Promise<CatalogsUI> => {
-    const raw: Record<CategoryId, any[]> = await get('/api/catalog')
+    const raw = await get<Record<CategoryId, RawCatalogItem[]>>('/api/catalog')
     const result = {} as CatalogsUI
     for (const cid of Object.keys(raw) as CategoryId[]) {
-      result[cid] = raw[cid].map(toCatalogItemUI)
+      result[cid] = (raw[cid] ?? []).map(toCatalogItemUI)
     }
     return result
   },
 
   createCatalogItem: async (catId: CategoryId, item: CatalogItemUI, sortOrder = 0) => {
-    const raw: any = await post('/api/catalog', fromCatalogItemUI(catId, item, sortOrder))
+    const raw = await post<RawCatalogItem>(
+      '/api/catalog',
+      fromCatalogItemUI(catId, item, sortOrder)
+    )
     return toCatalogItemUI(raw)
   },
 
   updateCatalogItem: async (id: string, catId: CategoryId, item: CatalogItemUI) => {
-    const raw: any = await put(`/api/catalog/${id}`, fromCatalogItemUI(catId, item))
+    const raw = await put<RawCatalogItem>(`/api/catalog/${id}`, fromCatalogItemUI(catId, item))
     return toCatalogItemUI(raw)
   },
 
@@ -677,12 +887,12 @@ export const api = {
 
   // ── Clientes ────────────────────────────────────────────────
   getClients: async (): Promise<MasterClient[]> => {
-    const raw: any[] = await get('/api/clients')
+    const raw = await get<RawClient[]>('/api/clients')
     return raw.map(toMasterClient)
   },
 
   createClient: async (c: MasterClient): Promise<MasterClient> => {
-    const raw: any = await post('/api/clients', {
+    const raw = await post<RawClient>('/api/clients', {
       name: c.name,
       rut: c.rut || null,
       activity: c.activity || null,
@@ -705,7 +915,7 @@ export const api = {
     // Sincronizar la lista de contactos: actualizar los existentes, crear los
     // nuevos y borrar los que el usuario quitó del formulario.
     const desired = normalizeContacts(c.contacts)
-    const existing: any[] = await get(`/api/clients/${c.id}/contacts`)
+    const existing = await get<ClientContact[]>(`/api/clients/${c.id}/contacts`)
     const keepIds = new Set(desired.filter(ct => ct.id).map(ct => ct.id))
     for (const old of existing) {
       if (!keepIds.has(old.id)) await del(`/api/clients/${c.id}/contacts/${old.id}`)
@@ -715,7 +925,7 @@ export const api = {
       else await post(`/api/clients/${c.id}/contacts`, contactPayload(ct))
     }
     // Re-fetch para obtener el estado real guardado en el backend
-    const updated: any = await get(`/api/clients/${c.id}`)
+    const updated = await get<RawClient>(`/api/clients/${c.id}`)
     return toMasterClient(updated)
   },
 
@@ -723,7 +933,7 @@ export const api = {
 
   // ── Cotizaciones ────────────────────────────────────────────
   getQuotations: async (): Promise<MasterQuotation[]> => {
-    const raw: any[] = await getAllPages('/api/quotations')
+    const raw = await getAllPages<RawQuotation>('/api/quotations')
     // Backend SQL devuelve venta_neta plano; el backend JSON-dev devuelve totals.
     // Conservamos ambos formatos para que la columna NETO CLP no vuelva a $0.
     return raw.map(q =>
@@ -737,17 +947,17 @@ export const api = {
   },
 
   getQuotation: async (id: string): Promise<MasterQuotation> => {
-    const raw: any = await get(`/api/quotations/${id}`)
+    const raw = await get<RawQuotation>(`/api/quotations/${id}`)
     return toMasterQuotation(raw)
   },
 
   createQuotation: async (q: MasterQuotation): Promise<MasterQuotation> => {
-    const raw: any = await post('/api/quotations', fromMasterQuotation(q))
+    const raw = await post<RawQuotation>('/api/quotations', fromMasterQuotation(q))
     return toMasterQuotation(raw)
   },
 
   updateQuotation: async (q: MasterQuotation): Promise<MasterQuotation> => {
-    const raw: any = await put(`/api/quotations/${q.id}`, fromMasterQuotation(q))
+    const raw = await put<RawQuotation>(`/api/quotations/${q.id}`, fromMasterQuotation(q))
     return toMasterQuotation(raw)
   },
 
@@ -755,14 +965,17 @@ export const api = {
     patch(`/api/quotations/${id}/status`, { status, oper_state }),
 
   duplicateQuotation: async (id: string, correlative: string): Promise<MasterQuotation> => {
-    const raw: any = await post(`/api/quotations/${id}/duplicate`, { correlative })
+    const raw = await post<RawQuotation>(`/api/quotations/${id}/duplicate`, { correlative })
     return toMasterQuotation(raw)
   },
 
   deleteQuotation: (id: string) => del(`/api/quotations/${id}`),
 
   importQuotation: async (payload: unknown): Promise<ImportQuotationResult> => {
-    const raw: any = await post('/api/quotations/import', payload)
+    const raw = await post<{ quotation: RawQuotation; reporte_importacion: ImportQuotationReport }>(
+      '/api/quotations/import',
+      payload
+    )
     return {
       quotation: toMasterQuotation(raw.quotation),
       reporte_importacion: raw.reporte_importacion,
@@ -776,39 +989,45 @@ export const api = {
     recentTurns: ChatRecentTurn[] = [],
     agentMode?: boolean
   ): Promise<ChatMessageResponse> => {
-    const raw: any = await post('/api/chatbot', {
-      instruction,
-      quotation_id: quotationId ?? null,
-      recent_turns: recentTurns,
-      ...(agentMode != null ? { agent_mode: agentMode } : {}),
-    })
+    const raw = await post<Omit<ChatMessageResponse, 'quotation'> & { quotation?: RawQuotation }>(
+      '/api/chatbot',
+      {
+        instruction,
+        quotation_id: quotationId ?? null,
+        recent_turns: recentTurns,
+        ...(agentMode != null ? { agent_mode: agentMode } : {}),
+      }
+    )
     return { ...raw, quotation: raw.quotation ? toMasterQuotation(raw.quotation) : undefined }
   },
 
   getChatbotRules: (): Promise<{ rules: ChatbotRule[] }> => get('/api/chatbot/rules'),
 
   // ── Proyectos ───────────────────────────────────────────────
-  getProjects: () => get<any[]>('/api/projects'),
-  getProject: (id: string) => get<any>(`/api/projects/${id}`),
-  createProject: (data: any) => post<any>('/api/projects', data),
-  updateProject: (id: string, data: any) => put<any>(`/api/projects/${id}`, data),
-  deleteProject: (id: string) => del<any>(`/api/projects/${id}`),
-  addProjectCost: (projectId: string, cost: any) =>
-    post<any>(`/api/projects/${projectId}/costs`, cost),
-  updateProjectCost: (projectId: string, costId: string, cost: any) =>
-    put<any>(`/api/projects/${projectId}/costs/${costId}`, cost),
+  getProjects: () => get<ProjectItemResponse[]>('/api/projects'),
+  getProject: (id: string) => get<ProjectItemResponse>(`/api/projects/${id}`),
+  createProject: (data: Partial<ProjectItemResponse>) =>
+    post<ProjectItemResponse>('/api/projects', data),
+  updateProject: (id: string, data: Partial<ProjectItemResponse>) =>
+    put<ProjectItemResponse>(`/api/projects/${id}`, data),
+  deleteProject: (id: string) => del<{ ok: boolean }>(`/api/projects/${id}`),
+  addProjectCost: (projectId: string, cost: ProjectCostPayload) =>
+    post<ExecutionCost>(`/api/projects/${projectId}/costs`, cost),
+  updateProjectCost: (projectId: string, costId: string, cost: Partial<ProjectCostPayload>) =>
+    put<ExecutionCost>(`/api/projects/${projectId}/costs/${costId}`, cost),
   deleteProjectCost: (projectId: string, costId: string) =>
-    del<any>(`/api/projects/${projectId}/costs/${costId}`),
+    del<{ ok: boolean }>(`/api/projects/${projectId}/costs/${costId}`),
   assignUser: (projectId: string, userId: string) =>
-    post<any>(`/api/projects/${projectId}/assignments`, { user_id: userId }),
+    post<ProjectAssignmentItem>(`/api/projects/${projectId}/assignments`, { user_id: userId }),
   removeAssignment: (projectId: string, userId: string) =>
-    del<any>(`/api/projects/${projectId}/assignments/${userId}`),
-  getTasks: (projectId: string) => get<any[]>(`/api/projects/${projectId}/tasks`),
-  createTask: (projectId: string, data: any) => post<any>(`/api/projects/${projectId}/tasks`, data),
-  updateTask: (projectId: string, taskId: string, data: any) =>
-    put<any>(`/api/projects/${projectId}/tasks/${taskId}`, data),
+    del<{ ok: boolean }>(`/api/projects/${projectId}/assignments/${userId}`),
+  getTasks: (projectId: string) => get<ProjectTask[]>(`/api/projects/${projectId}/tasks`),
+  createTask: (projectId: string, data: ProjectTaskPayload) =>
+    post<ProjectTask>(`/api/projects/${projectId}/tasks`, data),
+  updateTask: (projectId: string, taskId: string, data: Partial<ProjectTaskPayload>) =>
+    put<ProjectTask>(`/api/projects/${projectId}/tasks/${taskId}`, data),
   deleteTask: (projectId: string, taskId: string) =>
-    del<any>(`/api/projects/${projectId}/tasks/${taskId}`),
+    del<{ ok: boolean }>(`/api/projects/${projectId}/tasks/${taskId}`),
 
   // ── Facturas ────────────────────────────────────────────────
   // El saldo y el estado de cobranza vienen calculados desde
@@ -985,7 +1204,8 @@ export const api = {
   deleteActivity: (activityId: string) => del<{ ok: boolean }>(`/api/activities/${activityId}`),
 
   // ── Version diff ─────────────────────────────────────────────────────────────
-  getVersionDiff: (id: string) => get<{ versions: any[] }>(`/api/quotations/${id}/version-diff`),
+  getVersionDiff: (id: string) =>
+    get<{ versions: Record<string, unknown>[] }>(`/api/quotations/${id}/version-diff`),
 
   // ── Aprobación ────────────────────────────────────────────────────────────────
   approveQuotation: (id: string, approval_notes?: string | null) =>

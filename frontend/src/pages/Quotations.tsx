@@ -21,6 +21,7 @@ import { primaryContact, quotationContact } from '../utils/contacts'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { usePermissions } from '../hooks/usePermissions'
 import { ApiError, api } from '../api/api'
+import { getErrorMessage } from '../utils/apiError'
 // docx/html2canvas/jsPDF son pesados y solo hacen falta al exportar: se cargan
 // bajo demanda en cada handler (fase F7), no junto con el resto de la pantalla.
 import { buildQuotationValuationRows } from '../utils/quotationRows'
@@ -762,7 +763,7 @@ function QuotationsList({
       await duplicateQuote(id)
       onEdit()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'No se pudo duplicar la cotización', 'error')
+      showToast(getErrorMessage(err, 'No se pudo duplicar la cotización'), 'error')
     }
   }
 
@@ -771,7 +772,7 @@ function QuotationsList({
       await createVersion(id)
       onEdit()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'No se pudo crear la nueva versión', 'error')
+      showToast(getErrorMessage(err, 'No se pudo crear la nueva versión'), 'error')
     }
   }
 
@@ -813,7 +814,7 @@ function QuotationsList({
       setImportResult(result)
       setImportPreview(null)
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'No se pudo importar la cotizacion')
+      setImportError(getErrorMessage(err, 'No se pudo importar la cotizacion'))
     } finally {
       setImporting(false)
     }

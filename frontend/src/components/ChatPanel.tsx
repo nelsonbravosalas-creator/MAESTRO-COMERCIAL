@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { useChatStore, sendChatMessage, toggleChat, clearChat } from '../stores/chatStore'
+import {
+  useChatStore,
+  sendChatMessage,
+  toggleChat,
+  clearChat,
+  toggleAgentMode,
+} from '../stores/chatStore'
 import { useActiveQuotation } from '../stores/maestro-store'
 import '../styles/ChatPanel.css'
 
@@ -25,6 +31,7 @@ export function ChatPanel() {
   const isOpen = useChatStore(s => s.isOpen)
   const isSending = useChatStore(s => s.isSending)
   const messages = useChatStore(s => s.messages)
+  const agentMode = useChatStore(s => s.agentMode)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -65,7 +72,22 @@ export function ChatPanel() {
     <aside className="chat-panel" role="dialog" aria-label="Asistente de cotizaciones">
       <div className="chat-panel-header">
         <div>
-          <h2>Asistente de cotizaciones</h2>
+          <div className="chat-panel-title-row">
+            <h2>Asistente</h2>
+            <button
+              type="button"
+              className={`chat-agent-toggle ${agentMode ? 'is-active' : ''}`}
+              onClick={() => toggleAgentMode()}
+              title={
+                agentMode
+                  ? 'Modo Agente activo: razonamiento autónomo multi-paso con acceso a catálogos e historial'
+                  : 'Modo Clásico activo: clic para activar el Agente ReAct'
+              }
+              aria-label="Alternar modo agente"
+            >
+              {agentMode ? '⚡ Agente' : '💬 Clásico'}
+            </button>
+          </div>
           {activeQuotationId && (
             <p className="chat-panel-context">Sobre: {activeQuotation?.correlative}</p>
           )}
@@ -95,9 +117,9 @@ export function ChatPanel() {
       <div className="chat-panel-messages" role="log" aria-live="polite" ref={listRef}>
         {messages.length === 0 && (
           <p className="chat-panel-hint">
-            Pídeme crear una cotización (“5 días, 8 técnicos en Rancagua para Climatemp”), enséñame
-            una tarifa (“la colación es $7000 por día por persona”) o pregúntame el precio de un
-            material.
+            {agentMode
+              ? '⚡ Modo Agente activo: puedo razonar en múltiples pasos, consultar el catálogo técnico, revisar el historial de compras del cliente y estructurar cotizaciones.'
+              : 'Pídeme crear una cotización (“5 días, 8 técnicos en Rancagua para Climatemp”), enséñame una tarifa (“la colación es $7000 por día por persona”) o pregúntame el precio de un material.'}
           </p>
         )}
         {messages.map(m => (

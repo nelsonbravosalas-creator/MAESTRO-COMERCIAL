@@ -9,6 +9,7 @@ import {
   modificarCotizacionTool,
   verCotizacionTool,
 } from './tools/quotationTool'
+import { consultarHistorialClienteTool } from './tools/historyTool'
 
 export class ToolRegistry {
   private tools = new Map<string, AgentTool>()
@@ -22,6 +23,7 @@ export class ToolRegistry {
     this.register(crearCotizacionTool)
     this.register(modificarCotizacionTool)
     this.register(verCotizacionTool)
+    this.register(consultarHistorialClienteTool)
   }
 
   register(tool: AgentTool): void {

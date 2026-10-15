@@ -53,10 +53,13 @@ Thumbs.db
 *.swo
 
 .vercel
-.claude/worktrees/
+.claude/
 .env*
 !**/.env.example
 
 # Base de datos local del servidor dev en modo JSON (server-dev.ts).
 # Nunca debe versionarse: puede contener hashes de credenciales reales.
 backend/db.json
+
+# Cache de AST y semántica de Graphify
+graphify-out/cache/

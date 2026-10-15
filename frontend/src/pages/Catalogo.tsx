@@ -3,6 +3,7 @@ import '../styles/Catalogo.css'
 import { useMaestro, fmtCLP, CatalogSaveError } from '../stores/maestro-store'
 import { CategoryId, CatalogItemUI } from '../types'
 import { showToast } from '../stores/uiStore'
+import { getErrorMessage } from '../utils/apiError'
 
 // ── Metadata de categorías ────────────────────────────────────────────────────
 
@@ -301,7 +302,7 @@ export const Catalogo: React.FC = () => {
       await saveCatalogs()
       setToast('success')
     } catch (err) {
-      setToastMsg(err instanceof Error ? err.message : '')
+      setToastMsg(getErrorMessage(err, 'No se pudo guardar el catálogo'))
       setToast('error')
       if (err instanceof CatalogSaveError) {
         if (activeTab !== 'all' && activeTab !== err.catId) setActiveTab(err.catId)

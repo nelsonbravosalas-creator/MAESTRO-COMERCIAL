@@ -30,18 +30,46 @@ interface ChatState {
   isOpen: boolean
   isSending: boolean
   messages: ChatMessage[]
+  agentMode: boolean
 }
 
-export const useChatStore = create<ChatState>()(() => ({
-  isOpen: false,
-  isSending: false,
-  messages: [],
-}))
+export const useChatStore = create<ChatState>()(() => {
+  let initialAgentMode = false
+  try {
+    const saved =
+      typeof localStorage !== 'undefined' ? localStorage.getItem('chat_agent_mode') : null
+    if (saved !== null) {
+      initialAgentMode = saved === 'true'
+    }
+  } catch {
+    // ignorar entornos sin localStorage
+  }
+  return {
+    isOpen: false,
+    isSending: false,
+    messages: [],
+    agentMode: initialAgentMode,
+  }
+})
 
 let nextMessageId = 0
 
 export function toggleChat(force?: boolean) {
   useChatStore.setState(s => ({ isOpen: force ?? !s.isOpen }))
+}
+
+export function toggleAgentMode(force?: boolean) {
+  useChatStore.setState(s => {
+    const next = force ?? !s.agentMode
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('chat_agent_mode', String(next))
+      }
+    } catch {
+      // ignorar
+    }
+    return { agentMode: next }
+  })
 }
 
 /** Manda la instrucción al asistente y agrega la respuesta (o el error) al historial. */
@@ -54,11 +82,13 @@ export async function sendChatMessage(instruction: string, quotationId?: string 
   // YA es el `reply` corto armado por el backend, nunca `.data` (el payload
   // estructurado completo con la cotizacion/regla/muestras) -- asi no se
   // paga tokens dos veces por un dato que ya vive en la base/el grafo.
-  const recentTurns: ChatRecentTurn[] = useChatStore
-    .getState()
-    .messages.filter((m): m is ChatMessage & { role: 'user' | 'bot' } => m.role !== 'error')
+  const state = useChatStore.getState()
+  const recentTurns: ChatRecentTurn[] = state.messages
+    .filter((m): m is ChatMessage & { role: 'user' | 'bot' } => m.role !== 'error')
     .slice(-RECENT_TURNS_LIMIT)
     .map(m => ({ role: m.role, text: m.text.slice(0, RECENT_TURN_TEXT_LIMIT) }))
+
+  const currentAgentMode = state.agentMode
 
   useChatStore.setState(s => ({
     isSending: true,
@@ -66,7 +96,7 @@ export async function sendChatMessage(instruction: string, quotationId?: string 
   }))
 
   try {
-    const data = await api.sendChatMessage(text, quotationId, recentTurns)
+    const data = await api.sendChatMessage(text, quotationId, recentTurns, currentAgentMode)
     useChatStore.setState(s => ({
       isSending: false,
       messages: [...s.messages, { id: ++nextMessageId, role: 'bot', text: data.reply, data }],

@@ -5,6 +5,7 @@ import { buscarCatalogoTool } from '../tools/catalogTool'
 import { consultarReglaTool, ensenarReglaTool } from '../tools/rulesTool'
 import { calcularItemsAutoTool } from '../tools/calcTool'
 import { verCotizacionTool, crearCotizacionTool } from '../tools/quotationTool'
+import { consultarHistorialClienteTool } from '../tools/historyTool'
 import { runAgentLoop, MAX_STEPS } from '../loop'
 import { AgentContext } from '../types'
 
@@ -168,6 +169,45 @@ function createMockPool() {
         .replace(/%/g, '')
         .toLowerCase()
       return { rows: clients.filter(c => c.name.toLowerCase().includes(needle)) }
+    }
+    if (s.includes('COUNT(*)::text AS total') && s.includes('FROM quotations')) {
+      return {
+        rows: [
+          {
+            total: '3',
+            adjudicadas: '2',
+            perdidas: '1',
+            enviadas: '0',
+            borradores: '0',
+          },
+        ],
+      }
+    }
+    if (s.includes('SELECT correlative, date::text') && s.includes('FROM quotations')) {
+      return {
+        rows: [
+          {
+            correlative: 'SYM-100-01-2026',
+            date: '2026-01-01',
+            status: 'Adjudicada',
+            subject: 'Mantencion',
+            kind: 'project',
+          },
+        ],
+      }
+    }
+    if (s.includes('FROM chatbot_graph_edges') && s.includes("relation = 'cotiza_en'")) {
+      return {
+        rows: [
+          {
+            target_id: 'comuna:las-condes',
+            metadata: {
+              dotacion_counts: { '2': 3 },
+              dias_counts: { '1': 3 },
+            },
+          },
+        ],
+      }
     }
     if (s.startsWith('SELECT q.*')) {
       const q = quotations.find(item => item.id === params[0])
@@ -402,5 +442,63 @@ describe('runAgentLoop (Bucle de ejecucion del agente)', () => {
     expect(result.status).toBe('budget_exhausted')
     expect(result.steps.length).toBe(MAX_STEPS)
     expect(state.runs[0].status).toBe('budget_exhausted')
+  })
+
+  describe('consultarHistorialClienteTool', () => {
+    it('obtiene metricas de cotizaciones, win rate y patrones de dotacion sin exponer PII', async () => {
+      const { pool } = createMockPool()
+      const ctx: AgentContext = {
+        pool,
+        userId: 'u1',
+        instruction: 'consultar historial',
+        recentTurns: [],
+        graphContext: '',
+        runId: 'run-test-history',
+        model: 'gemini-3.6-flash',
+      }
+
+      const res = await consultarHistorialClienteTool.execute(
+        { cliente_nombre_o_rut: 'Climatemp' },
+        ctx
+      )
+
+      expect(res.output.encontrado).toBe(true)
+      const data = res.output as any
+      expect(data.cliente.nombre).toBe('Climatemp SpA')
+      expect(data.metricas_comerciales.total_cotizaciones).toBe(3)
+      expect(data.metricas_comerciales.adjudicadas).toBe(2)
+      expect(data.metricas_comerciales.tasa_adjudicacion_pct).toBe(67)
+      expect(data.patrones_operacionales).toHaveLength(1)
+      expect(data.patrones_operacionales[0].comuna).toBe('las condes')
+      expect(data.patrones_operacionales[0].dotacion_habitual).toBe(2)
+      expect(data.patrones_operacionales[0].dias_habituales).toBe(1)
+
+      // Verificacion estricta de PII (Directriz A-21)
+      expect(data.cliente.email).toBeUndefined()
+      expect(data.cliente.phone).toBeUndefined()
+      expect(data.cliente.address).toBeUndefined()
+      expect(res.summary).toContain('Historial de Climatemp SpA')
+    })
+
+    it('retorna encontrado=false cuando el cliente no existe', async () => {
+      const { pool } = createMockPool()
+      const ctx: AgentContext = {
+        pool,
+        userId: 'u1',
+        instruction: 'consultar historial',
+        recentTurns: [],
+        graphContext: '',
+        runId: 'run-test-history-404',
+        model: 'gemini-3.6-flash',
+      }
+
+      const res = await consultarHistorialClienteTool.execute(
+        { cliente_nombre_o_rut: 'Cliente Inexistente XYZ' },
+        ctx
+      )
+
+      expect(res.output.encontrado).toBe(false)
+      expect(res.summary).toContain('no encontrado')
+    })
   })
 })

@@ -3,6 +3,7 @@ import '../styles/Clients.css'
 import { useMaestro } from '../stores/maestro-store'
 import { usePermissions } from '../hooks/usePermissions'
 import { MasterClient, MasterContact } from '../types'
+import { getErrorMessage } from '../utils/apiError'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ function ClientForm({ initial, onSave, onClose }: ClientFormProps) {
     } catch (err) {
       // No cerramos el modal: si el backend rechazó el guardado (p.ej. RUT
       // duplicado), el usuario necesita ver por qué para poder corregirlo.
-      setSubmitError(err instanceof Error ? err.message : 'No se pudo guardar el cliente')
+      setSubmitError(getErrorMessage(err, 'No se pudo guardar el cliente'))
     } finally {
       setSaving(false)
     }
@@ -343,7 +344,7 @@ export const Clients: React.FC = () => {
       await deleteClient(id)
       setConfirmDel(null)
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'No se pudo eliminar el cliente')
+      setDeleteError(getErrorMessage(err, 'No se pudo eliminar el cliente'))
     } finally {
       setDeleting(false)
     }

@@ -285,6 +285,85 @@ describe('OmniRoute delegation & fallback', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0][0]).toBe('http://127.0.0.1:20128/v1/chat/completions')
   })
+
+  it('usa LOCAL_LLM_URL (OpenJarvis/Ollama) con prioridad sobre la nube en estrategia hybrid', async () => {
+    vi.resetModules()
+    vi.doMock('../../config/env', () => ({
+      env: {
+        GEMINI_API_KEY: 'test-gemini-key',
+        LOCAL_LLM_URL: 'http://localhost:11434/v1',
+        LOCAL_LLM_MODEL: 'qwen2.5:7b',
+        LLM_ROUTING_STRATEGY: 'hybrid',
+      },
+    }))
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { role: 'assistant', content: 'Respuesta desde Ollama local' } }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { callLlm: localCall } = await import('../llm')
+    const res = await localCall([{ role: 'user', content: 'Precio cobre' }], {
+      model: 'gemini-3.6-flash',
+    })
+
+    expect(res).toBe('Respuesta desde Ollama local')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:11434/v1/chat/completions')
+  })
+
+  it('rechaza con 503 si LLM_ROUTING_STRATEGY=local_only y el motor local falla (sin fallback a nube)', async () => {
+    vi.resetModules()
+    vi.doMock('../../config/env', () => ({
+      env: {
+        GEMINI_API_KEY: 'test-gemini-key',
+        LOCAL_LLM_URL: 'http://localhost:11434/v1',
+        LLM_ROUTING_STRATEGY: 'local_only',
+      },
+    }))
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => 'Ollama crashed',
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { callLlm: localCall } = await import('../llm')
+    await expect(
+      localCall([{ role: 'user', content: 'Test' }], { model: 'gemini-3.6-flash' })
+    ).rejects.toMatchObject({
+      status: 503,
+      message: expect.stringContaining('LLM_ROUTING_STRATEGY=local_only'),
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('salta el motor local si LLM_ROUTING_STRATEGY=cloud_only', async () => {
+    vi.resetModules()
+    vi.doMock('../../config/env', () => ({
+      env: {
+        GEMINI_API_KEY: 'test-gemini-key',
+        LOCAL_LLM_URL: 'http://localhost:11434/v1',
+        LLM_ROUTING_STRATEGY: 'cloud_only',
+      },
+    }))
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: 'Directo de Gemini Cloud' }] } }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { callLlm: cloudCall } = await import('../llm')
+    const res = await cloudCall([{ role: 'user', content: 'Test' }], { model: 'gemini-3.6-flash' })
+
+    expect(res).toBe('Directo de Gemini Cloud')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toContain('googleapis.com')
+  })
 })
 
 describe('parseLlmJson', () => {

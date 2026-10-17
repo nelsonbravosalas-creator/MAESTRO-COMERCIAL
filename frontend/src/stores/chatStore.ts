@@ -120,3 +120,43 @@ export async function sendChatMessage(instruction: string, quotationId?: string 
 export function clearChat() {
   useChatStore.setState({ messages: [] })
 }
+
+/** Carga de forma proactiva el briefing comercial matutino (OpenJarvis scheduled ops). */
+export async function loadCommercialBriefing() {
+  const state = useChatStore.getState()
+  if (state.isSending) return
+
+  useChatStore.setState(s => ({
+    isSending: true,
+    messages: [
+      ...s.messages,
+      { id: ++nextMessageId, role: 'user', text: '☀️ Resumen comercial matutino' },
+    ],
+  }))
+
+  try {
+    const briefing = await api.getCommercialBriefing()
+    let reply = briefing.executiveSummary
+    if (briefing.alerts.length > 0) {
+      reply +=
+        '\n\n' +
+        briefing.alerts
+          .map(a => {
+            const icon = a.severity === 'high' ? '🔴' : '🟡'
+            return `${icon} **${a.title}**: ${a.detail}`
+          })
+          .join('\n')
+    }
+
+    useChatStore.setState(s => ({
+      isSending: false,
+      messages: [...s.messages, { id: ++nextMessageId, role: 'bot', text: reply }],
+    }))
+  } catch (error) {
+    const message = error instanceof ApiError ? error.message : 'No se pudo contactar al asistente.'
+    useChatStore.setState(s => ({
+      isSending: false,
+      messages: [...s.messages, { id: ++nextMessageId, role: 'error', text: message }],
+    }))
+  }
+}

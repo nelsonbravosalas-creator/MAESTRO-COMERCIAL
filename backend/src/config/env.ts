@@ -46,6 +46,14 @@ export const envSchema = z.object({
     .transform(v => (v?.trim() ? v.trim() : undefined)),
   OMNIROUTE_API_KEY: z.string().optional(),
   OMNIROUTE_MODEL: z.string().default('gemini/gemini-3.6-flash'),
+  // Local-First LLM (OpenJarvis / Ollama / vLLM runtime compatible con OpenAI /chat/completions).
+  // Permite resolver consultas rutinarias a costo $0 con aislamiento total de PII (Directriz A-21).
+  LOCAL_LLM_URL: z
+    .string()
+    .optional()
+    .transform(v => (v?.trim() ? v.trim() : undefined)),
+  LOCAL_LLM_MODEL: z.string().default('qwen2.5:7b'),
+  LLM_ROUTING_STRATEGY: z.enum(['hybrid', 'cloud_only', 'local_only']).default('hybrid'),
 })
 
 export type Env = z.infer<typeof envSchema>

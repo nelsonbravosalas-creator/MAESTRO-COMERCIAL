@@ -18,6 +18,7 @@ import { listCurrentRules, teachRule } from '../services/chatbotRules'
 import { buildAutoLineItems, buildManualLineItems } from '../services/chatbotCalc'
 import { applyQuotationImport, applyQuotationUpdate, fullQuotation } from './quotations'
 import { asHttpError } from '../utils/httpError'
+import { generateMorningBriefing } from '../services/scheduledOps'
 import {
   recordGraphFacts,
   findMentionedGraphEntities,
@@ -297,6 +298,16 @@ export const createChatbotRouter = (pool: Pool) => {
     } catch (error) {
       logger.error('Chatbot: error al listar reglas', { error: errorMessage(error) })
       return res.status(500).json({ error: 'Failed to fetch chatbot rules' })
+    }
+  })
+
+  router.get('/briefing', async (_req: AuthRequest, res) => {
+    try {
+      const briefing = await generateMorningBriefing(pool)
+      return res.json(briefing)
+    } catch (error) {
+      logger.error('Chatbot: error al generar morning briefing', { error: errorMessage(error) })
+      return res.status(500).json({ error: 'Failed to generate commercial briefing' })
     }
   })
 

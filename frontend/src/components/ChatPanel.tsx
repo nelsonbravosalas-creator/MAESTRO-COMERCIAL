@@ -5,6 +5,7 @@ import {
   toggleChat,
   clearChat,
   toggleAgentMode,
+  loadCommercialBriefing,
 } from '../stores/chatStore'
 import { useActiveQuotation } from '../stores/maestro-store'
 import '../styles/ChatPanel.css'
@@ -96,6 +97,16 @@ export function ChatPanel() {
           <button
             type="button"
             className="btn-icon"
+            onClick={loadCommercialBriefing}
+            disabled={isSending}
+            aria-label="Cargar resumen comercial matutino"
+            title="☀️ Briefing comercial del día"
+          >
+            ☀️
+          </button>
+          <button
+            type="button"
+            className="btn-icon"
             onClick={clearChat}
             disabled={messages.length === 0}
             aria-label="Limpiar conversación"
@@ -116,11 +127,21 @@ export function ChatPanel() {
 
       <div className="chat-panel-messages" role="log" aria-live="polite" ref={listRef}>
         {messages.length === 0 && (
-          <p className="chat-panel-hint">
-            {agentMode
-              ? '⚡ Modo Agente activo: puedo razonar en múltiples pasos, consultar el catálogo técnico, revisar el historial de compras del cliente y estructurar cotizaciones.'
-              : 'Pídeme crear una cotización (“5 días, 8 técnicos en Rancagua para Climatemp”), enséñame una tarifa (“la colación es $7000 por día por persona”) o pregúntame el precio de un material.'}
-          </p>
+          <div className="chat-panel-empty-state">
+            <p className="chat-panel-hint">
+              {agentMode
+                ? '⚡ Modo Agente activo: puedo razonar en múltiples pasos, consultar el catálogo técnico, revisar el historial de compras del cliente y estructurar cotizaciones.'
+                : 'Pídeme crear una cotización (“5 días, 8 técnicos en Rancagua para Climatemp”), enséñame una tarifa (“la colación es $7000 por día por persona”) o pregúntame el precio de un material.'}
+            </p>
+            <button
+              type="button"
+              className="chat-briefing-btn"
+              onClick={loadCommercialBriefing}
+              disabled={isSending}
+            >
+              ☀️ Ver briefing comercial del día
+            </button>
+          </div>
         )}
         {messages.map(m => (
           <div key={m.id} className={`chat-msg chat-msg--${m.role}`}>

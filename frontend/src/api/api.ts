@@ -690,6 +690,42 @@ export interface ChatRecentTurn {
   text: string
 }
 
+export interface CommercialBriefingAlert {
+  type: 'expiring_quotation' | 'pending_oc' | 'pending_invoice'
+  severity: 'low' | 'medium' | 'high'
+  title: string
+  detail: string
+  quotationId?: string
+  correlative?: string
+}
+
+export interface CommercialBriefingResponse {
+  date: string
+  totalAlerts: number
+  expiringQuotations: Array<{
+    id: string
+    correlative: string
+    clientName: string
+    validUntil: string
+    totalClp: number
+    daysRemaining: number
+  }>
+  awardedMissingOc: Array<{
+    id: string
+    correlative: string
+    clientName: string
+    totalClp: number
+  }>
+  pendingBilling: Array<{
+    id: string
+    correlative: string
+    clientName: string
+    remainingBalanceClp: number
+  }>
+  alerts: CommercialBriefingAlert[]
+  executiveSummary: string
+}
+
 // ── Facturas ──────────────────────────────────────────────────
 // Espejo del payment_state calculado por v_invoice_balance (ver
 // backend/src/api/invoices.ts).
@@ -1002,6 +1038,7 @@ export const api = {
   },
 
   getChatbotRules: (): Promise<{ rules: ChatbotRule[] }> => get('/api/chatbot/rules'),
+  getCommercialBriefing: (): Promise<CommercialBriefingResponse> => get('/api/chatbot/briefing'),
 
   // ── Proyectos ───────────────────────────────────────────────
   getProjects: () => get<ProjectItemResponse[]>('/api/projects'),

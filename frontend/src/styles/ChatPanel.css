@@ -107,6 +107,38 @@
   line-height: 1.5;
 }
 
+.chat-panel-empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-briefing-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.chat-briefing-btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.chat-briefing-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .chat-msg {
   max-width: 88%;
   padding: 9px 12px;

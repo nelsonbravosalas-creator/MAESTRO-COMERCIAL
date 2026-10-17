@@ -129,15 +129,14 @@ interface OmniRouteResponse {
   }
 }
 
-async function postOmniRoute(
+async function postOpenAiCompatible(
+  url: string,
+  apiKey: string | undefined,
   body: Record<string, unknown>,
   timeoutMs: number = DEFAULT_TIMEOUT_MS
 ): Promise<OmniRouteResponse> {
-  if (!env.OMNIROUTE_URL) {
-    throw new Error('OMNIROUTE_URL no configurada')
-  }
-  const baseUrl = env.OMNIROUTE_URL.replace(/\/+$/, '')
-  const endpoint = `${baseUrl}/chat/completions`
+  const baseUrl = url.replace(/\/+$/, '')
+  const endpoint = baseUrl.endsWith('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -145,8 +144,8 @@ async function postOmniRoute(
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
-    if (env.OMNIROUTE_API_KEY) {
-      headers.Authorization = `Bearer ${env.OMNIROUTE_API_KEY}`
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`
     }
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -156,7 +155,7 @@ async function postOmniRoute(
     })
     if (!res.ok) {
       const errBody = await res.text().catch(() => '')
-      throw new Error(`OmniRoute error status ${res.status}: ${errBody.slice(0, 200)}`)
+      throw new Error(`OpenAI-compatible LLM error status ${res.status}: ${errBody.slice(0, 200)}`)
     }
     return (await res.json()) as OmniRouteResponse
   } finally {
@@ -164,21 +163,45 @@ async function postOmniRoute(
   }
 }
 
-// Wrapper deliberadamente delgado sobre la API de Gemini via fetch nativo de
-// Node -- sin SDK nuevo. Si OMNIROUTE_URL está configurada, delega primero a
-// OmniRoute (http://127.0.0.1:20128/v1) para absorber el trabajo pesado con
-// modelos locales/avanzados y degrada automáticamente a Gemini directo si falla.
-export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Promise<string> {
+export function getLocalLlmConfig() {
+  if (env.LOCAL_LLM_URL) {
+    return {
+      url: env.LOCAL_LLM_URL,
+      model: env.LOCAL_LLM_MODEL,
+      apiKey: undefined,
+      provider: 'Local-First LLM',
+    }
+  }
   if (env.OMNIROUTE_URL) {
+    return {
+      url: env.OMNIROUTE_URL,
+      model: env.OMNIROUTE_MODEL,
+      apiKey: env.OMNIROUTE_API_KEY,
+      provider: 'OmniRoute',
+    }
+  }
+  return null
+}
+
+// Wrapper deliberadamente híbrido: Local-First (OpenJarvis / Ollama / OmniRoute)
+// para absorber el trabajo cotidiano con $0 costo y privacidad A-21, con
+// degradación transparente a Gemini Cloud directo cuando es necesario.
+export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Promise<string> {
+  const localConfig = getLocalLlmConfig()
+  const strategy = env.LLM_ROUTING_STRATEGY
+
+  if (strategy !== 'cloud_only' && localConfig) {
     try {
-      const omniMessages = messages.map(m => ({
+      const openAiMessages = messages.map(m => ({
         role: m.role,
         content: m.content,
       }))
-      const data = await postOmniRoute(
+      const data = await postOpenAiCompatible(
+        localConfig.url,
+        localConfig.apiKey,
         {
-          model: env.OMNIROUTE_MODEL || opts.model,
-          messages: omniMessages,
+          model: localConfig.model || opts.model,
+          messages: openAiMessages,
           temperature: opts.temperature ?? 0.2,
           ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
         },
@@ -188,10 +211,25 @@ export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Pro
       if (typeof content === 'string' && content.trim()) {
         return content
       }
-    } catch (omniErr) {
-      const msg = omniErr instanceof Error ? omniErr.message : String(omniErr)
-      logger.warn('OmniRoute falló en callLlm; degradando a Gemini directo', { error: msg })
+    } catch (localErr) {
+      const msg = localErr instanceof Error ? localErr.message : String(localErr)
+      logger.warn(`${localConfig.provider} falló en callLlm; degradando a Gemini directo`, {
+        error: msg,
+      })
+      if (strategy === 'local_only') {
+        throw httpError(
+          `Local LLM falló y el fallback está deshabilitado por LLM_ROUTING_STRATEGY=local_only: ${msg}`,
+          503
+        )
+      }
     }
+  }
+
+  if (strategy === 'local_only') {
+    throw httpError(
+      'LLM_ROUTING_STRATEGY=local_only pero no hay ningún proveedor local configurado',
+      503
+    )
   }
 
   // Gemini separa la instruccion de sistema de los `contents` (no hay un rol
@@ -278,7 +316,10 @@ export async function callLlmWithTools(
   contents: GeminiContent[],
   opts: CallLlmWithToolsOptions
 ): Promise<LlmToolTurn> {
-  if (env.OMNIROUTE_URL) {
+  const localConfig = getLocalLlmConfig()
+  const strategy = env.LLM_ROUTING_STRATEGY
+
+  if (strategy !== 'cloud_only' && localConfig) {
     try {
       const openAiMessages: Array<Record<string, unknown>> = []
       if (opts.systemInstruction) {
@@ -339,9 +380,11 @@ export async function callLlmWithTools(
             }))
           : undefined
 
-      const data = await postOmniRoute(
+      const data = await postOpenAiCompatible(
+        localConfig.url,
+        localConfig.apiKey,
         {
-          model: env.OMNIROUTE_MODEL || opts.model,
+          model: localConfig.model || opts.model,
           messages: openAiMessages,
           ...(openAiTools ? { tools: openAiTools } : {}),
           temperature: opts.temperature ?? 0.2,
@@ -387,10 +430,25 @@ export async function callLlmWithTools(
           },
         }
       }
-    } catch (omniErr) {
-      const msg = omniErr instanceof Error ? omniErr.message : String(omniErr)
-      logger.warn('OmniRoute with tools falló; degradando a Gemini directo', { error: msg })
+    } catch (localErr) {
+      const msg = localErr instanceof Error ? localErr.message : String(localErr)
+      logger.warn(`${localConfig.provider} with tools falló; degradando a Gemini directo`, {
+        error: msg,
+      })
+      if (strategy === 'local_only') {
+        throw httpError(
+          `Local LLM with tools falló y el fallback está deshabilitado por LLM_ROUTING_STRATEGY=local_only: ${msg}`,
+          503
+        )
+      }
     }
+  }
+
+  if (strategy === 'local_only') {
+    throw httpError(
+      'LLM_ROUTING_STRATEGY=local_only pero no hay ningún proveedor local configurado',
+      503
+    )
   }
 
   const data = await postGemini(

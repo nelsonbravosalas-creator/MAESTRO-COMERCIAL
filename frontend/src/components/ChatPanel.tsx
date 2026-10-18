@@ -130,17 +130,62 @@ export function ChatPanel() {
           <div className="chat-panel-empty-state">
             <p className="chat-panel-hint">
               {agentMode
-                ? '⚡ Modo Agente activo: puedo razonar en múltiples pasos, consultar el catálogo técnico, revisar el historial de compras del cliente y estructurar cotizaciones.'
-                : 'Pídeme crear una cotización (“5 días, 8 técnicos en Rancagua para Climatemp”), enséñame una tarifa (“la colación es $7000 por día por persona”) o pregúntame el precio de un material.'}
+                ? '⚡ Modo Agente activo: puedo razonar en múltiples pasos, procesar correos de clientes, cubicar especificaciones técnicas HVAC, analizar Win/Loss y redactar seguimientos.'
+                : 'Pídeme crear una cotización (“5 días, 8 técnicos en Rancagua para Climatemp”), enséñame una tarifa (“la colación es $7000 por día por persona”) o usa una habilidad del agente:'}
             </p>
-            <button
-              type="button"
-              className="chat-briefing-btn"
-              onClick={loadCommercialBriefing}
-              disabled={isSending}
-            >
-              ☀️ Ver briefing comercial del día
-            </button>
+            <div className="chat-quick-actions">
+              <button
+                type="button"
+                className="chat-briefing-btn"
+                onClick={loadCommercialBriefing}
+                disabled={isSending}
+              >
+                ☀️ Briefing del día
+              </button>
+              <button
+                type="button"
+                className="chat-briefing-btn"
+                onClick={() => {
+                  toggleAgentMode(true)
+                  setDraft('Procesa este correo de solicitud de cotización: ')
+                  inputRef.current?.focus()
+                }}
+                disabled={isSending}
+              >
+                📧 Cotizar desde correo
+              </button>
+              <button
+                type="button"
+                className="chat-briefing-btn"
+                onClick={() => {
+                  toggleAgentMode(true)
+                  setDraft(
+                    'Cubica esta especificación técnica HVAC (indica actividad, km y equipo): '
+                  )
+                  inputRef.current?.focus()
+                }}
+                disabled={isSending}
+              >
+                📐 Cubicar EE.TT. / Informe
+              </button>
+              <button
+                type="button"
+                className="chat-briefing-btn"
+                onClick={() => {
+                  toggleAgentMode(true)
+                  const target = activeQuotation?.correlative
+                    ? `la cotización ${activeQuotation.correlative}`
+                    : 'el cliente Climatemp'
+                  setDraft(
+                    `Analiza el historial Win/Loss y prepara un correo de seguimiento para ${target}`
+                  )
+                  inputRef.current?.focus()
+                }}
+                disabled={isSending}
+              >
+                🎯 Seguimiento & Win/Loss
+              </button>
+            </div>
           </div>
         )}
         {messages.map(m => (

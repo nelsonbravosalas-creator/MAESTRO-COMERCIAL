@@ -113,6 +113,12 @@
   gap: 12px;
 }
 
+.chat-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .chat-briefing-btn {
   align-self: flex-start;
   display: inline-flex;

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { Pool } from 'pg'
 import { ToolRegistry } from '../registry'
 import { AgentContext } from '../types'
 import { buscarCatalogoTool } from '../tools/catalogTool'
@@ -13,7 +14,7 @@ import { consultarHistorialClienteTool } from '../tools/historyTool'
  */
 describe('Golden Set HVAC — Evaluación de Capacidades del Agente Comercial', () => {
   const mockPool = {
-    query: vi.fn(async (sql: string, params: any[]) => {
+    query: vi.fn(async (sql: string, params: unknown[]) => {
       const s = String(sql)
       // 1. Catálogo mecánico
       if (s.includes('FROM catalog_items') && s.includes('ILIKE')) {
@@ -146,7 +147,7 @@ describe('Golden Set HVAC — Evaluación de Capacidades del Agente Comercial', 
       }
       return { rows: [] }
     }),
-  } as any
+  } as unknown as Pool
 
   const ctx: AgentContext = {
     pool: mockPool,
@@ -162,14 +163,14 @@ describe('Golden Set HVAC — Evaluación de Capacidades del Agente Comercial', 
   it('Prompt #1: ¿Cuánto cuesta el metro de tubería de cobre 5/8 y el refrigerante R410A?', async () => {
     const res = await buscarCatalogoTool.execute({ termino: 'cobre' }, ctx)
     expect(res.output.total_encontrados).toBeGreaterThan(0)
-    const items = res.output.items as any[]
+    const items = res.output.items as Array<{ descripcion: string }>
     expect(items.some(i => i.descripcion.includes('cobre'))).toBe(true)
   })
 
   // Caso 2: Consulta de catálogo eléctrico
   it('Prompt #2: Cotiza contactor trifásico y relé térmico en catálogo eléctrico', async () => {
     const res = await buscarCatalogoTool.execute({ termino: 'contactor' }, ctx)
-    const items = res.output.items as any[]
+    const items = res.output.items as Array<{ tipo: string; precio_unitario: number }>
     expect(items.some(i => i.tipo === 'electrico')).toBe(true)
     expect(items[0].precio_unitario).toBe(32000)
   })
@@ -185,7 +186,19 @@ describe('Golden Set HVAC — Evaluación de Capacidades del Agente Comercial', 
   it('Prompt #4: ¿Cuál es el historial comercial y la tasa de adjudicación para Enel?', async () => {
     const res = await consultarHistorialClienteTool.execute({ cliente_nombre_o_rut: 'Enel' }, ctx)
     expect(res.output.encontrado).toBe(true)
-    const data = res.output as any
+    const data = res.output as {
+      cliente: { nombre: string }
+      metricas_comerciales: {
+        total_cotizaciones: number
+        adjudicadas: number
+        tasa_adjudicacion_pct: number
+      }
+      patrones_operacionales: Array<{
+        comuna: string
+        dotacion_habitual: number
+        dias_habituales: number
+      }>
+    }
     expect(data.cliente.nombre).toBe('Enel Generación Chile S.A.')
     expect(data.metricas_comerciales.total_cotizaciones).toBe(12)
     expect(data.metricas_comerciales.adjudicadas).toBe(8)
@@ -207,7 +220,7 @@ describe('Golden Set HVAC — Evaluación de Capacidades del Agente Comercial', 
       ctx
     )
     expect(res.output.lineas_generadas).toBeDefined()
-    const lineas = res.output.lineas_generadas as any[]
+    const lineas = res.output.lineas_generadas as unknown[]
     expect(lineas.length).toBeGreaterThan(0)
     expect(res.output.total_estimado_clp).toBeGreaterThan(0)
   })
@@ -219,5 +232,9 @@ describe('Golden Set HVAC — Evaluación de Capacidades del Agente Comercial', 
     expect(commercialTools.some(t => t.name === 'consultar_historial_cliente')).toBe(true)
     expect(commercialTools.some(t => t.name === 'buscar_catalogo')).toBe(true)
     expect(commercialTools.some(t => t.name === 'calcular_items_automaticos')).toBe(true)
+    expect(commercialTools.some(t => t.name === 'procesar_correo_cotizacion')).toBe(true)
+    expect(commercialTools.some(t => t.name === 'cubicar_especificacion_hvac')).toBe(true)
+    expect(commercialTools.some(t => t.name === 'analizar_win_loss_cliente')).toBe(true)
+    expect(commercialTools.some(t => t.name === 'preparar_seguimiento_cotizacion')).toBe(true)
   })
 })

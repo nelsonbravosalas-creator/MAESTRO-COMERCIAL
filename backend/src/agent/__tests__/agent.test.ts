@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Pool } from 'pg'
-import { ToolRegistry } from '../registry'
 import { buscarCatalogoTool } from '../tools/catalogTool'
-import { consultarReglaTool, ensenarReglaTool } from '../tools/rulesTool'
+import { ensenarReglaTool } from '../tools/rulesTool'
 import { calcularItemsAutoTool } from '../tools/calcTool'
-import { verCotizacionTool, crearCotizacionTool } from '../tools/quotationTool'
+import { verCotizacionTool } from '../tools/quotationTool'
 import { consultarHistorialClienteTool } from '../tools/historyTool'
 import { runAgentLoop, MAX_STEPS } from '../loop'
 import { AgentContext } from '../types'
@@ -20,8 +19,14 @@ import { callLlmWithTools } from '../../services/llm'
 const mockedCallLlmWithTools = callLlmWithTools as unknown as ReturnType<typeof vi.fn>
 
 function createMockPool() {
-  const runs: any[] = []
-  const steps: any[] = []
+  const runs: Array<{ id: unknown; instruction: unknown; status: unknown }> = []
+  const steps: Array<{
+    run_id: unknown
+    idx: unknown
+    tool: unknown
+    input?: unknown
+    status?: unknown
+  }> = []
   const rules: Array<{
     id: string
     rule_key: string
@@ -101,7 +106,7 @@ function createMockPool() {
     },
   ]
 
-  const query = vi.fn().mockImplementation(async (sql: string, params: any[] = []) => {
+  const query = vi.fn().mockImplementation(async (sql: string, params: unknown[] = []) => {
     const s = sql.trim()
     if (s === 'BEGIN' || s === 'COMMIT' || s === 'ROLLBACK') return { rows: [] }
 
@@ -119,7 +124,7 @@ function createMockPool() {
         run_id: params[0],
         idx: params[2],
         tool: params[3],
-        input: JSON.parse(params[4]),
+        input: JSON.parse(String(params[4] ?? '{}')),
       })
       return { rows: [] }
     }
@@ -154,10 +159,10 @@ function createMockPool() {
     if (s.startsWith('INSERT INTO chatbot_rules')) {
       const row = {
         id: `r-${rules.length + 1}`,
-        rule_key: params[0],
-        value: JSON.parse(params[1]),
-        unit: params[2],
-        notes: params[3],
+        rule_key: String(params[0] ?? ''),
+        value: JSON.parse(String(params[1] ?? 'null')) as unknown,
+        unit: typeof params[2] === 'string' ? params[2] : null,
+        notes: typeof params[3] === 'string' ? params[3] : null,
         created_at: new Date().toISOString(),
         superseded_at: null,
       }
@@ -235,8 +240,19 @@ function createMockPool() {
     if (s.startsWith('SELECT id, type, label, properties, updated_at FROM chatbot_graph_nodes'))
       return { rows: [] }
     if (s.startsWith('INSERT INTO quotations')) {
-      const row = { id: 'q-new', correlative: params[0], client_id: params[1], version: 1 }
-      quotations.push(row as any)
+      const row = {
+        id: 'q-new',
+        correlative: String(params[0] ?? ''),
+        client_id: String(params[1] ?? ''),
+        client_name: '',
+        status: 'Borrador',
+        ref: '',
+        date: '2026-01-01',
+        line_items: [],
+        deleted_at: null,
+        version: 1,
+      }
+      quotations.push(row)
       return { rows: [row] }
     }
     if (s.startsWith('INSERT INTO quotation_categories')) return { rows: [] }
@@ -293,7 +309,7 @@ describe('Herramientas del agente', () => {
       { dias: 2, dotacion: 3, comuna: 'Rancagua' },
       ctx
     )
-    const out = res.output as { lineas_generadas: any[]; total_estimado_clp: number }
+    const out = res.output as { lineas_generadas: unknown[]; total_estimado_clp: number }
     expect(out.lineas_generadas).toHaveLength(2)
     // Colación: 3 * 2 * 6000 = 36000
     // Bono: 3 * 2 * 15000 = 90000
@@ -463,7 +479,19 @@ describe('runAgentLoop (Bucle de ejecucion del agente)', () => {
       )
 
       expect(res.output.encontrado).toBe(true)
-      const data = res.output as any
+      const data = res.output as {
+        cliente: { nombre: string; email?: string; phone?: string; address?: string }
+        metricas_comerciales: {
+          total_cotizaciones: number
+          adjudicadas: number
+          tasa_adjudicacion_pct: number
+        }
+        patrones_operacionales: Array<{
+          comuna: string
+          dotacion_habitual: number
+          dias_habituales: number
+        }>
+      }
       expect(data.cliente.nombre).toBe('Climatemp SpA')
       expect(data.metricas_comerciales.total_cotizaciones).toBe(3)
       expect(data.metricas_comerciales.adjudicadas).toBe(2)

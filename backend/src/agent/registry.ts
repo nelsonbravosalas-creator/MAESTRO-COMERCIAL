@@ -10,6 +10,9 @@ import {
   verCotizacionTool,
 } from './tools/quotationTool'
 import { consultarHistorialClienteTool } from './tools/historyTool'
+import { procesarCorreoCotizacionTool } from './tools/emailIntakeTool'
+import { cubicarEspecificacionHvacTool } from './tools/specCubicatorTool'
+import { analizarWinLossClienteTool, prepararSeguimientoCotizacionTool } from './tools/followUpTool'
 
 export class ToolRegistry {
   private tools = new Map<string, AgentTool>()
@@ -24,6 +27,10 @@ export class ToolRegistry {
     this.register(modificarCotizacionTool)
     this.register(verCotizacionTool)
     this.register(consultarHistorialClienteTool)
+    this.register(procesarCorreoCotizacionTool)
+    this.register(cubicarEspecificacionHvacTool)
+    this.register(analizarWinLossClienteTool)
+    this.register(prepararSeguimientoCotizacionTool)
   }
 
   register(tool: AgentTool): void {

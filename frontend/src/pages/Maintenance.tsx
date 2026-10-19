@@ -564,6 +564,83 @@ function TabBaseMtc() {
             <span className="base-rut">{visits || '—'}</span>
           </div>
         </div>
+
+        <div className="base-card">
+          <div className="base-card-title">Valores de Referencia</div>
+          <div className="base-row">
+            <label>UF referencia</label>
+            <input
+              type="number"
+              value={q.uf}
+              onChange={e => patch({ uf: parseFloat(e.target.value) || 0 })}
+              className="base-input"
+            />
+          </div>
+          <div className="base-row">
+            <label>USD referencia</label>
+            <input
+              type="number"
+              step="0.01"
+              value={q.usd ?? ''}
+              onChange={e => patch({ usd: parseFloat(e.target.value) || 0 })}
+              className="base-input"
+            />
+          </div>
+          <div className="base-row">
+            <label>IVA %</label>
+            <input
+              type="number"
+              value={q.iva}
+              onChange={e => patch({ iva: parseFloat(e.target.value) || 19 })}
+              className="base-input"
+              min="0"
+              max="100"
+            />
+          </div>
+          <div className="base-row currency-selector">
+            <fieldset>
+              <legend>Moneda de visualización</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="display-currency"
+                  value="CLP"
+                  checked={q.display_currency === 'CLP'}
+                  onChange={e =>
+                    patch({ display_currency: e.target.value as 'CLP' | 'UF' | 'USD' })
+                  }
+                />
+                CLP (Pesos)
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="display-currency"
+                  value="UF"
+                  checked={q.display_currency === 'UF'}
+                  onChange={e =>
+                    patch({ display_currency: e.target.value as 'CLP' | 'UF' | 'USD' })
+                  }
+                  disabled={!q.uf || q.uf === 0}
+                />
+                UF (Referencia: {q.uf?.toLocaleString('es-CL') || '—'})
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="display-currency"
+                  value="USD"
+                  checked={q.display_currency === 'USD'}
+                  onChange={e =>
+                    patch({ display_currency: e.target.value as 'CLP' | 'UF' | 'USD' })
+                  }
+                  disabled={!q.usd || q.usd === 0}
+                />
+                USD (Referencia: {q.usd?.toLocaleString('es-CL') || '—'})
+              </label>
+            </fieldset>
+          </div>
+        </div>
       </div>
 
       <div className="base-save-row">

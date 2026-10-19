@@ -229,8 +229,8 @@
   },
   "backend/src/db/migration_v3_project_tasks.sql": {
     "mtime": 1785357890.9008117,
-    "seen": 1791933362.9701328,
-    "ast_hash": "",
+    "seen": 1792427575.8104413,
+    "ast_hash": "1ca3efc1afde4dac147e2833cd0972a0",
     "semantic_hash": ""
   },
   "backend/src/db/migrations/1700000001000_0001-baseline.js": {
@@ -355,14 +355,14 @@
   },
   "backend/src/db/schema.sql": {
     "mtime": 1790719524.044778,
-    "seen": 1791933362.9701827,
-    "ast_hash": "",
+    "seen": 1792427575.8104978,
+    "ast_hash": "d8f76ff316c75820e7a2ac5ee2641fb8",
     "semantic_hash": ""
   },
   "backend/src/db/seed.sql": {
     "mtime": 1785544231.713781,
-    "seen": 1791933362.9701853,
-    "ast_hash": "",
+    "seen": 1792427575.8105004,
+    "ast_hash": "3d06894b77ca58e3844d18a696450736",
     "semantic_hash": ""
   },
   "backend/src/db/seed.ts": {
@@ -978,9 +978,9 @@
     "semantic_hash": "41add529d89a6609e56eb3ed191dcfb6"
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1791943377.1287293,
-    "seen": 1792019793.222837,
-    "ast_hash": "7c63de726e7e1d66c7e3e7e107a6d32d",
+    "mtime": 1792427553.7322178,
+    "seen": 1792427575.8107927,
+    "ast_hash": "bfe9625b35eef5ccaa606f8e6ce7d03e",
     "semantic_hash": ""
   },
   ".github/workflows/cleanup-sessions.yml": {
@@ -1026,9 +1026,9 @@
     "semantic_hash": ""
   },
   "docs/DESPLIEGUE.md": {
-    "mtime": 1792024062.8409503,
-    "seen": 1792033688.2400396,
-    "ast_hash": "437cb8af43f71896c396960409b7662e",
+    "mtime": 1792427558.333268,
+    "seen": 1792427575.8108132,
+    "ast_hash": "f9fde6b5528672ece6862ebade872bd0",
     "semantic_hash": ""
   },
   "docs/DR_RUNBOOK.md": {
@@ -1044,10 +1044,10 @@
     "semantic_hash": "9294cc304e7c2f471bfe6a1c571d6cd3"
   },
   "docs/HALLAZGOS_BLOQUEADOS.md": {
-    "mtime": 1790694834.8683407,
-    "seen": 1791404726.9401808,
-    "ast_hash": "b610eeca030186816d2ecc4f193332aa",
-    "semantic_hash": "b610eeca030186816d2ecc4f193332aa"
+    "mtime": 1792427558.3931513,
+    "seen": 1792427575.8108196,
+    "ast_hash": "b08d3ce689c60fa49a82e41599e49b71",
+    "semantic_hash": ""
   },
   "docs/INCIDENT_RUNBOOK.md": {
     "mtime": 1790694834.8693404,
@@ -1068,10 +1068,10 @@
     "semantic_hash": "848f0879bc9df7afcba5ad72b0588d54"
   },
   "docs/MIGRACIONES.md": {
-    "mtime": 1790694834.8703403,
-    "seen": 1791404726.940186,
-    "ast_hash": "8830a05d694e69f570940977435ed908",
-    "semantic_hash": "8830a05d694e69f570940977435ed908"
+    "mtime": 1792427558.4664066,
+    "seen": 1792427575.8108282,
+    "ast_hash": "f9c02da4b88e863298d639b734d752d1",
+    "semantic_hash": ""
   },
   "docs/REGISTRO_TRATAMIENTO.md": {
     "mtime": 1791934157.540036,
@@ -1464,9 +1464,9 @@
     "semantic_hash": ""
   },
   "docs/ROADMAP_AGENTE_COMERCIAL_ALTA_COMPLEJIDAD.md": {
-    "mtime": 1792374347.4466667,
-    "seen": 1792374374.278805,
-    "ast_hash": "3f618292d6636dfbaea57611faa57178",
+    "mtime": 1792427558.5259676,
+    "seen": 1792427575.810838,
+    "ast_hash": "5a24e272d756be89fbd03ebd50650ccf",
     "semantic_hash": ""
   }
 }

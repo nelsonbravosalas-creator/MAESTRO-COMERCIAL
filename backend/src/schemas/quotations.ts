@@ -71,6 +71,7 @@ const quotationBodyBase = {
   show_uf_equivalent: z.boolean().nullish(),
   show_usd_equivalent: z.boolean().nullish(),
   usd_value: money.nullish(),
+  display_currency: z.enum(['CLP', 'UF', 'USD']).default('CLP').nullish(),
 }
 
 export const quotationCreateSchema = z.object({

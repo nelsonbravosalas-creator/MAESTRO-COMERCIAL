@@ -410,6 +410,7 @@ export interface MasterQuotation {
   usd: number
   show_uf_equivalent: boolean
   show_usd_equivalent: boolean
+  display_currency: 'CLP' | 'UF' | 'USD'
   invoice_count: number
   invoice_count_max: number
   total_con_iva: number

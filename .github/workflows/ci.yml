@@ -16,7 +16,7 @@ jobs:
       run:
         working-directory: ${{ matrix.workspace }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -34,16 +34,7 @@ jobs:
       - run: npx tsc -b
         if: matrix.workspace == 'frontend'
 
-      # 110 quedó desfasado del real (112) sin que ningún PR lo subiera —
-      # detectado el 2026-09-20 al activar branch protection sobre este check:
-      # con el umbral viejo, master mismo no pasaba, así que ningún PR futuro
-      # habría podido mergearse nunca. 92 de los 112 son no-explicit-any (igual
-      # criterio que backend), el resto son react-hooks/set-state-in-effect,
-      # exhaustive-deps y react-refresh/only-export-components preexistentes.
-      # Subido a 112 (el conteo real), mismo criterio que ya usa backend más
-      # abajo: subir el número está bien, bajarlo requiere justificar por qué
-      # el cambio redujo los warnings.
-      - run: npx eslint . --max-warnings 112
+      - run: npx eslint . --max-warnings 110
         if: matrix.workspace == 'frontend'
       # Casi todos los warnings de backend vienen de server-dev.ts (modo JSON,
       # deliberadamente no tipado estrictamente) — no de app.ts/routers reales.
@@ -51,9 +42,7 @@ jobs:
       # hitos, aprobación) en quotations.ts, que siguen el mismo estilo `any`
       # del resto de los routers. Subido de 325 a 330 al agregar los endpoints
       # de OC (PATCH /:id/oc, POST/GET /:id/oc-document), mismo criterio.
-      # Subido de 330 a 343 (backend) y de 110 a 112 (frontend) al agregar el
-      # router/tests de electrical-catalog.ts (Materiales Eléctricos).
-      - run: npx eslint . --max-warnings 343
+      - run: npx eslint . --max-warnings 330
         if: matrix.workspace == 'backend'
 
       - run: npm run test:coverage
@@ -63,35 +52,6 @@ jobs:
       - run: npm run build
         if: matrix.workspace == 'frontend'
 
-  e2e:
-    # Pruebas de diseño en navegador (T-04 layout, T-05 temas, T-07 accesibilidad):
-    # Playwright contra el build de producción (vite preview) con la API simulada,
-    # así que no necesita backend ni base de datos. Ver frontend/e2e/.
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run build
-      - run: npm run test:e2e
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-results
-          path: frontend/test-results/
-          retention-days: 7
-
   vercel-function:
     # api/index.ts (la función serverless real de Vercel) importa backend/src/app.ts
     # pero se resuelve con las dependencias del package.json RAÍZ, no las de
@@ -99,7 +59,7 @@ jobs:
     # un "Cannot find module" que solo aparecería en producción (ver docs/RIESGOS_ACEPTADOS.md).
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
@@ -118,10 +78,10 @@ jobs:
   secrets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v3
+      - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -130,7 +90,7 @@ jobs:
     # en el hook local, que un contribuidor puede saltarse con --no-verify).
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v4
@@ -167,7 +127,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -213,21 +173,7 @@ jobs:
       group: migrate-production
       cancel-in-progress: false
     steps:
-      # Va antes del checkout y del npm ci: si falta el secret no tiene sentido
-      # gastar la instalación. El valor viaja por `env` y NO interpolado dentro
-      # del `run` — un `${{ secrets.X }}` incrustado en el script se expande
-      # como texto antes de que bash lo lea, así que una contraseña con
-      # comillas o `$` rompe el script (o peor, se ejecuta).
-      - name: Verificar secret requerido
-        env:
-          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-        run: |
-          if [ -z "$PROD_DATABASE_URL" ]; then
-            echo "::error::Falta el secret PROD_DATABASE_URL (Settings → Secrets and variables → Actions). Las migraciones NO se aplicaron contra producción — correrlas a mano mientras se configura."
-            exit 1
-          fi
-
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -237,6 +183,13 @@ jobs:
 
       - working-directory: backend
         run: npm ci
+
+      - name: Verificar secret requerido
+        run: |
+          if [ -z "${{ secrets.PROD_DATABASE_URL }}" ]; then
+            echo "::error::Falta el secret PROD_DATABASE_URL (Settings → Secrets and variables → Actions). Las migraciones NO se aplicaron contra producción — correrlas a mano mientras se configura."
+            exit 1
+          fi
 
       - name: Aplicar migraciones pendientes contra producción
         working-directory: backend

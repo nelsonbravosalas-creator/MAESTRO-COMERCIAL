@@ -2,19 +2,19 @@
 
 ## Corpus Check
 
-- 233 files · ~184,882 words
+- 234 files · ~185,525 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 38 file(s) not represented in the graph (top: .css 16, (none) 15, .bat 4)
 
 ## Summary
 
-- 2009 nodes · 3719 edges · 144 communities (100 shown, 44 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 101 edges (avg confidence: 0.83)
+- 2014 nodes · 3724 edges · 141 communities (98 shown, 43 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 102 edges (avg confidence: 0.83)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
 
-- Built from commit: `f4b1ce17`
+- Built from commit: `9cf35063`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -24,12 +24,12 @@
 - api/chatbot.ts
 - Quotations.tsx
 - api/auth.ts
-- weeklyCommercialSummary.ts
+- Mailer
 - ensureTables() — función C-1: crea tablas canónicas, migra clients→clientes, agrega cliente_id, elimina tablas obsoletas
 - ENTITY_TYPE_MAP (assets->equipos, workOrders->ordenes_trabajo, maintenance->mantenimiento_preventivo, parts->repuestos, technicians->tecnicos)
 - api.ts
 - backend/package.json
-- api/projects.ts
+- api/clients.ts
 - tabla clientes (CANÓNICA)
 - design-audit.ts
 - Projects.tsx
@@ -43,7 +43,7 @@
 - api/quotations.ts
 - frontend/package.json
 - server-dev.ts
-- Catalogo.tsx
+- react
 - fixtures.ts
 - PROMPT DE AUDITORÍA SENIOR — CMMS HVAC PRO IA STUDIO
 - docxExport.ts
@@ -57,7 +57,7 @@
 - chatbotGraph.ts
 - ADR 0001: un solo entrypoint de aplicación
 - authThrottle.ts
-- main.tsx
+- Runbook de incidentes — BravoCRM
 - types/index.ts
 - scripts
 - server.ts (Express monolítico, 2837 líneas)
@@ -68,7 +68,7 @@
 - app.ts
 - 1700000002000_0002-project-tasks.js
 - pagination.test.ts
-- Clients.tsx
+- Catalogo.tsx
 - check-bundle-budget.mjs
 - dependencies
 - Workflow: CI
@@ -83,7 +83,7 @@
 - ref_pg
 - CLAUDE.md
 - post-checkout
-- Login.tsx
+- CategoryId
 - tabla clientes (canónica, maestra de tenants)
 - scripts
 - llm.ts
@@ -92,7 +92,7 @@
 - manifest.json
 - quotations-import.test.ts
 - ADR: Almacenamiento del token de sesión (JWT Bearer + localStorage)
-- chatStore.ts
+- App.tsx
 - BravoCRM — Plataforma de Gestión Comercial
 - Clasificación de datos personales — BravoCRM
 - C-1: Script SQL de purga de 17 tablas huérfanas
@@ -104,21 +104,19 @@
 - src/db/database.ts (alias tablas Dexie)
 - vercel.json
 - Registro de actividades de tratamiento — BravoCRM (borrador técnico)
-- Despliegue — BravoCRM (Vercel autodeploy + CI)
-- App.tsx
+- MasterClient
 - api/invoices.ts
 - engines
 - CHANGELOG — Unreleased
 - .prettierrc.json
-- chatbot.test.ts
-- Secret PROD_DATABASE_URL (compartido entre backup.yml, cleanup-sessions.yml y ci.yml→migrate-production)
+- Despliegue — BravoCRM (Vercel autodeploy + CI)
 - Backend (API, localhost:3000)
 - tsconfig.build.json
 - authMiddleware
 - Checklist de PR (pruebas, seguridad, impacto RNF)
 - frontend/index.html (shell de la app, PWA 'Maestro Comercial')
 - vite.config.ts
-- permissions.test.ts
+- api/projects.ts
 - Soft-delete (deleted_at)
 - A-17: antipatrón de conexiones en serverless
 - smoke.sh
@@ -139,7 +137,6 @@
 - Logo NBYB (Ingeniería y Servicios Bravo SPA)
 - PROMPT_CORRECCION_v3_DBA_AUDITORIA.md
 - roleMiddleware (backend, control real de autorización)
-- CostIndicator.tsx
 
 ## God Nodes (most connected - your core abstractions)
 
@@ -158,13 +155,13 @@
 
 - `Mailer` --implements--> `Opción B: SMTP Gmail con contraseña de aplicación` [EXTRACTED]
   backend/src/services/mailer.ts → docs/EMAIL_SETUP.md
-- `A-07: Un solo entrypoint de servidor (resuelto, C-06/C-07)` --implements--> `handler()` [EXTRACTED]
-  docs/INFRA.md → api/index.ts
-- `Job vercel-function (tipa api/index.ts con dependencias de la raíz)` --references--> `handler()` [EXTRACTED]
-  .github/workflows/ci.yml → api/index.ts
+- `1. Hitos Implementados en Producción (Octubre 2026)` --references--> `sanitizeEmailPii()` [INFERRED]
+  docs/ROADMAP_AGENTE_COMERCIAL_ALTA_COMPLEJIDAD.md → backend/src/agent/tools/emailIntakeTool.ts
 - `Claim 'kind' distingue access vs refresh token` --implements--> `authMiddleware()` [EXTRACTED]
   docs/ADR_TOKEN_STORAGE.md → backend/src/middleware/auth.ts
 - `Mailer` --implements--> `NoopMailer (fallback sin proveedor configurado)` [EXTRACTED]
+  backend/src/services/mailer.ts → docs/EMAIL_SETUP.md
+- `Mailer` --implements--> `Opción A: Resend + dominio propio (SPF/DKIM/DMARC)` [EXTRACTED]
   backend/src/services/mailer.ts → docs/EMAIL_SETUP.md
 
 ## Import Cycles
@@ -183,7 +180,7 @@
 - **Cadena de integridad de respaldo y recuperación** — github_workflows_backup_workflow, github_workflows_backup_pgrestorelist, docs_dr_runbook_overview, docs_dr_runbook_restauracion [INFERRED 0.85]
 - **Secret PROD_DATABASE_URL compartido entre workflows programados** — docs_infra_proddatabaseurl, github_workflows_backup_workflow, github_workflows_ci_migrateproductionjob, github_workflows_cleanup_sessions_workflow, github_workflows_weekly_commercial_summary_workflow [INFERRED 0.95]
 
-## Communities (144 total, 44 thin omitted)
+## Communities (141 total, 43 thin omitted)
 
 ### Community 0 - "POST /api/quotations"
 
@@ -192,23 +189,23 @@ Nodes (3): POST /api/quotations, Módulo Facturas (próximo), Módulo Proyectos 
 
 ### Community 1 - "api/chatbot.ts"
 
-Cohesion: 0.14
-Nodes (24): buildIntentPrompt(), buildPriceExtractionPrompt(), buildPriceSearchPrompt(), ChatbotProactiveNote, createChatbotRouter(), errorMessage(), findClientByName(), logAction() (+16 more)
+Cohesion: 0.11
+Nodes (29): buildIntentPrompt(), buildPriceExtractionPrompt(), buildPriceSearchPrompt(), ChatbotProactiveNote, createChatbotRouter(), errorMessage(), findClientByName(), logAction() (+21 more)
 
 ### Community 2 - "Quotations.tsx"
 
 Cohesion: 0.09
-Nodes (43): GET /api/quotations, db.json (persistencia), Módulo Clientes (próximo), Módulo Reportes (próximo), Estados de cotización: Draft/Sent/Accepted/Rejected, Quotations.css, React 19 + TypeScript, patch() (+35 more)
+Nodes (44): GET /api/quotations, db.json (persistencia), Módulo Clientes (próximo), Módulo Reportes (próximo), Estados de cotización: Draft/Sent/Accepted/Rejected, Quotations.css, React 19 + TypeScript, patch() (+36 more)
 
 ### Community 3 - "api/auth.ts"
 
-Cohesion: 0.08
-Nodes (31): createAdminRouter(), secretMatches(), createAuthRouter(), expiresInSeconds(), hashToken(), safeUser(), signAccessToken(), signRefreshToken() (+23 more)
+Cohesion: 0.07
+Nodes (33): createAuthRouter(), expiresInSeconds(), hashToken(), safeUser(), signAccessToken(), signRefreshToken(), buildApp(), FakeUser (+25 more)
 
-### Community 4 - "weeklyCommercialSummary.ts"
+### Community 4 - "Mailer"
 
-Cohesion: 0.08
-Nodes (25): AlertQuotation, buildEmailHtml(), buildMarkdownSummary(), ExecutivePerformance, generateWeeklyCommercialSummary(), GlobalKpis, RECIPIENTS, TopClient (+17 more)
+Cohesion: 0.17
+Nodes (8): Mailer, ResendMailer, SmtpMailer, A-04: POST /api/auth/forgot-password, NoopMailer (fallback sin proveedor configurado), Configuración de correo transaccional — BravoCRM, Opción A: Resend + dominio propio (SPF/DKIM/DMARC), Creación primer admin vía ADMIN_SETUP_SECRET (POST /api/admin/setup)
 
 ### Community 5 - "ensureTables() — función C-1: crea tablas canónicas, migra clients→clientes, agrega cliente_id, elimina tablas obsoletas"
 
@@ -223,17 +220,17 @@ Nodes (33): api/assets/[id].ts, api/assets.ts, API_ENDPOINTS — URLs canónicas
 ### Community 7 - "api.ts"
 
 Cohesion: 0.06
-Nodes (34): ApiError, ChatbotProactiveNote, ChatbotRule, clearAuth(), CommercialBriefingAlert, CommercialBriefingResponse, CursorPage, del() (+26 more)
+Nodes (33): ChatbotProactiveNote, ChatbotRule, clearAuth(), CommercialBriefingAlert, CommercialBriefingResponse, CursorPage, del(), doRefresh() (+25 more)
 
 ### Community 8 - "backend/package.json"
 
 Cohesion: 0.06
 Nodes (32): bcryptjs, body-parser, cors, dotenv, eslint, @eslint/js, express, express-rate-limit (+24 more)
 
-### Community 9 - "api/projects.ts"
+### Community 9 - "api/clients.ts"
 
-Cohesion: 0.13
-Nodes (22): VALID_STATUS, clientCreateSchema, clientUpdateSchema, contactCreateSchema, contactSchema, contactUpdateSchema, capLimitQuerySchema, isoDateStr (+14 more)
+Cohesion: 0.21
+Nodes (10): createClientsRouter(), withContacts(), buildApp(), FakeState, makeFakeDb(), clientCreateSchema, clientUpdateSchema, contactCreateSchema (+2 more)
 
 ### Community 10 - "tabla clientes (CANÓNICA)"
 
@@ -248,7 +245,7 @@ Nodes (26): AC-9.7: dependencias runtime duplicadas root/backend, Job CI vercel-
 ### Community 12 - "Projects.tsx"
 
 Cohesion: 0.07
-Nodes (44): CATEGORY_LABELS, CostosTab(), CostosTabProps, CreateModalProps, emptyCostForm(), EquipoTab(), EquipoTabProps, fmtCLP() (+36 more)
+Nodes (42): Projects, CATEGORY_LABELS, CostosTab(), CostosTabProps, CreateModalProps, emptyCostForm(), EquipoTab(), EquipoTabProps (+34 more)
 
 ### Community 13 - "package.json"
 
@@ -257,13 +254,13 @@ Nodes (30): bcryptjs, body-parser, cors, dotenv, express, express-rate-limit, he
 
 ### Community 14 - "validate"
 
-Cohesion: 0.14
-Nodes (19): CATEGORIES, createCatalogRouter(), groupedCatalog(), createConfigRouter(), createElectricalCatalogRouter(), buildApp(), makeFakeDb(), roleMiddleware() (+11 more)
+Cohesion: 0.16
+Nodes (16): CATEGORIES, createCatalogRouter(), groupedCatalog(), createConfigRouter(), createElectricalCatalogRouter(), buildApp(), makeFakeDb(), roleMiddleware() (+8 more)
 
 ### Community 15 - "Dashboard.tsx"
 
-Cohesion: 0.07
-Nodes (23): GET /api/dashboard/kpis, App.tsx (refactorizado), CostIndicator component, Dashboard.css, run-dev.bat, ACCENT_TEXT, AGING_TRAMOS, CAT_COLORS (+15 more)
+Cohesion: 0.08
+Nodes (21): GET /api/dashboard/kpis, CostIndicator component, Dashboard.css, ACCENT_TEXT, AGING_TRAMOS, CAT_COLORS, CAT_LABELS, Dashboard() (+13 more)
 
 ### Community 16 - "learningTraces.ts"
 
@@ -278,7 +275,7 @@ Nodes (26): ALLOWED_TABLES, GET /api/assets endpoint (duplicada, eliminada), POS
 ### Community 18 - "maestro-store.ts"
 
 Cohesion: 0.07
-Nodes (45): api, ImportQuotationResult, RawQuotation, baseCorrelative(), calcCat(), cloneQuoteWithCorrelative(), createQuotationWithRetry(), DEFAULT_CATALOGS (+37 more)
+Nodes (46): ApiError, ImportQuotationResult, RawQuotation, baseCorrelative(), calcCat(), CatalogSaveError, cloneQuoteWithCorrelative(), createQuotationWithRetry() (+38 more)
 
 ### Community 19 - "CRUD Cotizaciones (T3.2)"
 
@@ -288,7 +285,7 @@ Nodes (25): Backend API (localhost:3000), BravoCRM, BUG #1: JWT Validation, BUG 
 ### Community 20 - "api/quotations.ts"
 
 Cohesion: 0.06
-Nodes (47): applyQuotationImport(), CATEGORY_COLORS, CATEGORY_IDS, CATEGORY_LABELS, fetchUfValue(), findCatalogMatch(), isValidRut(), LOCKED_STATUSES (+39 more)
+Nodes (49): applyQuotationImport(), CATEGORY_COLORS, CATEGORY_IDS, CATEGORY_LABELS, errorMessage(), fetchUfValue(), findCatalogMatch(), isValidRut() (+41 more)
 
 ### Community 21 - "frontend/package.json"
 
@@ -300,10 +297,10 @@ Nodes (25): browserslist, engines, node, eslint, @eslint/js, globals, typescript
 Cohesion: 0.11
 Nodes (19): addDaysISO(), app, AuthReq, buildQuotationFull(), calcInvoiceBalance(), calcQuotationTotals(), DB, DB_PATH (+11 more)
 
-### Community 23 - "Catalogo.tsx"
+### Community 23 - "react"
 
-Cohesion: 0.09
-Nodes (26): ProjectCostPayload, ProjectItemResponse, ProjectTask, ProjectTaskPayload, CatalogAutocomplete(), DIST_ITEM, DropPos, fmtCLP (+18 more)
+Cohesion: 0.07
+Nodes (27): POST /api/auth/login, App.tsx (refactorizado), JWT token management (localStorage), Login.css, run-dev.bat, CatalogAutocomplete(), DIST_ITEM, DropPos (+19 more)
 
 ### Community 24 - "fixtures.ts"
 
@@ -337,8 +334,8 @@ Nodes (20): devDependencies, @axe-core/playwright, esbuild, eslint, @eslint/js, 
 
 ### Community 30 - "loop.ts"
 
-Cohesion: 0.07
-Nodes (55): buildAgentSystemPrompt(), MAX_STEPS, recordRunEnd(), recordRunStart(), recordStepAudit(), runAgentLoop(), sanitizeForAudit(), WALL_CLOCK_BUDGET_MS (+47 more)
+Cohesion: 0.06
+Nodes (59): buildAgentSystemPrompt(), MAX_STEPS, recordRunEnd(), recordRunStart(), recordStepAudit(), runAgentLoop(), sanitizeForAudit(), WALL_CLOCK_BUDGET_MS (+51 more)
 
 ### Community 31 - "devDependencies"
 
@@ -358,7 +355,7 @@ Nodes (9): Logistica, CITIES, IDX, M, CityDistances, loadCityDistances(), useCit
 ### Community 34 - "chatbotGraph.ts"
 
 Cohesion: 0.15
-Nodes (28): applyClientPatterns(), buildLlmGraphContext(), CatalogMatch, clienteNodeId(), ClientPattern, comunaNodeId(), countsFromMetadata(), findCatalogMatch() (+20 more)
+Nodes (27): applyClientPatterns(), buildLlmGraphContext(), CatalogMatch, clienteNodeId(), ClientPattern, comunaNodeId(), countsFromMetadata(), findCatalogMatch() (+19 more)
 
 ### Community 35 - "ADR 0001: un solo entrypoint de aplicación"
 
@@ -367,18 +364,18 @@ Nodes (18): ADR 0001: un solo entrypoint de aplicación, api/index.ts (handler d
 
 ### Community 36 - "authThrottle.ts"
 
-Cohesion: 0.18
-Nodes (13): AuthThrottleOptions, createAuthThrottle(), ipAndEmailKey(), ipKey(), motivo(), buildApp(), FakeState, MENSAJE (+5 more)
+Cohesion: 0.23
+Nodes (10): AuthThrottleOptions, createAuthThrottle(), ipAndEmailKey(), ipKey(), motivo(), buildApp(), FakeState, MENSAJE (+2 more)
 
-### Community 37 - "main.tsx"
+### Community 37 - "Runbook de incidentes — BravoCRM"
 
-Cohesion: 0.40
-Nodes (4): frontend_src_index, initSentry(), sentryEnabled, @sentry/react
+Cohesion: 0.22
+Nodes (9): Rate limiting (login, admin/setup, forgot-password) + bloqueo de cuenta, Bloqueo de cuenta tras 10 intentos fallidos (30 min), auth_throttle — rate limit persistente en Postgres, GET /api/health, Runbook de incidentes — BravoCRM, Bloqueo de geografía (no implementado, decisión de negocio pendiente), A-06: IP Allowlist Neon + rotación de DATABASE_URL, Infraestructura, perímetro y red — BravoCRM (+1 more)
 
 ### Community 38 - "types/index.ts"
 
-Cohesion: 0.08
-Nodes (34): BravoCRMDatabase, db, ApiError, ApiResponse, AppConfig, AuditAction, AuditLog, CatalogItem (+26 more)
+Cohesion: 0.07
+Nodes (35): BravoCRMDatabase, db, ApiError, ApiResponse, AppConfig, AuditAction, AuditLog, CatalogItem (+27 more)
 
 ### Community 39 - "scripts"
 
@@ -392,8 +389,8 @@ Nodes (15): constante ALLOWED_TABLES (server.ts), POST /api/auth (login PIN), GE
 
 ### Community 41 - "chatbotOps.ts"
 
-Cohesion: 0.11
-Nodes (24): chatbotMessageSchema, chatbotPriceResponseSchema, chatbotPriceSampleSchema, chatbotRecentTurnSchema, chatbotTeachRuleSchema, uuid, ImportLinea, assertClientHasRut() (+16 more)
+Cohesion: 0.12
+Nodes (25): chatbotMessageSchema, chatbotPriceResponseSchema, chatbotPriceSampleSchema, chatbotRecentTurnSchema, chatbotTeachRuleSchema, uuid, ImportLinea, assertClientHasRut() (+17 more)
 
 ### Community 42 - "devDependencies"
 
@@ -412,8 +409,8 @@ Nodes (14): dependencies, bcryptjs, body-parser, cors, dotenv, express, express-
 
 ### Community 45 - "app.ts"
 
-Cohesion: 0.11
-Nodes (23): allowedOrigins, app, pool, adminSetupLimiter(), adminSetupLimiterOptions, apiLimiter(), apiLimiterOptions, forgotPasswordLimiter() (+15 more)
+Cohesion: 0.08
+Nodes (33): createAdminRouter(), secretMatches(), buildApp(), { SETUP_SECRET }, allowedOrigins, app, pool, env (+25 more)
 
 ### Community 46 - "1700000002000_0002-project-tasks.js"
 
@@ -425,10 +422,10 @@ Nodes (9): fs, path, schemaPath, fs, path, sqlPath, Tabla project_tasks, ref_fs 
 Cohesion: 0.33
 Nodes (3): buildApp(), FakeQuotation, makeFakeDb()
 
-### Community 48 - "Clients.tsx"
+### Community 48 - "Catalogo.tsx"
 
-Cohesion: 0.21
-Nodes (14): Catalogo(), ClientForm(), ClientFormProps, Clients(), emptyClient(), emptyContact(), withContactList(), frontend_src_styles_clients (+6 more)
+Cohesion: 0.17
+Nodes (16): Catalogo, avgPrice(), CAT_META, Catalogo(), CATS, CatTable(), maxPrice(), minPrice() (+8 more)
 
 ### Community 49 - "check-bundle-budget.mjs"
 
@@ -442,8 +439,8 @@ Nodes (14): dependencies, bcryptjs, body-parser, cors, dotenv, express, express-
 
 ### Community 51 - "Workflow: CI"
 
-Cohesion: 0.18
-Nodes (11): C-06/A-12: Pipeline de CI (tipos, lint, tests con cobertura, audit, scan de secretos, build), A-14: Pruebas contra PostgreSQL real (parcial), Bloqueo de cuenta tras 10 intentos fallidos (30 min), GET /api/health, Runbook de incidentes — BravoCRM, Job commitlint (Conventional Commits en cada PR), Job e2e (Playwright contra build de producción, vite preview), Job integration (Postgres 15 real + migrate:up + npm test) (+3 more)
+Cohesion: 0.17
+Nodes (12): C-06/A-12: Pipeline de CI (tipos, lint, tests con cobertura, audit, scan de secretos, build), A-08: Entorno de staging (nada implementado), A-14: Pruebas contra PostgreSQL real (parcial), A-15: Pruebas end-to-end Playwright (no implementado), A-18: Plan de recuperación ante desastres (parcial), Hallazgos bloqueados por acceso externo, Job commitlint (Conventional Commits en cada PR), Job e2e (Playwright contra build de producción, vite preview) (+4 more)
 
 ### Community 52 - "ref_vitest"
 
@@ -457,8 +454,8 @@ Nodes (13): BravoCRM, docker-compose.yml, Docker Desktop, Fases 1-4 (Setup Base,
 
 ### Community 54 - "api/index.ts"
 
-Cohesion: 0.43
-Nodes (6): AppHandler, buildUnavailableApp(), describeStartupError(), handler(), HAS_DB, loadApp()
+Cohesion: 0.23
+Nodes (11): AppHandler, buildUnavailableApp(), describeStartupError(), handler(), HAS_DB, loadApp(), backend/src/app.ts (única definición de la app), backend/src/server.ts (solo app.listen()) (+3 more)
 
 ### Community 55 - "uiStore.ts"
 
@@ -487,13 +484,13 @@ Nodes (12): dependencies, dexie, docx, html2canvas, jspdf, lucide-react, react, 
 
 ### Community 60 - "ref_pg"
 
-Cohesion: 0.16
-Nodes (11): pool, readSeedUsers(), SeedUser, seedUsers(), generateMorningBriefing(), MorningBriefingAlert, MorningBriefingResult, transports (+3 more)
+Cohesion: 0.11
+Nodes (18): pool, readSeedUsers(), SeedUser, seedUsers(), AlertQuotation, buildEmailHtml(), buildMarkdownSummary(), ExecutivePerformance (+10 more)
 
-### Community 63 - "Login.tsx"
+### Community 63 - "CategoryId"
 
-Cohesion: 0.25
-Nodes (8): POST /api/auth/login, JWT token management (localStorage), Login.css, Login(), LoginProps, Mode, resetTokenFromUrl(), frontend_src_styles_login
+Cohesion: 0.22
+Nodes (8): ProjectCostPayload, ProjectItemResponse, ProjectTask, ProjectTaskPayload, CatTableProps, CostForm, ExecutionCost, CategoryId
 
 ### Community 64 - "tabla clientes (canónica, maestra de tenants)"
 
@@ -507,8 +504,8 @@ Nodes (11): scripts, build, check:deps-sync, dev, dev:backend, dev:frontend, for
 
 ### Community 66 - "llm.ts"
 
-Cohesion: 0.18
-Nodes (16): callLlm(), CallLlmOptions, callLlmWithTools(), CallLlmWithToolsOptions, GeminiContent, GeminiPart, GeminiResponse, generationConfigFor() (+8 more)
+Cohesion: 0.10
+Nodes (25): buildApp(), Client, cloneState(), GraphEdge, GraphNode, makeFakeDb(), query(), mockedCallLlm (+17 more)
 
 ### Community 67 - "BravoCRM"
 
@@ -535,15 +532,15 @@ Nodes (7): buildApp(), cloneState(), makeFakeDb(), query(), normRut(), payload()
 Cohesion: 0.22
 Nodes (9): backend/src/middleware/**tests**/auth.test.ts (test de token legado sin kind), CORS allowlist explícita (C-03), Helmet — cabeceras de seguridad HTTP (C-04), JWT_EXPIRY = 1 hora (A-02), Claim 'kind' distingue access vs refresh token, ADR: Almacenamiento del token de sesión (JWT Bearer + localStorage), Riesgo residual: XSS roba token de localStorage (Alto), Umbral eslint --max-warnings (ratchet ascendente) (+1 more)
 
-### Community 72 - "chatStore.ts"
+### Community 72 - "App.tsx"
 
-Cohesion: 0.23
-Nodes (14): ChatMessageResponse, ChatRecentTurn, ChatPanel(), isSafeUrl(), ChatMessage, ChatState, clearChat(), loadCommercialBriefing() (+6 more)
+Cohesion: 0.10
+Nodes (28): api, ChatMessageResponse, ChatRecentTurn, App(), ChatPanel, Clients, Dashboard, Maintenance (+20 more)
 
 ### Community 73 - "BravoCRM — Plataforma de Gestión Comercial"
 
-Cohesion: 0.13
-Nodes (17): backend/src/app.ts (única definición de la app), backend/src/server.ts (solo app.listen()), ADR 0001: Entrypoint único (docs/adr/0001-entrypoint-unico.md), Bloqueo de geografía (no implementado, decisión de negocio pendiente), A-06: IP Allowlist Neon + rotación de DATABASE_URL, Infraestructura, perímetro y red — BravoCRM, A-07: Un solo entrypoint de servidor (resuelto, C-06/C-07), Matriz de permisos por rol (docs/MATRIZ_PERMISOS.md) (+9 more)
+Cohesion: 0.22
+Nodes (9): ADR 0001: Entrypoint único (docs/adr/0001-entrypoint-unico.md), Matriz de permisos por rol (docs/MATRIZ_PERMISOS.md), Setup local (docs/SETUP_LOCAL.md), Configuración Dependabot (npm root/backend/frontend + github-actions), Arquitectura monorepo (frontend/backend/api/docs), Stack Backend: Node+Express+TS+PostgreSQL(Neon)+JWT+bcryptjs+Zod+Winston, BravoCRM — Plataforma de Gestión Comercial, Stack Frontend: React19+TS+Vite+Zustand+Recharts+jsPDF/docx (+1 more)
 
 ### Community 74 - "Clasificación de datos personales — BravoCRM"
 
@@ -567,8 +564,8 @@ Nodes (8): C-2: Migración de FK 'clients' → 'clientes' y unificación de sync
 
 ### Community 78 - "createQuotationsRouter"
 
-Cohesion: 0.14
-Nodes (18): applyQuotationUpdate(), createQuotationsRouter(), errorCode(), errorMessage(), fullQuotation(), normalizeFrequency(), normalizeKind(), normalizeOperState() (+10 more)
+Cohesion: 0.16
+Nodes (16): applyQuotationUpdate(), createQuotationsRouter(), errorCode(), fullQuotation(), normalizeFrequency(), normalizeKind(), normalizeOperState(), normalizeStatus() (+8 more)
 
 ### Community 79 - "compilerOptions"
 
@@ -590,20 +587,15 @@ Nodes (9): C-8: Rewrites de vercel.json apuntando a rutas inexistentes, maxDurat
 Cohesion: 0.29
 Nodes (7): docs/CLASIFICACION_DATOS.md, DPA (Data Processing Agreement) pendiente por proveedor, docs/DR_RUNBOOK.md, Ley 19.628 (Chile, vigente), Ley 21.719 (Chile, vigencia diciembre 2026), Registro de actividades de tratamiento — BravoCRM (borrador técnico), RPO/RTO (24h/4h)
 
-### Community 84 - "Despliegue — BravoCRM (Vercel autodeploy + CI)"
+### Community 84 - "MasterClient"
 
-Cohesion: 0.20
-Nodes (11): Branch protection de GitHub (gate pendiente para cerrar A-09), Variables de entorno requeridas en Vercel, Flujo actual: Vercel despliega en paralelo a CI (gap A-09), Despliegue — BravoCRM (Vercel autodeploy + CI), Rollback: vercel rollback / Promote to Production, A-08: Entorno de staging (nada implementado), A-09: CD con gates, migraciones y rollback (parcial), A-15: Pruebas end-to-end Playwright (no implementado) (+3 more)
-
-### Community 85 - "App.tsx"
-
-Cohesion: 0.12
-Nodes (15): App(), Catalogo, ChatPanel, Clients, Dashboard, Maintenance, NavSyncButton(), Page (+7 more)
+Cohesion: 0.39
+Nodes (6): ClientFormProps, MasterClient, MasterContact, primaryContact(), quotationContact(), client
 
 ### Community 86 - "api/invoices.ts"
 
-Cohesion: 0.18
-Nodes (15): DOC_TYPE, factoringUpsertSchema, FINANCING_STATUS, FINANCING_TYPE, invoiceCreateSchema, invoiceDocumentSchema, invoiceFollowUpSchema, invoiceItemSchema (+7 more)
+Cohesion: 0.11
+Nodes (25): catalogItemSchema, CATEGORY_IDS, electricalCatalogItemSchema, capLimitQuerySchema, isoDateStr, money, nonEmptyStr(), nonNegativeNumber (+17 more)
 
 ### Community 88 - "CHANGELOG — Unreleased"
 
@@ -615,15 +607,10 @@ Nodes (14): A-01: Validación de entrada con zod en rutas de escritura, A-02: Se
 Cohesion: 0.33
 Nodes (5): arrowParens, printWidth, semi, singleQuote, trailingComma
 
-### Community 91 - "chatbot.test.ts"
+### Community 92 - "Despliegue — BravoCRM (Vercel autodeploy + CI)"
 
 Cohesion: 0.17
-Nodes (11): buildApp(), Client, cloneState(), GraphEdge, GraphNode, makeFakeDb(), query(), mockedCallLlm (+3 more)
-
-### Community 92 - "Secret PROD_DATABASE_URL (compartido entre backup.yml, cleanup-sessions.yml y ci.yml→migrate-production)"
-
-Cohesion: 0.25
-Nodes (9): migrate-production resuelve migraciones automáticas pre-deploy (A-09 parcial), Opción B: SMTP Gmail con contraseña de aplicación, Secret PROD_DATABASE_URL (compartido entre backup.yml, cleanup-sessions.yml y ci.yml→migrate-production), Migraciones de base de datos (docs/MIGRACIONES.md), Disciplina expand→migrate→contract, Job migrate-production (migrate:up contra producción en cada push), Workflow: Limpieza de sesiones expiradas (domingos), SMTP Gmail hardcodeado (smtp.gmail.com:465) (+1 more)
+Nodes (15): Branch protection de GitHub (gate pendiente para cerrar A-09), Variables de entorno requeridas en Vercel, Flujo actual: Vercel despliega en paralelo a CI (gap A-09), migrate-production resuelve migraciones automáticas pre-deploy (A-09 parcial), Despliegue — BravoCRM (Vercel autodeploy + CI), Rollback: vercel rollback / Promote to Production, Opción B: SMTP Gmail con contraseña de aplicación, A-09: CD con gates, migraciones y rollback (parcial) (+7 more)
 
 ### Community 93 - "Backend (API, localhost:3000)"
 
@@ -637,8 +624,8 @@ Nodes (3): exclude, extends, ./tsconfig.json
 
 ### Community 95 - "authMiddleware"
 
-Cohesion: 0.16
-Nodes (15): createDashboardRouter(), env, envSchema, EnvValidationError, loadEnv(), validEnv, authMiddleware(), AuthRequest (+7 more)
+Cohesion: 0.26
+Nodes (11): createDashboardRouter(), authMiddleware(), AuthRequest, isAccessToken(), optionalAuth(), TokenPayload, buildApp(), sign() (+3 more)
 
 ### Community 96 - "Checklist de PR (pruebas, seguridad, impacto RNF)"
 
@@ -650,10 +637,10 @@ Nodes (4): RNF y SLOs (docs/RNF_Y_SLOS.md), Checklist de PR (pruebas, seguridad,
 Cohesion: 0.50
 Nodes (4): frontend/index.html (shell de la app, PWA 'Maestro Comercial'), /src/main.tsx (punto de montaje React), manifest.json (manifiesto PWA), sw.js (service worker, registro PWA)
 
-### Community 117 - "permissions.test.ts"
+### Community 117 - "api/projects.ts"
 
 Cohesion: 0.12
-Nodes (13): createClientsRouter(), withContacts(), createProjectsRouter(), normalizeStatus(), buildApp(), FakeState, makeFakeDb(), buildApp() (+5 more)
+Nodes (18): createProjectsRouter(), normalizeStatus(), VALID_STATUS, buildApp(), fakePool, routes, buildApp(), FakeState (+10 more)
 
 ### Community 118 - "Soft-delete (deleted_at)"
 
@@ -698,9 +685,9 @@ Nodes (4): Gap C-10: sub-recursos de proyecto sin restricción de rol, Matriz de
 
 ## Knowledge Gaps
 
-- **783 isolated node(s):** `semi`, `singleQuote`, `trailingComma`, `printWidth`, `arrowParens` (+778 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 965 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **44 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **785 isolated node(s):** `semi`, `singleQuote`, `trailingComma`, `printWidth`, `arrowParens` (+780 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 968 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **43 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 
@@ -714,9 +701,9 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: shares_data_with) - confidence is low._
 - **What is the exact relationship between `tabla clientes (canónica, maestra de tenants)` and `Familia cmms_* (14 tablas, arquitectura relacional normalizada abandonada: cmms_clientes, cmms_users, cmms_equipos, cmms_tickets, cmms_mantenimientos, cmms_pm_planes, cmms_pm_plantillas, cmms_sla_config, cmms_checklist_plantillas, cmms_usuarios_clientes, cmms_ot_comentarios, cmms_ot_eventos, cmms_push_subscriptions, cmms_informes_mantenimiento)`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `supertest` connect `api/auth.ts` to `authThrottle.ts`, `quotations-import.test.ts`, `backend/package.json`, `app.ts`, `validate`, `pagination.test.ts`, `createQuotationsRouter`, `ref_vitest`, `permissions.test.ts`, `chatbot.test.ts`, `authMiddleware`?**
-  _High betweenness centrality (0.064) - this node is a cross-community bridge._
-- **Why does `react` connect `Catalogo.tsx` to `Invoices.tsx`, `Logistica.tsx`, `Quotations.tsx`, `main.tsx`, `chatStore.ts`, `Projects.tsx`, `CostIndicator.tsx`, `Dashboard.tsx`, `Clients.tsx`, `App.tsx`, `frontend/package.json`, `uiStore.ts`, `Login.tsx`?**
-  _High betweenness centrality (0.047) - this node is a cross-community bridge._
-- **Why does `Runbook de incidentes — BravoCRM` connect `Workflow: CI` to `authThrottle.ts`, `BravoCRM — Plataforma de Gestión Comercial`, `app.ts`, `Despliegue — BravoCRM (Vercel autodeploy + CI)`, `Plan de recuperación ante desastres (DR) — BravoCRM`?**
-  _High betweenness centrality (0.021) - this node is a cross-community bridge._
+- **Why does `supertest` connect `ref_vitest` to `llm.ts`, `api/auth.ts`, `authThrottle.ts`, `quotations-import.test.ts`, `backend/package.json`, `api/clients.ts`, `app.ts`, `validate`, `pagination.test.ts`, `createQuotationsRouter`, `api/projects.ts`, `authMiddleware`?**
+  _High betweenness centrality (0.065) - this node is a cross-community bridge._
+- **Why does `react` connect `react` to `Invoices.tsx`, `Logistica.tsx`, `Quotations.tsx`, `App.tsx`, `Projects.tsx`, `Dashboard.tsx`, `Catalogo.tsx`, `frontend/package.json`, `uiStore.ts`?**
+  _High betweenness centrality (0.052) - this node is a cross-community bridge._
+- **Why does `Runbook de incidentes — BravoCRM` connect `Runbook de incidentes — BravoCRM` to `BravoCRM — Plataforma de Gestión Comercial`, `app.ts`, `Workflow: CI`, `Plan de recuperación ante desastres (DR) — BravoCRM`, `Despliegue — BravoCRM (Vercel autodeploy + CI)`?**
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._

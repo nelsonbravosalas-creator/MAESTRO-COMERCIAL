@@ -26,16 +26,6 @@ nueva levantada solo con `docker-compose` no tenía esa tabla.
 Ambas leen el SQL desde los archivos existentes en `backend/src/db/` (no lo
 duplican) para que siga habiendo una sola fuente de verdad del DDL.
 
-La tabla no es exhaustiva: de la `0003` en adelante cada migración se explica
-en su propio encabezado y el listado real es el directorio. La última es
-`1700000019000_0019-auth-throttle.js` (tabla `auth_throttle`: el contador de
-intentos de login compartido entre instancias serverless — ver
-`backend/src/middleware/authThrottle.ts`).
-
-Desde la `0003`, una migración nueva **no** actualiza `schema.sql`: ese archivo
-es la foto congelada que consume `0001-baseline`. Las migraciones posteriores
-usan `IF NOT EXISTS` para ser idempotentes sobre bases que ya venían creadas.
-
 ## Comandos
 
 ```bash
@@ -74,30 +64,27 @@ Si una migración rompe algo, CI falla ahí, no en producción.
 
 Además, el job **`migrate-production`** del mismo archivo corre
 `npm run migrate:up` contra la base de datos real (`secrets.PROD_DATABASE_URL`,
-Neon) en cada push a `master` — esto cierra el punto "Automatizar la ejecución
-de migraciones" que quedaba pendiente más abajo. Decisiones de diseño:
+Neon) en cada push a `master` — esto es lo que cierra el punto "Automatizar la
+ejecución de migraciones" que quedaba pendiente más abajo. Decisiones de
+diseño:
 
 - **Sin `needs`, corre en paralelo al resto de los jobs.** Vercel despliega
   apenas llega el push y no espera a que CI termine (`docs/DESPLIEGUE.md`), así
   que encadenar este job detrás de `quality`/`integration` solo agrandaría la
-  ventana entre "el código nuevo ya está en producción" y "el esquema nuevo ya
-  está aplicado" — sin eliminarla, porque de todas formas no se puede bloquear
-  el despliegue de Vercel desde GitHub Actions. Correrlo cuanto antes minimiza
-  esa ventana en vez de agrandarla.
-- **Es seguro que corra sin esperar al resto de CI** porque (a) cada migración
-  corre en su propia transacción — si falla, no deja el esquema a medias — y
-  (b) la regla de arriba (expand → migrate → contract) garantiza que el código
-  de un push nunca depende de una columna o tabla que ese mismo push recién
-  esté creando. El incidente que motivó esto no fue una carrera de
-  milisegundos: fue que el paso manual no se ejecutaba durante semanas.
-- **Reusa el secret `PROD_DATABASE_URL`**, el mismo que ya usan `backup.yml` y
-  `cleanup-sessions.yml` — no hay nada nuevo que configurar en GitHub si esos
-  workflows ya funcionan.
-- **El secret se verifica en el primer paso, antes del checkout y del
-  `npm ci`**, y viaja por `env:` en vez de interpolado dentro del `run:`. Un
-  `${{ secrets.X }}` incrustado en el script se expande como texto antes de que
-  bash lo lea: una contraseña con comillas o `$` rompería el script, o peor,
-  se ejecutaría.
+  ventana entre "código nuevo ya está en producción" y "esquema nuevo ya está
+  aplicado" — sin eliminarla, porque de todas formas no podemos bloquear el
+  despliegue de Vercel desde GitHub Actions. Correrlo lo antes posible
+  minimiza esa ventana en vez de agrandarla.
+- **Es seguro que corra sin esperar a que pase el resto de CI** porque (a)
+  cada migración corre en su propia transacción — si falla, no deja el
+  esquema a medias — y (b) la regla de arriba (expand → migrate → contract)
+  garantiza que el código de un push nunca depende de una columna/tabla que
+  ese mismo push recién esté creando. El escenario que causó el incidente
+  original (ver más abajo) no era una carrera de milisegundos, era que el paso
+  manual simplemente no se ejecutaba durante semanas.
+- **Reusa el secret `PROD_DATABASE_URL`**, el mismo que ya usan
+  `backup.yml` y `cleanup-sessions.yml` — no hace falta configurar nada nuevo
+  en GitHub si esos workflows ya funcionan.
 - Un `concurrency.group: migrate-production` evita que dos pushes seguidos
   corran `migrate:up` contra producción al mismo tiempo.
 
@@ -106,12 +93,11 @@ abajo no se ejecutó desde `0009-billing-flow` (2026-08-15) hasta que un 500
 real en producción (`column "loss_reason" does not exist`, al marcar una
 cotización como "Perdida") delató que faltaban 9 migraciones. Eran todas
 aditivas (los `DROP` viven en `down`), así que no hubo pérdida de datos, pero
-sí semanas de funcionalidad rota en producción por drift de esquema.
+sí semanas de funcionalidad rota en producción por drift de esquema no
+detectado.
 
 ## Pendiente (fuera de este sprint)
 
 - Ejecutar `npm run migrate:up` contra la base de datos de producción real
   (Neon) y confirmar que el resultado coincide con el estado actual — no se
   pudo verificar en este entorno por no tener acceso a esa base de datos.
-- ~~Automatizar la ejecución de migraciones como paso previo al deploy~~ —
-  hecho, ver la sección CI de arriba.

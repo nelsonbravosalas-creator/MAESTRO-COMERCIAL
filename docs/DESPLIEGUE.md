@@ -27,20 +27,9 @@ login no anda".
 | `RESEND_API_KEY`      | Opcional    | Sin definir, el mailer solo loguea — ver `docs/EMAIL_SETUP.md`.                   |
 | `MAIL_FROM`           | Opcional    | Requerida si se define `RESEND_API_KEY`.                                          |
 | `LOG_LEVEL`           | Opcional    | Por defecto `info`.                                                               |
-| `GEMINI_API_KEY`      | Opcional    | Llave de Google Gemini para el asistente chatbot y agente comercial.              |
-| `AGENT_MODE`          | Opcional    | `true`/`false` (default `false`). Activa globalmente el agente ReAct multi-paso.  |
-| `AGENT_MODEL`         | Opcional    | Por defecto `gemini-3.6-flash`.                                                   |
-| `OMNIROUTE_URL`       | Opcional    | Endpoint OmniRoute para inferencia pesada (con degradación a Gemini).             |
-| `OMNIROUTE_API_KEY`   | Opcional    | Token de autenticación de OmniRoute.                                              |
 
 `PORT` **no** se configura en Vercel: no hay un servidor escuchando un puerto,
 la plataforma invoca la función directamente.
-
-> **Presupuesto de ejecución del Agente:** El bucle autónomo ReAct (`backend/src/agent/loop.ts`)
-> tiene un límite interno de **40 segundos** (`BUDGET_MS = 40_000`). En `vercel.json`, la función
-> serverless `api/index.ts` está configurada con `maxDuration: 60`, garantizando 20 segundos de
-> margen antes de que la plataforma corte la conexión. Además, la interfaz (`ChatPanel.tsx`)
-> incluye un selector interactivo para activar el Modo Agente bajo demanda durante pruebas piloto.
 
 Cambiar una variable de entorno **no** redespliega solo. Después de guardarlas
 hay que forzar un redeploy (Deployments → último → Redeploy) para que la
@@ -87,9 +76,9 @@ a que CI pase. Un PR puede fusionarse con CI en rojo (si alguien hace
    `migrate-production` de `.github/workflows/ci.yml` corre
    `npm run migrate:up` contra producción (`secrets.PROD_DATABASE_URL`, el
    mismo secret que ya usan `backup.yml` y `cleanup-sessions.yml`) en cada
-   push a `master`. Detalle y razones de diseño en `docs/MIGRACIONES.md#ci`.
-   **El job falla si el secret no está configurado** — es deliberado: un rojo
-   visible es mejor que volver en silencio al paso manual que nadie hacía.
+   push a `master`. Ver el detalle y las razones de diseño (por qué no
+   depende de `quality`/`integration`, por qué es seguro igual) en
+   `docs/MIGRACIONES.md#ci`.
 
 ## Smoke test post-deploy
 
@@ -127,16 +116,9 @@ localmente, no en un simulacro real contra producción.
 
 ## Pendiente para cumplir A-09 completo
 
-- [ ] Branch protection en GitHub exigiendo los checks de CI. Los nombres
-      exactos hoy son `quality (backend)`, `quality (frontend)`,
-      `vercel-function`, `secrets`, `commitlint` e `integration` — son seis,
-      no cuatro como decía esta lista antes de que se agregaran
-      `vercel-function` y `commitlint`. **No incluir `migrate-production`**:
-      solo corre en push, así que como check requerido de PR nunca se
-      completaría y bloquearía todo merge.
+- [ ] Branch protection en GitHub exigiendo los 4 checks de CI.
 - [x] Migraciones automatizadas como paso previo al deploy (no manual) — job
-      `migrate-production` en `.github/workflows/ci.yml`, ver
-      `docs/MIGRACIONES.md#ci`.
+      `migrate-production` en `.github/workflows/ci.yml`, ver `docs/MIGRACIONES.md#ci`.
 - [ ] Smoke test disparado automáticamente post-deploy (webhook de Vercel → GitHub Action).
 - [ ] Un rollback simulado end-to-end, con tiempo medido (< 5 min según el plan).
 - [ ] `Deployment` de Sentry marcado con el SHA del commit como `release` (el código ya soporta `VERCEL_GIT_COMMIT_SHA`, falta confirmarlo en un deploy real).

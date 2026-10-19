@@ -1254,9 +1254,9 @@
     "semantic_hash": ""
   },
   "frontend/src/components/ChatPanel.tsx": {
-    "mtime": 1792286543.6061685,
-    "seen": 1792296417.1802766,
-    "ast_hash": "a5c79edc03456cee6788ca77dcad4eb3",
+    "mtime": 1792296638.8820891,
+    "seen": 1792374374.2429385,
+    "ast_hash": "482c00b576bab7caa42a823f07f65bf0",
     "semantic_hash": ""
   },
   "frontend/src/stores/chatStore.ts": {
@@ -1266,9 +1266,9 @@
     "semantic_hash": ""
   },
   "backend/src/agent/__tests__/agent.test.ts": {
-    "mtime": 1792296084.2547672,
-    "seen": 1792296417.1088104,
-    "ast_hash": "b547a8f7e43877cbf5690d7edc0f6535",
+    "mtime": 1792296469.994727,
+    "seen": 1792374374.1801076,
+    "ast_hash": "afed73d081ce6a100331f8aa0a4f5055",
     "semantic_hash": ""
   },
   "backend/src/agent/__tests__/goldenSet.test.ts": {
@@ -1278,15 +1278,15 @@
     "semantic_hash": ""
   },
   "backend/src/agent/loop.ts": {
-    "mtime": 1792296104.1714869,
-    "seen": 1792296417.108855,
-    "ast_hash": "222640ba099e3807fc70ff64229d6e43",
+    "mtime": 1792296638.1374674,
+    "seen": 1792374374.1813748,
+    "ast_hash": "5a1c63238c4ab9f62c072727f9bd1495",
     "semantic_hash": ""
   },
   "backend/src/agent/registry.ts": {
-    "mtime": 1792287570.5340965,
-    "seen": 1792296417.108864,
-    "ast_hash": "ce9746cbee91389b94e002e8a4d0cb23",
+    "mtime": 1792296638.1901727,
+    "seen": 1792374374.181382,
+    "ast_hash": "92c78e6cea8b8eb16ba3123b32e15537",
     "semantic_hash": ""
   },
   "backend/src/agent/tools/calcTool.ts": {
@@ -1452,15 +1452,21 @@
     "semantic_hash": ""
   },
   "backend/src/services/__tests__/hvacTemplates.test.ts": {
-    "mtime": 1792296256.1271014,
-    "seen": 1792296417.160866,
-    "ast_hash": "3c75a1b18c597bc38bc811b860010fb5",
+    "mtime": 1792296638.5552065,
+    "seen": 1792374374.223156,
+    "ast_hash": "98c218b027ba21ae723f3e66ea065793",
     "semantic_hash": ""
   },
   "backend/src/services/hvacTemplates.ts": {
     "mtime": 1792286897.503141,
     "seen": 1792296417.1632843,
     "ast_hash": "ade120f033d392e8911500f4bf28c7c6",
+    "semantic_hash": ""
+  },
+  "docs/ROADMAP_AGENTE_COMERCIAL_ALTA_COMPLEJIDAD.md": {
+    "mtime": 1792374347.4466667,
+    "seen": 1792374374.278805,
+    "ast_hash": "3f618292d6636dfbaea57611faa57178",
     "semantic_hash": ""
   }
 }

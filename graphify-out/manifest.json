@@ -468,10 +468,10 @@
     "semantic_hash": "570b157ae6ca5d5a980f9b6d745111e5"
   },
   "backend/src/schemas/quotations.ts": {
-    "mtime": 1790719524.050788,
-    "seen": 1791404726.9400415,
-    "ast_hash": "6e1ce21483f0cc342bc8808ecd49920d",
-    "semantic_hash": "6e1ce21483f0cc342bc8808ecd49920d"
+    "mtime": 1792438516.6272173,
+    "seen": 1792438662.4838724,
+    "ast_hash": "80401050ca64dfbf0b3ff79f313ea6f1",
+    "semantic_hash": ""
   },
   "backend/src/scripts/cleanupSessions.ts": {
     "mtime": 1790694834.8643422,
@@ -768,10 +768,10 @@
     "semantic_hash": "94911f29a309831387d66bbf6d1b500b"
   },
   "frontend/src/pages/Maintenance.tsx": {
-    "mtime": 1791315379.6232505,
-    "seen": 1791404726.9401162,
-    "ast_hash": "0e1f3a68fe7757d08480ffa39a11a5db",
-    "semantic_hash": "0e1f3a68fe7757d08480ffa39a11a5db"
+    "mtime": 1792438517.7716293,
+    "seen": 1792438662.4843085,
+    "ast_hash": "f6ebe77d16805cf1b2b8b01e3da052c6",
+    "semantic_hash": ""
   },
   "frontend/src/pages/Projects.tsx": {
     "mtime": 1791934157.547675,
@@ -792,9 +792,9 @@
     "semantic_hash": "8de87866360891335958f2d6ef91b902"
   },
   "frontend/src/pages/Quotations.tsx": {
-    "mtime": 1792024063.4032545,
-    "seen": 1792033688.233782,
-    "ast_hash": "e1547f30f0ad53d3edf43929360e588d",
+    "mtime": 1792438518.668142,
+    "seen": 1792438662.4843347,
+    "ast_hash": "147a833874fe802f9b3841387fdca771",
     "semantic_hash": ""
   },
   "frontend/src/pages/__tests__/Invoices.test.tsx": {
@@ -840,10 +840,10 @@
     "semantic_hash": "00e15e473186d996cdec41d667cb1ee4"
   },
   "frontend/src/types/index.ts": {
-    "mtime": 1790719524.092515,
-    "seen": 1791404726.9401321,
-    "ast_hash": "3cbf09f28b274f227da60943329402d1",
-    "semantic_hash": "3cbf09f28b274f227da60943329402d1"
+    "mtime": 1792438519.4388952,
+    "seen": 1792438662.4844124,
+    "ast_hash": "6f40d27d473336d3f599b334ab84d1a1",
+    "semantic_hash": ""
   },
   "frontend/src/utils/__tests__/contacts.test.ts": {
     "mtime": 1790719524.095509,
@@ -1467,6 +1467,24 @@
     "mtime": 1792427558.5259676,
     "seen": 1792427575.810838,
     "ast_hash": "5a24e272d756be89fbd03ebd50650ccf",
+    "semantic_hash": ""
+  },
+  "backend/src/db/migrations/1700000024000_0024-display_currency.js": {
+    "mtime": 1792435857.52833,
+    "seen": 1792438662.4837112,
+    "ast_hash": "a69b2cedb9bf2eac6df9e80c761f1895",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/__tests__/currencyHelper.test.ts": {
+    "mtime": 1792435891.9944112,
+    "seen": 1792438662.4844253,
+    "ast_hash": "d45bdde5840bc4d9016eea155b6de087",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/currencyHelper.ts": {
+    "mtime": 1792435866.167065,
+    "seen": 1792438662.484447,
+    "ast_hash": "62a76c8dae60c356e794f19b110a79ea",
     "semantic_hash": ""
   }
 }

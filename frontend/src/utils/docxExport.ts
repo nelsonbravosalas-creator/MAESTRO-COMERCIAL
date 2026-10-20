@@ -17,6 +17,7 @@ import { calcTotals, fmtCLP, VISITS_PER_YEAR, FREQUENCY_LABELS } from '../stores
 import type { MasterClient, MasterQuotation } from '../types'
 import { buildQuotationValuationRows } from './quotationRows'
 import { quotationContact } from './contacts'
+import { getCurrencyInfo, convertAmount, formatCurrency } from './currencyHelper'
 
 const C = {
   DARK: '0F172A',
@@ -274,8 +275,14 @@ export async function downloadDocx(params: {
 
   // ── Valuation line items (compartido: representa el valor de UNA visita
   //    en mantención, o el total del proyecto en cotizaciones normales) ──
+  const currencyInfo = getCurrencyInfo(q, q.display_currency)
   const valRows: TableRow[] = []
   buildQuotationValuationRows(q, expandedCategoryIds).forEach(row => {
+    const displayRowVenta = convertAmount(row.venta, currencyInfo.rate)
+    const formattedAmount =
+      currencyInfo.currency === 'CLP'
+        ? fmtCLP.format(displayRowVenta)
+        : formatCurrency(displayRowVenta, currencyInfo.currency, 2)
     valRows.push(
       new TableRow({
         cantSplit: true,
@@ -285,10 +292,9 @@ export async function downloadDocx(params: {
             { w: 8 }
           ),
           mkCell([para([tr(row.cat.label, { sz: 10 })])], { w: 72 }),
-          mkCell(
-            [para([tr(fmtCLP.format(row.venta), { sz: 10, bold: true })], AlignmentType.RIGHT)],
-            { w: 20 }
-          ),
+          mkCell([para([tr(formattedAmount, { sz: 10, bold: true })], AlignmentType.RIGHT)], {
+            w: 20,
+          }),
         ],
       })
     )
@@ -331,7 +337,17 @@ export async function downloadDocx(params: {
       ),
       darkCell([para([tr('DESCRIPCIÓN', { bold: true, sz: 8.5, color: C.GRAY })])], undefined, 72),
       darkCell(
-        [para([tr('VALOR NETO CLP', { bold: true, sz: 8.5, color: C.GRAY })], AlignmentType.RIGHT)],
+        [
+          para(
+            [
+              tr(
+                `VALOR NETO ${currencyInfo.displaySymbol === '$' ? 'CLP' : currencyInfo.displaySymbol}`,
+                { bold: true, sz: 8.5, color: C.GRAY }
+              ),
+            ],
+            AlignmentType.RIGHT
+          ),
+        ],
         undefined,
         20
       ),
@@ -365,6 +381,16 @@ export async function downloadDocx(params: {
     const totalAnualConIva = netoAnual + ivaAnual
     const enUF = q.uf > 0 ? totalAnualConIva / q.uf : 0
     const enUSD = q.usd > 0 ? totalAnualConIva / q.usd : 0
+
+    // Conversión a moneda seleccionada
+    const displayTotalVisitaConIva = convertAmount(totalVisitaConIva, currencyInfo.rate)
+    const displayNetoAnual = convertAmount(netoAnual, currencyInfo.rate)
+    const displayIvaAnual = convertAmount(ivaAnual, currencyInfo.rate)
+    const displayTotalAnualConIva = convertAmount(totalAnualConIva, currencyInfo.rate)
+    const formatCLP = (amt: number) =>
+      currencyInfo.currency === 'CLP'
+        ? fmtCLP.format(amt)
+        : formatCurrency(amt, currencyInfo.currency, 2)
 
     const equiposTable = new Table({
       ...tableDefaults,
@@ -411,18 +437,30 @@ export async function downloadDocx(params: {
       rows: [
         valuationHeader,
         ...valRows,
-        sumRow('Subtotal Neto por Visita', fmtCLP.format(totals.venta), C.LGRAY, true, C.NAVY),
-        sumRow(`IVA (${q.iva}%)`, fmtCLP.format(ivaVisita), C.LGRAY, false, C.GRAY),
-        totalRow('TOTAL POR VISITA CON IVA', fmtCLP.format(totalVisitaConIva)),
+        sumRow(
+          'Subtotal Neto por Visita',
+          formatCLP(convertAmount(totals.venta, currencyInfo.rate)),
+          C.LGRAY,
+          true,
+          C.NAVY
+        ),
+        sumRow(
+          `IVA (${q.iva}%)`,
+          formatCLP(convertAmount(ivaVisita, currencyInfo.rate)),
+          C.LGRAY,
+          false,
+          C.GRAY
+        ),
+        totalRow('TOTAL POR VISITA CON IVA', formatCLP(displayTotalVisitaConIva)),
       ],
     })
 
     const anualTable = new Table({
       ...tableDefaults,
       rows: [
-        sumRow('Subtotal Neto Anual', fmtCLP.format(netoAnual), C.LGRAY, true, C.NAVY),
-        sumRow(`IVA (${q.iva}%)`, fmtCLP.format(ivaAnual), C.LGRAY, false, C.GRAY),
-        totalRow('TOTAL ANUAL CON IVA', fmtCLP.format(totalAnualConIva)),
+        sumRow('Subtotal Neto Anual', formatCLP(displayNetoAnual), C.LGRAY, true, C.NAVY),
+        sumRow(`IVA (${q.iva}%)`, formatCLP(displayIvaAnual), C.LGRAY, false, C.GRAY),
+        totalRow('TOTAL ANUAL CON IVA', formatCLP(displayTotalAnualConIva)),
         ...(q.show_uf_equivalent && q.uf > 0
           ? [
               equivalentRow(
@@ -486,20 +524,38 @@ export async function downloadDocx(params: {
     const iva = totals.venta * (q.iva / 100)
     const conIva = totals.venta + iva
     const enUF = q.uf > 0 ? totals.venta / q.uf : 0
+    const enUSD = q.usd > 0 ? conIva / q.usd : 0
+
+    // Conversión a moneda seleccionada (Cotizaciones)
+    const displayVenta = convertAmount(totals.venta, currencyInfo.rate)
+    const displayIva = convertAmount(iva, currencyInfo.rate)
+    const displayConIva = convertAmount(conIva, currencyInfo.rate)
+    const formatCLPQuote = (amt: number) =>
+      currencyInfo.currency === 'CLP'
+        ? fmtCLP.format(amt)
+        : formatCurrency(amt, currencyInfo.currency, 2)
 
     const valuationTable = new Table({
       ...tableDefaults,
       rows: [
         valuationHeader,
         ...valRows,
-        sumRow('Subtotal Neto', fmtCLP.format(totals.venta), C.LGRAY, true, C.NAVY),
-        sumRow(`IVA (${q.iva}%)`, fmtCLP.format(iva), C.LGRAY, false, C.GRAY),
-        totalRow('TOTAL CON IVA', fmtCLP.format(conIva)),
-        ...(q.uf > 0
+        sumRow('Subtotal Neto', formatCLPQuote(displayVenta), C.LGRAY, true, C.NAVY),
+        sumRow(`IVA (${q.iva}%)`, formatCLPQuote(displayIva), C.LGRAY, false, C.GRAY),
+        totalRow('TOTAL CON IVA', formatCLPQuote(displayConIva)),
+        ...(q.uf > 0 && currencyInfo.currency !== 'UF'
           ? [
               equivalentRow(
                 `Equivalente en UF (ref. ${fmtCLP.format(q.uf)}/UF)`,
                 `${enUF.toFixed(2)} UF`
+              ),
+            ]
+          : []),
+        ...(q.usd > 0 && currencyInfo.currency !== 'USD'
+          ? [
+              equivalentRow(
+                `Equivalente en USD (ref. ${fmtCLP.format(q.usd)}/USD)`,
+                `US$ ${enUSD.toFixed(2)}`
               ),
             ]
           : []),

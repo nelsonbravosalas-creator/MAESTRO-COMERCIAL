@@ -5,7 +5,6 @@ import {
   convertAmount,
   isCurrencyAvailable,
   formatCurrency,
-  type DisplayCurrency,
 } from '../currencyHelper'
 
 const quotation = (over: Partial<MasterQuotation>): MasterQuotation => ({
@@ -13,9 +12,9 @@ const quotation = (over: Partial<MasterQuotation>): MasterQuotation => ({
   client_id: '',
   correlative: '001',
   status: 'Borrador',
-  oper_state: 'Pendiente de ejecución',
-  uf_value: 0,
-  iva_pct: 19,
+  operState: 'Pendiente de ejecución',
+  uf: 0,
+  iva: 19,
   notes: '',
   contact_id: null,
   contact: '',
@@ -25,8 +24,11 @@ const quotation = (over: Partial<MasterQuotation>): MasterQuotation => ({
   valid_until: '',
   categories: [],
   items: { mo: [], log: [], mat: [], rep: [], ins: [], mec: [], ele: [] },
-  terms: [],
-  activity: '',
+  client_name: '',
+  scope: [],
+  exclusions: [],
+  commercial: [],
+  total: 0,
   created_at: '',
   updated_at: '',
   version: 1,
@@ -38,14 +40,35 @@ const quotation = (over: Partial<MasterQuotation>): MasterQuotation => ({
   contract_start_date: '',
   show_uf_equivalent: false,
   show_usd_equivalent: false,
-  usd_value: 0,
+  usd: 0,
   display_currency: 'CLP',
+  invoice_count: 0,
+  invoice_count_max: 1,
+  total_con_iva: 0,
+  invoiced_total: 0,
+  oc_number: null,
+  oc_date: null,
+  oc_conditions: null,
+  oc_document_name: null,
+  oc_document_size: null,
+  loss_reason: null,
+  loss_competitor: null,
+  loss_notes: null,
+  follow_up_date: null,
+  sent_at: null,
+  awarded_at: null,
+  closed_at: null,
+  version_reason: null,
+  parent_version_id: null,
+  approved_by: null,
+  approved_at: null,
+  approval_notes: null,
   ...over,
 })
 
 describe('getCurrencyInfo', () => {
   it('CLP siempre retorna rate 1 y símbolo $', () => {
-    const q = quotation({ uf_value: 27500, usd_value: 950 })
+    const q = quotation({ uf: 27500, usd: 950 })
     const info = getCurrencyInfo(q, 'CLP')
     expect(info.currency).toBe('CLP')
     expect(info.rate).toBe(1)
@@ -53,8 +76,8 @@ describe('getCurrencyInfo', () => {
     expect(info.displayName).toBe('Pesos')
   })
 
-  it('UF usa uf_value como rate', () => {
-    const q = quotation({ uf_value: 27500.5 })
+  it('UF usa uf como rate', () => {
+    const q = quotation({ uf: 27500.5 })
     const info = getCurrencyInfo(q, 'UF')
     expect(info.currency).toBe('UF')
     expect(info.rate).toBe(27500.5)
@@ -62,8 +85,8 @@ describe('getCurrencyInfo', () => {
     expect(info.displayName).toBe('Unidad de Fomento')
   })
 
-  it('USD usa usd_value como rate', () => {
-    const q = quotation({ usd_value: 950.75 })
+  it('USD usa usd como rate', () => {
+    const q = quotation({ usd: 950.75 })
     const info = getCurrencyInfo(q, 'USD')
     expect(info.currency).toBe('USD')
     expect(info.rate).toBe(950.75)
@@ -77,7 +100,7 @@ describe('getCurrencyInfo', () => {
   })
 
   it('retorna rate 0 si el campo no está definido', () => {
-    const q = quotation({ uf_value: undefined, usd_value: undefined })
+    const q = quotation({ uf: undefined, usd: undefined })
     const infoUF = getCurrencyInfo(q, 'UF')
     const infoUSD = getCurrencyInfo(q, 'USD')
     expect(infoUF.rate).toBe(0)
@@ -116,21 +139,21 @@ describe('convertAmount', () => {
 
 describe('isCurrencyAvailable', () => {
   it('CLP siempre está disponible', () => {
-    const q = quotation({ uf_value: 0, usd_value: 0 })
+    const q = quotation({ uf: 0, usd: 0 })
     expect(isCurrencyAvailable(q, 'CLP')).toBe(true)
     expect(isCurrencyAvailable(null, 'CLP')).toBe(true)
   })
 
-  it('UF está disponible si uf_value > 0', () => {
-    expect(isCurrencyAvailable(quotation({ uf_value: 27500 }), 'UF')).toBe(true)
-    expect(isCurrencyAvailable(quotation({ uf_value: 0 }), 'UF')).toBe(false)
-    expect(isCurrencyAvailable(quotation({ uf_value: undefined }), 'UF')).toBe(false)
+  it('UF está disponible si uf > 0', () => {
+    expect(isCurrencyAvailable(quotation({ uf: 27500 }), 'UF')).toBe(true)
+    expect(isCurrencyAvailable(quotation({ uf: 0 }), 'UF')).toBe(false)
+    expect(isCurrencyAvailable(quotation({ uf: undefined }), 'UF')).toBe(false)
   })
 
-  it('USD está disponible si usd_value > 0', () => {
-    expect(isCurrencyAvailable(quotation({ usd_value: 950 }), 'USD')).toBe(true)
-    expect(isCurrencyAvailable(quotation({ usd_value: 0 }), 'USD')).toBe(false)
-    expect(isCurrencyAvailable(quotation({ usd_value: undefined }), 'USD')).toBe(false)
+  it('USD está disponible si usd > 0', () => {
+    expect(isCurrencyAvailable(quotation({ usd: 950 }), 'USD')).toBe(true)
+    expect(isCurrencyAvailable(quotation({ usd: 0 }), 'USD')).toBe(false)
+    expect(isCurrencyAvailable(quotation({ usd: undefined }), 'USD')).toBe(false)
   })
 
   it('sin cotización, solo CLP está disponible', () => {

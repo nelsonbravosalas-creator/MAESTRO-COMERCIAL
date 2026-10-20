@@ -29,14 +29,14 @@ export function getCurrencyInfo(
     case 'UF':
       return {
         currency: 'UF',
-        rate: q?.uf_value ?? 0,
+        rate: q?.uf ?? 0,
         displaySymbol: 'UF',
         displayName: 'Unidad de Fomento',
       }
     case 'USD':
       return {
         currency: 'USD',
-        rate: q?.usd_value ?? 0,
+        rate: q?.usd ?? 0,
         displaySymbol: 'USD$',
         displayName: 'Dólar estadounidense',
       }
@@ -61,8 +61,8 @@ export function isCurrencyAvailable(
   currency: DisplayCurrency
 ): boolean {
   if (currency === 'CLP') return true
-  if (currency === 'UF') return (q?.uf_value ?? 0) > 0
-  if (currency === 'USD') return (q?.usd_value ?? 0) > 0
+  if (currency === 'UF') return (q?.uf ?? 0) > 0
+  if (currency === 'USD') return (q?.usd ?? 0) > 0
   return false
 }
 

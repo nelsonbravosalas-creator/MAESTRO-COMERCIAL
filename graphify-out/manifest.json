@@ -230,7 +230,7 @@
   "backend/src/db/migration_v3_project_tasks.sql": {
     "mtime": 1785357890.9008117,
     "seen": 1792427575.8104413,
-    "ast_hash": "1ca3efc1afde4dac147e2833cd0972a0",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "backend/src/db/migrations/1700000001000_0001-baseline.js": {
@@ -356,13 +356,13 @@
   "backend/src/db/schema.sql": {
     "mtime": 1790719524.044778,
     "seen": 1792427575.8104978,
-    "ast_hash": "d8f76ff316c75820e7a2ac5ee2641fb8",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "backend/src/db/seed.sql": {
     "mtime": 1785544231.713781,
     "seen": 1792427575.8105004,
-    "ast_hash": "3d06894b77ca58e3844d18a696450736",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "backend/src/db/seed.ts": {
@@ -678,9 +678,9 @@
     "semantic_hash": "2471f8e2a3528ffd8064b8233a43af1b"
   },
   "frontend/src/api/api.ts": {
-    "mtime": 1792029969.095937,
-    "seen": 1792033688.2310672,
-    "ast_hash": "327fae097c5ca08ed8f2a6ae8422f482",
+    "mtime": 1792465649.738416,
+    "seen": 1792465897.7200558,
+    "ast_hash": "ba03f85bf640d2225e058b25772ddc17",
     "semantic_hash": ""
   },
   "frontend/src/components/CatalogAutocomplete.tsx": {
@@ -810,10 +810,10 @@
     "semantic_hash": "d8b62a69d9b727d24a42028405e8170b"
   },
   "frontend/src/stores/__tests__/maestro-store.test.ts": {
-    "mtime": 1791315379.6402519,
-    "seen": 1791404726.9401257,
-    "ast_hash": "756a1ad56c919911629c368710d33c13",
-    "semantic_hash": "756a1ad56c919911629c368710d33c13"
+    "mtime": 1792465667.7602248,
+    "seen": 1792465897.7281513,
+    "ast_hash": "b99ee0df493cafbc3773acf0db10bd3b",
+    "semantic_hash": ""
   },
   "frontend/src/stores/database.ts": {
     "mtime": 1785357890.9412818,
@@ -822,10 +822,10 @@
     "semantic_hash": "eddf2df21dcedff68580df035409ccba"
   },
   "frontend/src/stores/maestro-store.ts": {
-    "mtime": 1791315379.6442573,
-    "seen": 1791404726.9401283,
-    "ast_hash": "9a51f1c80bb0654ae0d1e4da33a9d695",
-    "semantic_hash": "9a51f1c80bb0654ae0d1e4da33a9d695"
+    "mtime": 1792465660.5804465,
+    "seen": 1792465897.7287154,
+    "ast_hash": "06c3fa18b2523a100a30b692a18af9d0",
+    "semantic_hash": ""
   },
   "frontend/src/stores/projects-store.ts": {
     "mtime": 1785467189.7806582,
@@ -978,20 +978,20 @@
     "semantic_hash": "41add529d89a6609e56eb3ed191dcfb6"
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1792427553.7322178,
-    "seen": 1792427575.8107927,
+    "mtime": 1792465418.578388,
+    "seen": 1792465897.736133,
     "ast_hash": "bfe9625b35eef5ccaa606f8e6ce7d03e",
     "semantic_hash": ""
   },
   ".github/workflows/cleanup-sessions.yml": {
-    "mtime": 1791943377.1297297,
-    "seen": 1792019793.2228394,
+    "mtime": 1792465418.578905,
+    "seen": 1792465897.7361364,
     "ast_hash": "ec4acacc8642930a085f1609acc0bd56",
     "semantic_hash": ""
   },
   ".github/workflows/weekly-commercial-summary.yml": {
-    "mtime": 1791943377.1297297,
-    "seen": 1792019793.2228413,
+    "mtime": 1792465418.5799248,
+    "seen": 1792465897.7361398,
     "ast_hash": "63a9456392af0b2434e2574deeb4ae0a",
     "semantic_hash": ""
   },
@@ -1386,9 +1386,9 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/__tests__/Quotations.test.tsx": {
-    "mtime": 1792024063.4330666,
-    "seen": 1792033688.234108,
-    "ast_hash": "2cd2d3e9cf635114fd5031cb62d5d3b4",
+    "mtime": 1792465690.472042,
+    "seen": 1792465897.7275467,
+    "ast_hash": "3f708bb31991f05f4f984d0953674703",
     "semantic_hash": ""
   },
   "frontend/src/stores/__tests__/chatStore.test.ts": {
@@ -1476,15 +1476,15 @@
     "semantic_hash": ""
   },
   "frontend/src/utils/__tests__/currencyHelper.test.ts": {
-    "mtime": 1792435891.9944112,
-    "seen": 1792438662.4844253,
-    "ast_hash": "d45bdde5840bc4d9016eea155b6de087",
+    "mtime": 1792465783.2533197,
+    "seen": 1792465897.7299023,
+    "ast_hash": "83f3a33637f89bf621f5af689583f659",
     "semantic_hash": ""
   },
   "frontend/src/utils/currencyHelper.ts": {
-    "mtime": 1792435866.167065,
-    "seen": 1792438662.484447,
-    "ast_hash": "62a76c8dae60c356e794f19b110a79ea",
+    "mtime": 1792465494.3149316,
+    "seen": 1792465897.7305076,
+    "ast_hash": "6f719fd3f1dfb59eaed51f2e1fe7225f",
     "semantic_hash": ""
   }
 }

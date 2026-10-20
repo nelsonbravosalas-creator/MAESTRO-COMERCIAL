@@ -230,6 +230,7 @@ export interface RawQuotation {
   usd_value?: number | string | null
   show_uf_equivalent?: boolean
   show_usd_equivalent?: boolean
+  display_currency?: 'CLP' | 'UF' | 'USD' | null
   invoice_count?: number
   invoice_count_max?: number
   total_con_iva?: number
@@ -537,6 +538,7 @@ function toMasterQuotation(q: RawQuotation): MasterQuotation {
     usd: Number(q.usd_value) || 0,
     show_uf_equivalent: Boolean(q.show_uf_equivalent),
     show_usd_equivalent: Boolean(q.show_usd_equivalent),
+    display_currency: q.display_currency ?? 'CLP',
     invoice_count: Number(q.invoice_count) || 0,
     invoice_count_max: Number(q.invoice_count_max) || 1,
     total_con_iva: Number(q.total_con_iva) || 0,
@@ -639,6 +641,7 @@ function fromMasterQuotation(q: MasterQuotation) {
     usd_value: q.usd || 0,
     show_uf_equivalent: Boolean(q.show_uf_equivalent),
     show_usd_equivalent: Boolean(q.show_usd_equivalent),
+    display_currency: q.display_currency,
   }
 }
 

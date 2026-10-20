@@ -858,16 +858,16 @@
     "semantic_hash": "8a6e5e02ba691a61324d072b25ca3112"
   },
   "frontend/src/utils/docxExport.ts": {
-    "mtime": 1790719524.102481,
-    "seen": 1791404726.9401362,
-    "ast_hash": "a186d4be8a824839bf84dd97e1af439c",
-    "semantic_hash": "a186d4be8a824839bf84dd97e1af439c"
+    "mtime": 1792461903.265161,
+    "seen": 1792461919.6403918,
+    "ast_hash": "d79266e1d9902a2543cf7692aaff42a1",
+    "semantic_hash": ""
   },
   "frontend/src/utils/htmlExport.ts": {
-    "mtime": 1790719524.1072595,
-    "seen": 1791404726.9401374,
-    "ast_hash": "7283fd2c5279478057dd34751b7b5462",
-    "semantic_hash": "7283fd2c5279478057dd34751b7b5462"
+    "mtime": 1792461916.8529742,
+    "seen": 1792461919.640403,
+    "ast_hash": "11bf40cbf895e0b6f99c0f5629296a13",
+    "semantic_hash": ""
   },
   "frontend/src/utils/pdfExport.ts": {
     "mtime": 1785357890.9544215,

@@ -499,19 +499,6 @@
       "source_location": "L8"
     },
     {
-      "id": "frontend_src_components_costindicator_kpis",
-      "label": "KPIs",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 144,
-      "community_name": "CostIndicator.tsx",
-      "file_type": "code",
-      "norm_label": "kpis",
-      "source_file": "frontend/src/components/CostIndicator.tsx",
-      "source_location": "L4"
-    },
-    {
       "id": "frontend_src_pages_dashboard_kpicardprops",
       "label": "KpiCardProps",
       "_callable": true,
@@ -668,19 +655,6 @@
       "source_location": "L5"
     },
     {
-      "id": "frontend_src_api_api_apierror",
-      "label": "ApiError",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 18,
-      "community_name": "maestro-store.ts",
-      "file_type": "code",
-      "norm_label": "apierror",
-      "source_file": "frontend/src/api/api.ts",
-      "source_location": "L45"
-    },
-    {
       "id": "frontend_src_api_api_importquotationresult",
       "label": "ImportQuotationResult",
       "_callable": true,
@@ -707,19 +681,6 @@
       "source_location": "L205"
     },
     {
-      "id": "frontend_src_stores_maestro_store_catalogsaveerror",
-      "label": "CatalogSaveError",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 18,
-      "community_name": "maestro-store.ts",
-      "file_type": "code",
-      "norm_label": "catalogsaveerror",
-      "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L66"
-    },
-    {
       "id": "frontend_src_stores_maestro_store_maestrostate",
       "label": "MaestroState",
       "_callable": true,
@@ -744,6 +705,32 @@
       "norm_label": "catalogsui",
       "source_file": "frontend/src/types/index.ts",
       "source_location": "L319"
+    },
+    {
+      "id": "frontend_src_types_index_costcategory",
+      "label": "CostCategory",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 18,
+      "community_name": "maestro-store.ts",
+      "file_type": "code",
+      "norm_label": "costcategory",
+      "source_file": "frontend/src/types/index.ts",
+      "source_location": "L353"
+    },
+    {
+      "id": "frontend_src_types_index_costitem",
+      "label": "CostItem",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 18,
+      "community_name": "maestro-store.ts",
+      "file_type": "code",
+      "norm_label": "costitem",
+      "source_file": "frontend/src/types/index.ts",
+      "source_location": "L365"
     },
     {
       "id": "frontend_src_types_index_masterquotation",
@@ -811,6 +798,32 @@
       "source_location": "L9"
     },
     {
+      "id": "frontend_src_utils_quotationrows_quotationdetailrow",
+      "label": "QuotationDetailRow",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 18,
+      "community_name": "maestro-store.ts",
+      "file_type": "code",
+      "norm_label": "quotationdetailrow",
+      "source_file": "frontend/src/utils/quotationRows.ts",
+      "source_location": "L4"
+    },
+    {
+      "id": "frontend_src_utils_quotationrows_quotationvaluationrow",
+      "label": "QuotationValuationRow",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 18,
+      "community_name": "maestro-store.ts",
+      "file_type": "code",
+      "norm_label": "quotationvaluationrow",
+      "source_file": "frontend/src/utils/quotationRows.ts",
+      "source_location": "L9"
+    },
+    {
       "id": "frontend_src_hooks_usepermissions_role",
       "label": "Role",
       "_callable": true,
@@ -837,19 +850,6 @@
       "source_location": "L86"
     },
     {
-      "id": "frontend_src_types_index_quotationactivity",
-      "label": "QuotationActivity",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "Quotations.tsx",
-      "file_type": "code",
-      "norm_label": "quotationactivity",
-      "source_file": "frontend/src/types/index.ts",
-      "source_location": "L451"
-    },
-    {
       "id": "backend_src_server_dev_authreq",
       "label": "AuthReq",
       "_callable": true,
@@ -874,58 +874,6 @@
       "norm_label": "db",
       "source_file": "backend/src/server-dev.ts",
       "source_location": "L31"
-    },
-    {
-      "id": "frontend_src_types_index_costcategory",
-      "label": "CostCategory",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "costcategory",
-      "source_file": "frontend/src/types/index.ts",
-      "source_location": "L353"
-    },
-    {
-      "id": "frontend_src_types_index_costitem",
-      "label": "CostItem",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "costitem",
-      "source_file": "frontend/src/types/index.ts",
-      "source_location": "L365"
-    },
-    {
-      "id": "frontend_src_utils_quotationrows_quotationdetailrow",
-      "label": "QuotationDetailRow",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "quotationdetailrow",
-      "source_file": "frontend/src/utils/quotationRows.ts",
-      "source_location": "L4"
-    },
-    {
-      "id": "frontend_src_utils_quotationrows_quotationvaluationrow",
-      "label": "QuotationValuationRow",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "quotationvaluationrow",
-      "source_file": "frontend/src/utils/quotationRows.ts",
-      "source_location": "L9"
     },
     {
       "id": "frontend_e2e_fixtures_screen",
@@ -960,7 +908,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "currencyinfo",
       "source_file": "frontend/src/utils/currencyHelper.ts",
@@ -973,7 +921,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "displaycurrency",
       "source_file": "frontend/src/utils/currencyHelper.ts",
@@ -986,7 +934,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "align",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -1708,19 +1656,6 @@
       "source_location": "L249"
     },
     {
-      "id": "frontend_src_types_index_invoicemilestone",
-      "label": "InvoiceMilestone",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 38,
-      "community_name": "types/index.ts",
-      "file_type": "code",
-      "norm_label": "invoicemilestone",
-      "source_file": "frontend/src/types/index.ts",
-      "source_location": "L443"
-    },
-    {
       "id": "frontend_src_types_index_invoicestatus",
       "label": "InvoiceStatus",
       "_callable": true,
@@ -1745,19 +1680,6 @@
       "norm_label": "loginrequest",
       "source_file": "frontend/src/types/index.ts",
       "source_location": "L33"
-    },
-    {
-      "id": "frontend_src_types_index_loginresponse",
-      "label": "LoginResponse",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 38,
-      "community_name": "types/index.ts",
-      "file_type": "code",
-      "norm_label": "loginresponse",
-      "source_file": "frontend/src/types/index.ts",
-      "source_location": "L37"
     },
     {
       "id": "frontend_src_types_index_paginatedresponse",
@@ -1927,19 +1849,6 @@
       "norm_label": "syncevent",
       "source_file": "frontend/src/types/index.ts",
       "source_location": "L273"
-    },
-    {
-      "id": "frontend_src_types_index_termtype",
-      "label": "TermType",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 38,
-      "community_name": "types/index.ts",
-      "file_type": "code",
-      "norm_label": "termtype",
-      "source_file": "frontend/src/types/index.ts",
-      "source_location": "L15"
     },
     {
       "id": "frontend_src_types_index_user",
@@ -2241,6 +2150,58 @@
       "source_location": "L9"
     },
     {
+      "id": "frontend_src_api_api_projectcostpayload",
+      "label": "ProjectCostPayload",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "projectcostpayload",
+      "source_file": "frontend/src/api/api.ts",
+      "source_location": "L332"
+    },
+    {
+      "id": "frontend_src_api_api_projectitemresponse",
+      "label": "ProjectItemResponse",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "projectitemresponse",
+      "source_file": "frontend/src/api/api.ts",
+      "source_location": "L298"
+    },
+    {
+      "id": "frontend_src_api_api_projecttask",
+      "label": "ProjectTask",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "projecttask",
+      "source_file": "frontend/src/api/api.ts",
+      "source_location": "L269"
+    },
+    {
+      "id": "frontend_src_api_api_projecttaskpayload",
+      "label": "ProjectTaskPayload",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "projecttaskpayload",
+      "source_file": "frontend/src/api/api.ts",
+      "source_location": "L286"
+    },
+    {
       "id": "frontend_src_components_catalogautocomplete_droppos",
       "label": "DropPos",
       "_callable": true,
@@ -2267,6 +2228,32 @@
       "source_location": "L7"
     },
     {
+      "id": "frontend_src_components_costindicator_kpis",
+      "label": "KPIs",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "kpis",
+      "source_file": "frontend/src/components/CostIndicator.tsx",
+      "source_location": "L4"
+    },
+    {
+      "id": "frontend_src_pages_catalogo_cattableprops",
+      "label": "CatTableProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "cattableprops",
+      "source_file": "frontend/src/pages/Catalogo.tsx",
+      "source_location": "L124"
+    },
+    {
       "id": "frontend_src_pages_catalogo_itemrowprops",
       "label": "ItemRowProps",
       "_callable": true,
@@ -2280,6 +2267,32 @@
       "source_location": "L41"
     },
     {
+      "id": "frontend_src_pages_projects_costform",
+      "label": "CostForm",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "costform",
+      "source_file": "frontend/src/pages/Projects.tsx",
+      "source_location": "L429"
+    },
+    {
+      "id": "frontend_src_stores_maestro_store_catalogsaveerror",
+      "label": "CatalogSaveError",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "catalogsaveerror",
+      "source_file": "frontend/src/stores/maestro-store.ts",
+      "source_location": "L66"
+    },
+    {
       "id": "frontend_src_types_index_catalogitemui",
       "label": "CatalogItemUI",
       "_callable": true,
@@ -2291,6 +2304,19 @@
       "norm_label": "catalogitemui",
       "source_file": "frontend/src/types/index.ts",
       "source_location": "L312"
+    },
+    {
+      "id": "frontend_src_types_index_categoryid",
+      "label": "CategoryId",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "categoryid",
+      "source_file": "frontend/src/types/index.ts",
+      "source_location": "L8"
     },
     {
       "id": "api_index_apphandler",
@@ -2540,6 +2566,19 @@
       "source_location": "L13"
     },
     {
+      "id": "frontend_src_api_api_apierror",
+      "label": "ApiError",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "api.ts",
+      "file_type": "code",
+      "norm_label": "apierror",
+      "source_file": "frontend/src/api/api.ts",
+      "source_location": "L45"
+    },
+    {
       "id": "frontend_src_api_api_chatbotproactivenote",
       "label": "ChatbotProactiveNote",
       "_callable": true,
@@ -2722,58 +2761,6 @@
       "source_location": "L261"
     },
     {
-      "id": "frontend_src_api_api_projectcostpayload",
-      "label": "ProjectCostPayload",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "projectcostpayload",
-      "source_file": "frontend/src/api/api.ts",
-      "source_location": "L332"
-    },
-    {
-      "id": "frontend_src_api_api_projectitemresponse",
-      "label": "ProjectItemResponse",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "projectitemresponse",
-      "source_file": "frontend/src/api/api.ts",
-      "source_location": "L298"
-    },
-    {
-      "id": "frontend_src_api_api_projecttask",
-      "label": "ProjectTask",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "projecttask",
-      "source_file": "frontend/src/api/api.ts",
-      "source_location": "L269"
-    },
-    {
-      "id": "frontend_src_api_api_projecttaskpayload",
-      "label": "ProjectTaskPayload",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "projecttaskpayload",
-      "source_file": "frontend/src/api/api.ts",
-      "source_location": "L286"
-    },
-    {
       "id": "frontend_src_api_api_rawcatalogitem",
       "label": "RawCatalogItem",
       "_callable": true,
@@ -2839,45 +2826,6 @@
       "source_location": "L199"
     },
     {
-      "id": "frontend_src_pages_catalogo_cattableprops",
-      "label": "CatTableProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "cattableprops",
-      "source_file": "frontend/src/pages/Catalogo.tsx",
-      "source_location": "L124"
-    },
-    {
-      "id": "frontend_src_pages_projects_costform",
-      "label": "CostForm",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "costform",
-      "source_file": "frontend/src/pages/Projects.tsx",
-      "source_location": "L429"
-    },
-    {
-      "id": "frontend_src_types_index_categoryid",
-      "label": "CategoryId",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "categoryid",
-      "source_file": "frontend/src/types/index.ts",
-      "source_location": "L8"
-    },
-    {
       "id": "frontend_src_types_index_clientcontact",
       "label": "ClientContact",
       "_callable": true,
@@ -2889,6 +2837,58 @@
       "norm_label": "clientcontact",
       "source_file": "frontend/src/types/index.ts",
       "source_location": "L81"
+    },
+    {
+      "id": "frontend_src_types_index_invoicemilestone",
+      "label": "InvoiceMilestone",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "api.ts",
+      "file_type": "code",
+      "norm_label": "invoicemilestone",
+      "source_file": "frontend/src/types/index.ts",
+      "source_location": "L443"
+    },
+    {
+      "id": "frontend_src_types_index_loginresponse",
+      "label": "LoginResponse",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "api.ts",
+      "file_type": "code",
+      "norm_label": "loginresponse",
+      "source_file": "frontend/src/types/index.ts",
+      "source_location": "L37"
+    },
+    {
+      "id": "frontend_src_types_index_quotationactivity",
+      "label": "QuotationActivity",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "api.ts",
+      "file_type": "code",
+      "norm_label": "quotationactivity",
+      "source_file": "frontend/src/types/index.ts",
+      "source_location": "L451"
+    },
+    {
+      "id": "frontend_src_types_index_termtype",
+      "label": "TermType",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "api.ts",
+      "file_type": "code",
+      "norm_label": "termtype",
+      "source_file": "frontend/src/types/index.ts",
+      "source_location": "L15"
     },
     {
       "id": "backend_src_api_tests_quotations_import_test_state",
@@ -4446,18 +4446,6 @@
       "source_location": "L13"
     },
     {
-      "id": "frontend_src_components_costindicator_costindicator",
-      "label": "CostIndicator()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 144,
-      "community_name": "CostIndicator.tsx",
-      "file_type": "code",
-      "norm_label": "costindicator()",
-      "source_file": "frontend/src/components/CostIndicator.tsx",
-      "source_location": "L13"
-    },
-    {
       "id": "backend_src_api_tests_quotations_oc_test_authheader",
       "label": "authHeader()",
       "_callable": true,
@@ -4554,6 +4542,30 @@
       "source_location": "L19"
     },
     {
+      "id": "frontend_src_pages_dashboard_dashboard",
+      "label": "Dashboard()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 15,
+      "community_name": "Dashboard.tsx",
+      "file_type": "code",
+      "norm_label": "dashboard()",
+      "source_file": "frontend/src/pages/Dashboard.tsx",
+      "source_location": "L103"
+    },
+    {
+      "id": "frontend_src_pages_dashboard_fmtm",
+      "label": "fmtM()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 15,
+      "community_name": "Dashboard.tsx",
+      "file_type": "code",
+      "norm_label": "fmtm()",
+      "source_file": "frontend/src/pages/Dashboard.tsx",
+      "source_location": "L71"
+    },
+    {
       "id": "frontend_src_pages_dashboard_iconcheck",
       "label": "IconCheck()",
       "_callable": true,
@@ -4614,6 +4626,18 @@
       "source_location": "L931"
     },
     {
+      "id": "frontend_src_pages_dashboard_lastnmonths",
+      "label": "lastNMonths()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 15,
+      "community_name": "Dashboard.tsx",
+      "file_type": "code",
+      "norm_label": "lastnmonths()",
+      "source_file": "frontend/src/pages/Dashboard.tsx",
+      "source_location": "L77"
+    },
+    {
       "id": "frontend_src_pages_dashboard_syncbutton",
       "label": "SyncButton()",
       "_callable": true,
@@ -4624,6 +4648,18 @@
       "norm_label": "syncbutton()",
       "source_file": "frontend/src/pages/Dashboard.tsx",
       "source_location": "L777"
+    },
+    {
+      "id": "frontend_src_stores_maestro_store_calccat",
+      "label": "calcCat()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 15,
+      "community_name": "Dashboard.tsx",
+      "file_type": "code",
+      "norm_label": "calccat()",
+      "source_file": "frontend/src/stores/maestro-store.ts",
+      "source_location": "L229"
     },
     {
       "id": "backend_src_db_migrations_1700000024000_0024_display_currency_down",
@@ -4686,18 +4722,6 @@
       "source_location": "L119"
     },
     {
-      "id": "frontend_src_api_api_apierror_constructor",
-      "label": ".constructor()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 18,
-      "community_name": "maestro-store.ts",
-      "file_type": "code",
-      "norm_label": ".constructor()",
-      "source_file": "frontend/src/api/api.ts",
-      "source_location": "L48"
-    },
-    {
       "id": "frontend_src_stores_maestro_store_basecorrelative",
       "label": "baseCorrelative()",
       "_callable": true,
@@ -4710,16 +4734,28 @@
       "source_location": "L298"
     },
     {
-      "id": "frontend_src_stores_maestro_store_catalogsaveerror_constructor",
-      "label": ".constructor()",
+      "id": "frontend_src_stores_maestro_store_clonequotewithcorrelative",
+      "label": "cloneQuoteWithCorrelative()",
       "_callable": true,
       "_origin": "ast",
       "community": 18,
       "community_name": "maestro-store.ts",
       "file_type": "code",
-      "norm_label": ".constructor()",
+      "norm_label": "clonequotewithcorrelative()",
       "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L67"
+      "source_location": "L413"
+    },
+    {
+      "id": "frontend_src_stores_maestro_store_createquotationwithretry",
+      "label": "createQuotationWithRetry()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 18,
+      "community_name": "maestro-store.ts",
+      "file_type": "code",
+      "norm_label": "createquotationwithretry()",
+      "source_file": "frontend/src/stores/maestro-store.ts",
+      "source_location": "L436"
     },
     {
       "id": "frontend_src_stores_maestro_store_generatecorrelative",
@@ -4732,6 +4768,18 @@
       "norm_label": "generatecorrelative()",
       "source_file": "frontend/src/stores/maestro-store.ts",
       "source_location": "L266"
+    },
+    {
+      "id": "frontend_src_stores_maestro_store_generatemtccorrelative",
+      "label": "generateMtcCorrelative()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 18,
+      "community_name": "maestro-store.ts",
+      "file_type": "code",
+      "norm_label": "generatemtccorrelative()",
+      "source_file": "frontend/src/stores/maestro-store.ts",
+      "source_location": "L282"
     },
     {
       "id": "frontend_src_stores_maestro_store_generateversioncorrelative",
@@ -4794,6 +4842,30 @@
       "source_location": "L68"
     },
     {
+      "id": "frontend_src_utils_quotationrows_formatdetailmeta",
+      "label": "formatDetailMeta()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 18,
+      "community_name": "maestro-store.ts",
+      "file_type": "code",
+      "norm_label": "formatdetailmeta()",
+      "source_file": "frontend/src/utils/quotationRows.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "frontend_src_utils_quotationrows_toexpandedset",
+      "label": "toExpandedSet()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 18,
+      "community_name": "maestro-store.ts",
+      "file_type": "code",
+      "norm_label": "toexpandedset()",
+      "source_file": "frontend/src/utils/quotationRows.ts",
+      "source_location": "L16"
+    },
+    {
       "id": "frontend_src_api_api_patch",
       "label": "patch()",
       "_callable": true,
@@ -4830,40 +4902,28 @@
       "source_location": "L16"
     },
     {
-      "id": "frontend_src_pages_dashboard_dashboard",
-      "label": "Dashboard()",
+      "id": "frontend_src_pages_catalogo_catalogo",
+      "label": "Catalogo()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "Quotations.tsx",
       "file_type": "code",
-      "norm_label": "dashboard()",
-      "source_file": "frontend/src/pages/Dashboard.tsx",
-      "source_location": "L103"
+      "norm_label": "catalogo()",
+      "source_file": "frontend/src/pages/Catalogo.tsx",
+      "source_location": "L277"
     },
     {
-      "id": "frontend_src_pages_dashboard_fmtm",
-      "label": "fmtM()",
+      "id": "frontend_src_pages_clients_clients",
+      "label": "Clients()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "Quotations.tsx",
       "file_type": "code",
-      "norm_label": "fmtm()",
-      "source_file": "frontend/src/pages/Dashboard.tsx",
-      "source_location": "L71"
-    },
-    {
-      "id": "frontend_src_pages_dashboard_lastnmonths",
-      "label": "lastNMonths()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "Quotations.tsx",
-      "file_type": "code",
-      "norm_label": "lastnmonths()",
-      "source_file": "frontend/src/pages/Dashboard.tsx",
-      "source_location": "L77"
+      "norm_label": "clients()",
+      "source_file": "frontend/src/pages/Clients.tsx",
+      "source_location": "L305"
     },
     {
       "id": "frontend_src_pages_maintenance_maintenance",
@@ -5094,66 +5154,6 @@
       "source_location": "L1841"
     },
     {
-      "id": "frontend_src_stores_maestro_store_calccat",
-      "label": "calcCat()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "Quotations.tsx",
-      "file_type": "code",
-      "norm_label": "calccat()",
-      "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L229"
-    },
-    {
-      "id": "frontend_src_stores_maestro_store_calctotals",
-      "label": "calcTotals()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "Quotations.tsx",
-      "file_type": "code",
-      "norm_label": "calctotals()",
-      "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L241"
-    },
-    {
-      "id": "frontend_src_stores_maestro_store_clonequotewithcorrelative",
-      "label": "cloneQuoteWithCorrelative()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "Quotations.tsx",
-      "file_type": "code",
-      "norm_label": "clonequotewithcorrelative()",
-      "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L413"
-    },
-    {
-      "id": "frontend_src_stores_maestro_store_createquotationwithretry",
-      "label": "createQuotationWithRetry()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "Quotations.tsx",
-      "file_type": "code",
-      "norm_label": "createquotationwithretry()",
-      "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L436"
-    },
-    {
-      "id": "frontend_src_stores_maestro_store_generatemtccorrelative",
-      "label": "generateMtcCorrelative()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "Quotations.tsx",
-      "file_type": "code",
-      "norm_label": "generatemtccorrelative()",
-      "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L282"
-    },
-    {
       "id": "frontend_src_stores_maestro_store_useactivequotation",
       "label": "useActiveQuotation()",
       "_callable": true,
@@ -5176,6 +5176,18 @@
       "norm_label": "showtoast()",
       "source_file": "frontend/src/stores/uiStore.ts",
       "source_location": "L40"
+    },
+    {
+      "id": "frontend_src_utils_apierror_geterrormessage",
+      "label": "getErrorMessage()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "Quotations.tsx",
+      "file_type": "code",
+      "norm_label": "geterrormessage()",
+      "source_file": "frontend/src/utils/apiError.ts",
+      "source_location": "L7"
     },
     {
       "id": "backend_src_server_dev_adddaysiso",
@@ -5358,78 +5370,6 @@
       "source_location": "L5"
     },
     {
-      "id": "frontend_src_utils_htmlexport_downloadhtml",
-      "label": "downloadHtml()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "downloadhtml()",
-      "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L26"
-    },
-    {
-      "id": "frontend_src_utils_htmlexport_esc",
-      "label": "esc()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "esc()",
-      "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "frontend_src_utils_htmlexport_fmtdatelong",
-      "label": "fmtDateLong()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "fmtdatelong()",
-      "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L12"
-    },
-    {
-      "id": "frontend_src_utils_quotationrows_buildquotationvaluationrows",
-      "label": "buildQuotationValuationRows()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "buildquotationvaluationrows()",
-      "source_file": "frontend/src/utils/quotationRows.ts",
-      "source_location": "L25"
-    },
-    {
-      "id": "frontend_src_utils_quotationrows_formatdetailmeta",
-      "label": "formatDetailMeta()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "formatdetailmeta()",
-      "source_file": "frontend/src/utils/quotationRows.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "frontend_src_utils_quotationrows_toexpandedset",
-      "label": "toExpandedSet()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "toexpandedset()",
-      "source_file": "frontend/src/utils/quotationRows.ts",
-      "source_location": "L16"
-    },
-    {
       "id": "frontend_e2e_accessibility_spec_solograves",
       "label": "soloGraves()",
       "_callable": true,
@@ -5519,7 +5459,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "tabdocumentomtc()",
       "source_file": "frontend/src/pages/Maintenance.tsx",
@@ -5531,7 +5471,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "fmtdatelong()",
       "source_file": "frontend/src/pages/Quotations.tsx",
@@ -5543,11 +5483,23 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "tabcotizacion()",
       "source_file": "frontend/src/pages/Quotations.tsx",
       "source_location": "L2095"
+    },
+    {
+      "id": "frontend_src_stores_maestro_store_calctotals",
+      "label": "calcTotals()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "calctotals()",
+      "source_file": "frontend/src/stores/maestro-store.ts",
+      "source_location": "L241"
     },
     {
       "id": "frontend_src_utils_contacts_quotationcontact",
@@ -5555,7 +5507,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "quotationcontact()",
       "source_file": "frontend/src/utils/contacts.ts",
@@ -5567,7 +5519,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "convertamount()",
       "source_file": "frontend/src/utils/currencyHelper.ts",
@@ -5579,7 +5531,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "formatcurrency()",
       "source_file": "frontend/src/utils/currencyHelper.ts",
@@ -5591,7 +5543,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "getcurrencyinfo()",
       "source_file": "frontend/src/utils/currencyHelper.ts",
@@ -5603,7 +5555,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "iscurrencyavailable()",
       "source_file": "frontend/src/utils/currencyHelper.ts",
@@ -5615,7 +5567,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "blank()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5627,7 +5579,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "clientrow()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5639,7 +5591,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "darkcell()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5651,7 +5603,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "downloaddocx()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5663,7 +5615,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "equivalentrow()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5675,7 +5627,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "fmtdatelong()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5687,7 +5639,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "grouplabel()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5699,7 +5651,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "listitem()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5711,7 +5663,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "mkcell()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5723,7 +5675,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "para()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5735,7 +5687,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "rule()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5747,7 +5699,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "sectiontitle()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5759,7 +5711,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "sumrow()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5771,7 +5723,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "totalrow()",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -5783,11 +5735,47 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "tr()",
       "source_file": "frontend/src/utils/docxExport.ts",
       "source_location": "L40"
+    },
+    {
+      "id": "frontend_src_utils_htmlexport_downloadhtml",
+      "label": "downloadHtml()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "downloadhtml()",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L27"
+    },
+    {
+      "id": "frontend_src_utils_htmlexport_esc",
+      "label": "esc()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "esc()",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L20"
+    },
+    {
+      "id": "frontend_src_utils_htmlexport_fmtdatelong",
+      "label": "fmtDateLong()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "fmtdatelong()",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L13"
     },
     {
       "id": "frontend_src_utils_pdfexport_downloadpdffromelement",
@@ -5795,11 +5783,23 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "downloadpdffromelement()",
       "source_file": "frontend/src/utils/pdfExport.ts",
       "source_location": "L4"
+    },
+    {
+      "id": "frontend_src_utils_quotationrows_buildquotationvaluationrows",
+      "label": "buildQuotationValuationRows()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "buildquotationvaluationrows()",
+      "source_file": "frontend/src/utils/quotationRows.ts",
+      "source_location": "L25"
     },
     {
       "id": "frontend_src_utils_tests_currencyhelper_test_quotation",
@@ -5807,7 +5807,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "quotation()",
       "source_file": "frontend/src/utils/__tests__/currencyHelper.test.ts",
@@ -7602,6 +7602,18 @@
       "source_location": "L35"
     },
     {
+      "id": "frontend_src_components_costindicator_costindicator",
+      "label": "CostIndicator()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "costindicator()",
+      "source_file": "frontend/src/components/CostIndicator.tsx",
+      "source_location": "L13"
+    },
+    {
       "id": "frontend_src_pages_catalogo_avgprice",
       "label": "avgPrice()",
       "_callable": true,
@@ -7612,18 +7624,6 @@
       "norm_label": "avgprice()",
       "source_file": "frontend/src/pages/Catalogo.tsx",
       "source_location": "L24"
-    },
-    {
-      "id": "frontend_src_pages_catalogo_catalogo",
-      "label": "Catalogo()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 48,
-      "community_name": "Catalogo.tsx",
-      "file_type": "code",
-      "norm_label": "catalogo()",
-      "source_file": "frontend/src/pages/Catalogo.tsx",
-      "source_location": "L277"
     },
     {
       "id": "frontend_src_pages_catalogo_cattable",
@@ -7672,6 +7672,18 @@
       "norm_label": "minprice()",
       "source_file": "frontend/src/pages/Catalogo.tsx",
       "source_location": "L29"
+    },
+    {
+      "id": "frontend_src_stores_maestro_store_catalogsaveerror_constructor",
+      "label": ".constructor()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": ".constructor()",
+      "source_file": "frontend/src/stores/maestro-store.ts",
+      "source_location": "L67"
     },
     {
       "id": "backend_src_api_invoices_createinvoicesrouter",
@@ -8200,6 +8212,18 @@
       "norm_label": "mockfetchok()",
       "source_file": "backend/src/services/__tests__/llm.test.ts",
       "source_location": "L6"
+    },
+    {
+      "id": "frontend_src_api_api_apierror_constructor",
+      "label": ".constructor()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "api.ts",
+      "file_type": "code",
+      "norm_label": ".constructor()",
+      "source_file": "frontend/src/api/api.ts",
+      "source_location": "L48"
     },
     {
       "id": "frontend_src_api_api_clearauth",
@@ -8766,18 +8790,6 @@
       "source_location": "L62"
     },
     {
-      "id": "frontend_src_pages_clients_clients",
-      "label": "Clients()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 84,
-      "community_name": "Clients.tsx",
-      "file_type": "code",
-      "norm_label": "clients()",
-      "source_file": "frontend/src/pages/Clients.tsx",
-      "source_location": "L305"
-    },
-    {
       "id": "frontend_src_pages_clients_emptyclient",
       "label": "emptyClient()",
       "_callable": true,
@@ -8812,18 +8824,6 @@
       "norm_label": "withcontactlist()",
       "source_file": "frontend/src/pages/Clients.tsx",
       "source_location": "L37"
-    },
-    {
-      "id": "frontend_src_utils_apierror_geterrormessage",
-      "label": "getErrorMessage()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 84,
-      "community_name": "Clients.tsx",
-      "file_type": "code",
-      "norm_label": "geterrormessage()",
-      "source_file": "frontend/src/utils/apiError.ts",
-      "source_location": "L7"
     },
     {
       "id": "frontend_src_utils_contacts_primarycontact",
@@ -11053,17 +11053,6 @@
       "source_location": "L1"
     },
     {
-      "id": "frontend_src_components_costindicator",
-      "label": "CostIndicator.tsx",
-      "_origin": "ast",
-      "community": 144,
-      "community_name": "CostIndicator.tsx",
-      "file_type": "code",
-      "norm_label": "costindicator.tsx",
-      "source_file": "frontend/src/components/CostIndicator.tsx",
-      "source_location": "L1"
-    },
-    {
       "id": "backend_src_api_tests_quotations_oc_test",
       "label": "quotations-oc.test.ts",
       "_origin": "ast",
@@ -11339,6 +11328,17 @@
       "source_location": "L6"
     },
     {
+      "id": "frontend_src_utils_quotationrows",
+      "label": "quotationRows.ts",
+      "_origin": "ast",
+      "community": 18,
+      "community_name": "maestro-store.ts",
+      "file_type": "code",
+      "norm_label": "quotationrows.ts",
+      "source_file": "frontend/src/utils/quotationRows.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "frontend_src_hooks_usepermissions",
       "label": "usePermissions.ts",
       "_origin": "ast",
@@ -11347,17 +11347,6 @@
       "file_type": "code",
       "norm_label": "usepermissions.ts",
       "source_file": "frontend/src/hooks/usePermissions.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "frontend_src_pages_maintenance",
-      "label": "Maintenance.tsx",
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "Quotations.tsx",
-      "file_type": "code",
-      "norm_label": "maintenance.tsx",
-      "source_file": "frontend/src/pages/Maintenance.tsx",
       "source_location": "L1"
     },
     {
@@ -12065,61 +12054,6 @@
       "source_location": "L101"
     },
     {
-      "id": "frontend_src_stores_maestro_store_fmtdecimal",
-      "label": "fmtDecimal",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "fmtdecimal",
-      "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L264"
-    },
-    {
-      "id": "frontend_src_stores_maestro_store_frequency_labels",
-      "label": "FREQUENCY_LABELS",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "frequency_labels",
-      "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L220"
-    },
-    {
-      "id": "frontend_src_stores_maestro_store_visits_per_year",
-      "label": "VISITS_PER_YEAR",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "visits_per_year",
-      "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L213"
-    },
-    {
-      "id": "frontend_src_utils_htmlexport",
-      "label": "htmlExport.ts",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "htmlexport.ts",
-      "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "frontend_src_utils_quotationrows",
-      "label": "quotationRows.ts",
-      "_origin": "ast",
-      "community": 23,
-      "community_name": "htmlExport.ts",
-      "file_type": "code",
-      "norm_label": "quotationrows.ts",
-      "source_file": "frontend/src/utils/quotationRows.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "frontend_e2e_accessibility_spec",
       "label": "accessibility.spec.ts",
       "_origin": "ast",
@@ -12738,11 +12672,66 @@
       "source_location": "L19"
     },
     {
+      "id": "frontend_src_pages_maintenance",
+      "label": "Maintenance.tsx",
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "maintenance.tsx",
+      "source_file": "frontend/src/pages/Maintenance.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "frontend_src_stores_maestro_store_fmtclp",
+      "label": "fmtCLP",
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "fmtclp",
+      "source_file": "frontend/src/stores/maestro-store.ts",
+      "source_location": "L255"
+    },
+    {
+      "id": "frontend_src_stores_maestro_store_fmtdecimal",
+      "label": "fmtDecimal",
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "fmtdecimal",
+      "source_file": "frontend/src/stores/maestro-store.ts",
+      "source_location": "L264"
+    },
+    {
+      "id": "frontend_src_stores_maestro_store_frequency_labels",
+      "label": "FREQUENCY_LABELS",
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "frequency_labels",
+      "source_file": "frontend/src/stores/maestro-store.ts",
+      "source_location": "L220"
+    },
+    {
+      "id": "frontend_src_stores_maestro_store_visits_per_year",
+      "label": "VISITS_PER_YEAR",
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "visits_per_year",
+      "source_file": "frontend/src/stores/maestro-store.ts",
+      "source_location": "L213"
+    },
+    {
       "id": "frontend_src_utils_currencyhelper",
       "label": "currencyHelper.ts",
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "currencyhelper.ts",
       "source_file": "frontend/src/utils/currencyHelper.ts",
@@ -12753,7 +12742,7 @@
       "label": "docxExport.ts",
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "docxexport.ts",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -12764,7 +12753,7 @@
       "label": "C",
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "c",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -12775,7 +12764,7 @@
       "label": "noBorder",
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "noborder",
       "source_file": "frontend/src/utils/docxExport.ts",
@@ -12786,18 +12775,29 @@
       "label": "thinBorder",
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "thinborder",
       "source_file": "frontend/src/utils/docxExport.ts",
       "source_location": "L94"
     },
     {
+      "id": "frontend_src_utils_htmlexport",
+      "label": "htmlExport.ts",
+      "_origin": "ast",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "file_type": "code",
+      "norm_label": "htmlexport.ts",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "frontend_src_utils_pdfexport",
       "label": "pdfExport.ts",
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "pdfexport.ts",
       "source_file": "frontend/src/utils/pdfExport.ts",
@@ -12808,7 +12808,7 @@
       "label": "currencyHelper.test.ts",
       "_origin": "ast",
       "community": 26,
-      "community_name": "docxExport.ts",
+      "community_name": "Maintenance.tsx",
       "file_type": "code",
       "norm_label": "currencyhelper.test.ts",
       "source_file": "frontend/src/utils/__tests__/currencyHelper.test.ts",
@@ -15823,6 +15823,17 @@
       "source_location": "L1"
     },
     {
+      "id": "frontend_src_app_catalogo",
+      "label": "Catalogo",
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "catalogo",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L17"
+    },
+    {
       "id": "frontend_src_components_catalogautocomplete",
       "label": "CatalogAutocomplete.tsx",
       "_origin": "ast",
@@ -15854,6 +15865,17 @@
       "norm_label": "fmtclp",
       "source_file": "frontend/src/components/CatalogAutocomplete.tsx",
       "source_location": "L23"
+    },
+    {
+      "id": "frontend_src_components_costindicator",
+      "label": "CostIndicator.tsx",
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "file_type": "code",
+      "norm_label": "costindicator.tsx",
+      "source_file": "frontend/src/components/CostIndicator.tsx",
+      "source_location": "L1"
     },
     {
       "id": "frontend_src_pages_catalogo",
@@ -15920,17 +15942,6 @@
       "norm_label": "sample_quotations",
       "source_file": "frontend/src/pages/__tests__/Quotations.test.tsx",
       "source_location": "L69"
-    },
-    {
-      "id": "frontend_src_stores_maestro_store_fmtclp",
-      "label": "fmtCLP",
-      "_origin": "ast",
-      "community": 48,
-      "community_name": "Catalogo.tsx",
-      "file_type": "code",
-      "norm_label": "fmtclp",
-      "source_file": "frontend/src/stores/maestro-store.ts",
-      "source_location": "L255"
     },
     {
       "id": "ref_react",
@@ -16779,28 +16790,6 @@
       "source_location": "L1"
     },
     {
-      "id": "frontend_src_app_catalogo",
-      "label": "Catalogo",
-      "_origin": "ast",
-      "community": 63,
-      "community_name": "App.tsx",
-      "file_type": "code",
-      "norm_label": "catalogo",
-      "source_file": "frontend/src/App.tsx",
-      "source_location": "L17"
-    },
-    {
-      "id": "frontend_src_app_clients",
-      "label": "Clients",
-      "_origin": "ast",
-      "community": 63,
-      "community_name": "App.tsx",
-      "file_type": "code",
-      "norm_label": "clients",
-      "source_file": "frontend/src/App.tsx",
-      "source_location": "L16"
-    },
-    {
       "id": "frontend_src_app_dashboard",
       "label": "Dashboard",
       "_origin": "ast",
@@ -17205,6 +17194,17 @@
       "file_type": "code",
       "norm_label": "api.ts",
       "source_file": "frontend/src/api/api.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "frontend_src_utils_apierror",
+      "label": "apiError.ts",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "api.ts",
+      "file_type": "code",
+      "norm_label": "apierror.ts",
+      "source_file": "frontend/src/utils/apiError.ts",
       "source_location": "L1"
     },
     {
@@ -17865,6 +17865,17 @@
       "source_location": "L2"
     },
     {
+      "id": "frontend_src_app_clients",
+      "label": "Clients",
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "Clients.tsx",
+      "file_type": "code",
+      "norm_label": "clients",
+      "source_file": "frontend/src/App.tsx",
+      "source_location": "L16"
+    },
+    {
       "id": "frontend_src_pages_clients",
       "label": "Clients.tsx",
       "_origin": "ast",
@@ -17873,17 +17884,6 @@
       "file_type": "code",
       "norm_label": "clients.tsx",
       "source_file": "frontend/src/pages/Clients.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "frontend_src_utils_apierror",
-      "label": "apiError.ts",
-      "_origin": "ast",
-      "community": 84,
-      "community_name": "Clients.tsx",
-      "file_type": "code",
-      "norm_label": "apierror.ts",
-      "source_file": "frontend/src/utils/apiError.ts",
       "source_location": "L1"
     },
     {
@@ -24904,18 +24904,6 @@
       "type": "external"
     },
     {
-      "id": "frontend_src_styles_costindicator",
-      "label": "frontend_src_styles_costindicator",
-      "_origin": "semantic",
-      "community": 144,
-      "community_name": "CostIndicator.tsx",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "frontend_src_styles_costindicator",
-      "source_file": "",
-      "type": "external"
-    },
-    {
       "id": "frontend_src_styles_dashboard",
       "label": "frontend_src_styles_dashboard",
       "_origin": "semantic",
@@ -24924,18 +24912,6 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "frontend_src_styles_dashboard",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "frontend_src_styles_maintenance",
-      "label": "frontend_src_styles_maintenance",
-      "_origin": "semantic",
-      "community": 2,
-      "community_name": "Quotations.tsx",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "frontend_src_styles_maintenance",
       "source_file": "",
       "type": "external"
     },
@@ -24972,6 +24948,18 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "frontend_e2e_fixtures_expect",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "frontend_src_styles_maintenance",
+      "label": "frontend_src_styles_maintenance",
+      "_origin": "semantic",
+      "community": 26,
+      "community_name": "Maintenance.tsx",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "frontend_src_styles_maintenance",
       "source_file": "",
       "type": "external"
     },
@@ -25128,6 +25116,18 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "frontend_src_styles_catalogo",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "frontend_src_styles_costindicator",
+      "label": "frontend_src_styles_costindicator",
+      "_origin": "semantic",
+      "community": 48,
+      "community_name": "Catalogo.tsx",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "frontend_src_styles_costindicator",
       "source_file": "",
       "type": "external"
     },
@@ -30998,7 +30998,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L118",
+      "source_location": "L128",
       "weight": 1.0
     },
     {
@@ -31010,7 +31010,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L174",
+      "source_location": "L184",
       "weight": 1.0
     },
     {
@@ -31022,12 +31022,12 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L34",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
       "source": "frontend_src_utils_htmlexport_downloadhtml",
-      "target": "frontend_src_utils_quotationrows_buildquotationvaluationrows",
+      "target": "frontend_src_utils_currencyhelper_getcurrencyinfo",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -31039,6 +31039,42 @@
     },
     {
       "source": "frontend_src_utils_htmlexport_downloadhtml",
+      "target": "frontend_src_utils_currencyhelper_formatcurrency",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L41",
+      "weight": 1.0
+    },
+    {
+      "source": "frontend_src_utils_htmlexport_downloadhtml",
+      "target": "frontend_src_utils_quotationrows_buildquotationvaluationrows",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L43",
+      "weight": 1.0
+    },
+    {
+      "source": "frontend_src_utils_htmlexport_downloadhtml",
+      "target": "frontend_src_utils_currencyhelper_convertamount",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L45",
+      "weight": 1.0
+    },
+    {
+      "source": "frontend_src_utils_htmlexport_downloadhtml",
       "target": "frontend_src_utils_htmlexport_esc",
       "relation": "calls",
       "_origin": "ast",
@@ -31046,7 +31082,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L42",
+      "source_location": "L50",
       "weight": 1.0
     },
     {
@@ -41331,6 +41367,42 @@
     },
     {
       "source": "frontend_src_utils_htmlexport",
+      "target": "frontend_src_utils_currencyhelper_convertamount",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "frontend_src_utils_htmlexport",
+      "target": "frontend_src_utils_currencyhelper_formatcurrency",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "frontend_src_utils_htmlexport",
+      "target": "frontend_src_utils_currencyhelper_getcurrencyinfo",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "frontend_src_utils_htmlexport",
       "target": "frontend_src_types_index_masterclient",
       "relation": "imports",
       "_origin": "ast",
@@ -48849,6 +48921,18 @@
       "context": "import",
       "source_file": "frontend/src/utils/htmlExport.ts",
       "source_location": "L10",
+      "weight": 1.0
+    },
+    {
+      "source": "frontend_src_utils_htmlexport",
+      "target": "frontend_src_utils_currencyhelper",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "frontend/src/utils/htmlExport.ts",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -60607,7 +60691,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L12",
+      "source_location": "L13",
       "weight": 1.0
     },
     {
@@ -60618,7 +60702,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L19",
+      "source_location": "L20",
       "weight": 1.0
     },
     {
@@ -60629,7 +60713,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/utils/htmlExport.ts",
-      "source_location": "L26",
+      "source_location": "L27",
       "weight": 1.0
     },
     {
@@ -68895,5 +68979,5 @@
       "source_file": "docs/INFRA.md"
     }
   ],
-  "built_at_commit": "ea42274643a4c589bf1d1f92f64ae6f6da17f65a"
+  "built_at_commit": "a288e54c5a9637b33944e666711615e8010a8f6d"
 }

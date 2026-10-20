@@ -864,9 +864,9 @@
     "semantic_hash": ""
   },
   "frontend/src/utils/htmlExport.ts": {
-    "mtime": 1792461916.8529742,
-    "seen": 1792461919.640403,
-    "ast_hash": "11bf40cbf895e0b6f99c0f5629296a13",
+    "mtime": 1792461939.6912632,
+    "seen": 1792461956.4053361,
+    "ast_hash": "f8e1cef56aaf9298e52da1176cb7184b",
     "semantic_hash": ""
   },
   "frontend/src/utils/pdfExport.ts": {

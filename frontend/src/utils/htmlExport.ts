@@ -8,6 +8,7 @@ import {
 import type { MasterClient, MasterQuotation } from '../types'
 import { buildQuotationValuationRows } from './quotationRows'
 import { quotationContact } from './contacts'
+import { getCurrencyInfo, convertAmount, formatCurrency } from './currencyHelper'
 
 const fmtDateLong = (d: string) =>
   new Date(d + 'T12:00:00').toLocaleDateString('es-CL', {
@@ -32,9 +33,16 @@ export function downloadHtml(params: {
   const { q, client, sessionUserName, expandedCategoryIds } = params
   const isMtc = q.kind === 'maintenance'
   const totals = calcTotals(q)
+  const currencyInfo = getCurrencyInfo(q, q.display_currency)
+
+  const formatAmount = (amt: number): string =>
+    currencyInfo.currency === 'CLP'
+      ? fmtCLP.format(amt)
+      : formatCurrency(amt, currencyInfo.currency, 2)
 
   const valRows = buildQuotationValuationRows(q, expandedCategoryIds)
     .map(row => {
+      const displayRowVenta = convertAmount(row.venta, currencyInfo.rate)
       const detailRows = row.details
         .map(
           ({ item, meta }) => `        <tr class="det">
@@ -48,10 +56,12 @@ export function downloadHtml(params: {
       return `        <tr>
           <td class="cn">${row.rowNumber}</td>
           <td>${esc(row.cat.label)}</td>
-          <td class="cm">${fmtCLP.format(row.venta)}</td>
+          <td class="cm">${formatAmount(displayRowVenta)}</td>
         </tr>${detailRows ? `\n${detailRows}` : ''}`
     })
     .join('\n')
+
+  const currencyLabel = currencyInfo.displaySymbol === '$' ? 'CLP' : currencyInfo.displaySymbol
 
   const listRows = (items: string[]) =>
     items.map((item, i) => `      <li><span class="n">${i + 1}.</span>${esc(item)}</li>`).join('\n')
@@ -205,7 +215,7 @@ ${scopeBlock('I. Alcance del Servicio de Mantención')}
 
     <div class="gt2">Valor por visita</div>
     <table class="vt">
-      <thead><tr><th class="cn">N°</th><th>Descripción</th><th class="cm">Valor Neto CLP</th></tr></thead>
+      <thead><tr><th class="cn">N°</th><th>Descripción</th><th class="cm">Valor Neto ${currencyLabel}</th></tr></thead>
       <tbody>
 ${valRows}
         <tr class="sub"><td colspan="2" style="text-align:right">Subtotal Neto por Visita</td><td class="cm">${fmtCLP.format(totals.venta)}</td></tr>
@@ -268,7 +278,7 @@ ${scopeBlock('I. Alcance de los Trabajos')}
   <div class="sec">
     <div class="st">II. Valorización de Trabajos</div>
     <table class="vt">
-      <thead><tr><th class="cn">N°</th><th>Descripción</th><th class="cm">Valor Neto CLP</th></tr></thead>
+      <thead><tr><th class="cn">N°</th><th>Descripción</th><th class="cm">Valor Neto ${currencyLabel}</th></tr></thead>
       <tbody>
 ${valRows}
         <tr class="sub"><td colspan="2" style="text-align:right">Subtotal Neto</td><td class="cm">${fmtCLP.format(totals.venta)}</td></tr>

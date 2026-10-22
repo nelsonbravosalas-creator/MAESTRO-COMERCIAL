@@ -1,0 +1,326 @@
+# Instincts generated from https://github.com/nelsonbravosalas-creator/MAESTRO-COMERCIAL
+# Generated: 2026-07-31T02:56:47.911Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: MAESTRO-COMERCIAL-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# MAESTRO COMERCIAL Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: docs
+
+## Evidence
+
+- 3 commits analyzed
+- Detected conventional commit pattern
+- Examples: docs: agregar auditoria QA completa en HTML (excluye pagos), docs: plan detallado de remediacion de hallazgos criticos con criterios de aceptacion
+
+---
+id: MAESTRO-COMERCIAL-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# MAESTRO COMERCIAL Commit Length
+
+## Action
+
+Write moderate-length commit messages (~78 characters)
+
+## Evidence
+
+- Average commit message length: 78 chars
+- Based on 3 commits
+
+---
+id: MAESTRO-COMERCIAL-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# MAESTRO COMERCIAL Naming Files
+
+## Action
+
+Use snake_case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: snake_case
+
+---
+id: MAESTRO-COMERCIAL-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# MAESTRO COMERCIAL Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: MAESTRO-COMERCIAL-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# MAESTRO COMERCIAL Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: MAESTRO-COMERCIAL-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# MAESTRO COMERCIAL Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: MAESTRO-COMERCIAL-workflow-add-remediation-or-audit-documentation
+trigger: "when doing add remediation or audit documentation"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# MAESTRO COMERCIAL Workflow Add Remediation Or Audit Documentation
+
+## Action
+
+Follow the add-remediation-or-audit-documentation workflow:
+1. Create a new documentation file in the docs/ directory (HTML or Markdown).
+2. Write detailed content about the audit or remediation plan.
+3. Commit the new file with a descriptive message.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: docs/*.md, docs/*.html
+
+---
+id: maestro-comercial-instinct-file-naming
+trigger: "When creating a new file in the codebase"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# Maestro Comercial Instinct File Naming
+
+## Action
+
+Name the file using snake_case convention
+
+## Evidence
+
+- Pattern in namingConventions.files: snake_case
+
+---
+id: maestro-comercial-instinct-function-naming
+trigger: "When defining a new function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# Maestro Comercial Instinct Function Naming
+
+## Action
+
+Name the function using camelCase convention
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: maestro-comercial-instinct-class-naming
+trigger: "When defining a new class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# Maestro Comercial Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase convention
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: maestro-comercial-instinct-constant-naming
+trigger: "When declaring a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# Maestro Comercial Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE convention
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: maestro-comercial-instinct-import-style
+trigger: "When importing modules in TypeScript files"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# Maestro Comercial Instinct Import Style
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in importStyle: relative
+
+---
+id: maestro-comercial-instinct-export-style
+trigger: "When exporting modules or functions"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# Maestro Comercial Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle: named
+
+---
+id: maestro-comercial-instinct-test-location
+trigger: "When adding or updating tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# Maestro Comercial Instinct Test Location
+
+## Action
+
+Place test files in a separate directory from source code
+
+## Evidence
+
+- Pattern in architecture.testLocation: separate
+
+---
+id: maestro-comercial-instinct-git-commit-format
+trigger: "When making a commit"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# Maestro Comercial Instinct Git Commit Format
+
+## Action
+
+Format the commit message using the conventional commits format with a prefix (e.g., docs: ...)
+
+## Evidence
+
+- Pattern in commits.type: conventional
+- Pattern in commits.prefixes: ["docs"]
+- Seen in commit: docs: agregar auditoria QA completa en HTML (excluye pagos)
+
+---
+id: maestro-comercial-instinct-add-remediation-or-audit-doc
+trigger: "When someone needs to document an audit result or a remediation plan for QA findings"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: nelsonbravosalas-creator/MAESTRO-COMERCIAL
+---
+
+# Maestro Comercial Instinct Add Remediation Or Audit Doc
+
+## Action
+
+Create a new documentation file in docs/ (HTML or Markdown), write detailed content, and commit with a descriptive message
+
+## Evidence
+
+- Workflow: add-remediation-or-audit-documentation
+- Pattern in files: docs/*.md, docs/*.html
+- Seen in commit: docs: plan detallado de remediacion de hallazgos criticos con criterios de aceptacion
+

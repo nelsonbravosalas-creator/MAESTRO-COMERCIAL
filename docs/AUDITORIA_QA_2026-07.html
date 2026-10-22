@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auditoría QA — MAESTRO-COMERCIAL (BravoCRM)</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f1f5f9;color:#0f172a;line-height:1.55}
+header{background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;padding:44px 32px}
+header h1{margin:0 0 6px;font-size:30px;letter-spacing:-.5px}
+header .meta{opacity:.85;font-size:14px}
+.wrap{max-width:1600px;margin:0 auto;padding:28px 32px 80px}
+section{background:#fff;border-radius:12px;padding:26px 28px;margin-bottom:24px;box-shadow:0 1px 3px rgba(15,23,42,.08)}
+h2{margin:0 0 4px;font-size:20px;border-left:4px solid #1e3a8a;padding-left:12px}
+h2+.lead{color:#64748b;font-size:14px;margin:0 0 18px;padding-left:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#0f172a;color:#fff;text-align:left;padding:10px 12px;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0}
+td{padding:11px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+tr:hover td{background:#f8fafc}
+.domrow td{background:#1e3a8a!important;color:#fff;font-weight:700;font-size:13px;letter-spacing:.3px}
+.item{min-width:180px}
+.falta{color:#7f1d1d}
+.cen{text-align:center}
+.num{min-width:130px}
+.sub{color:#94a3b8;font-size:11px;margin-top:2px}
+.bar{position:relative;background:#e2e8f0;border-radius:5px;height:20px;min-width:110px}
+.fill{height:100%;border-radius:5px}
+.fill.g{background:#16a34a} .fill.y{background:#eab308} .fill.o{background:#f97316} .fill.r{background:#dc2626}
+.pct{position:absolute;left:0;right:0;top:0;line-height:20px;text-align:center;font-size:11px;font-weight:700;color:#0f172a}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap}
+.crit{background:#b91c1c} .alto{background:#ea580c} .medio{background:#ca8a04} .bajo{background:#0284c7} .ok{background:#16a34a}
+.uso{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:#e2e8f0;color:#334155;white-space:nowrap}
+.u-EN_USO{background:#dcfce7;color:#166534} .u-AUSENTE{background:#fee2e2;color:#991b1b}
+.u-PARCIAL{background:#fef9c3;color:#854d0e} .u-ROTO{background:#fecaca;color:#7f1d1d}
+.u-MANUAL{background:#e0e7ff;color:#3730a3} .u-NO_VERIFICADO{background:#f3e8ff;color:#6b21a8} .u-NO_DEFINIDO{background:#f1f5f9;color:#475569}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:24px}
+.kpi{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(15,23,42,.08);border-top:4px solid #94a3b8}
+.kpi .v{font-size:32px;font-weight:800;letter-spacing:-1px}
+.kpi .l{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.5px}
+.kpi.k-crit{border-top-color:#b91c1c} .kpi.k-alto{border-top-color:#ea580c}
+.kpi.k-medio{border-top-color:#ca8a04} .kpi.k-bajo{border-top-color:#0284c7} .kpi.k-ok{border-top-color:#16a34a}
+.kpi.k-score{border-top-color:#1e3a8a}
+.gauge{display:flex;align-items:center;gap:20px;background:#0f172a;color:#fff;border-radius:12px;padding:24px 28px;margin-bottom:24px}
+.gauge .big{font-size:56px;font-weight:800;line-height:1}
+.gauge .txt{font-size:14px;opacity:.9;max-width:900px}
+.rk{display:inline-block;background:#b91c1c;color:#fff;border-radius:6px;padding:3px 8px;font-weight:700;font-size:12px}
+code{background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.ev-ok{color:#166534;font-weight:600} .ev-warn{color:#a16207;font-weight:600} .ev-bad{color:#b91c1c;font-weight:600}
+.note{background:#fffbeb;border-left:4px solid #f59e0b;padding:12px 16px;border-radius:0 8px 8px 0;font-size:13px;margin-top:16px}
+ol.plan{padding-left:20px} ol.plan li{margin-bottom:8px;font-size:14px}
+.tag{display:inline-block;background:#1e3a8a;color:#fff;font-size:10px;padding:2px 7px;border-radius:4px;margin-right:6px;vertical-align:middle}
+footer{text-align:center;color:#64748b;font-size:12px;padding:24px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Auditoría QA — MAESTRO-COMERCIAL / BravoCRM</h1>
+  <div class="meta">
+    Repositorio <strong>nelsonbravosalas-creator/MAESTRO-COMERCIAL</strong> · rama <strong>master</strong> · commit <strong>fbff2c8</strong><br>
+    Revisión sobre el checklist completo de ciclo de vida de software · <strong>El ítem de Pagos queda excluido por indicación del solicitante</strong><br>
+    Generado el 31-07-2026 02:13 UTC · ~10.700 líneas de código analizadas · verificaciones ejecutadas sobre el código real
+  </div>
+</header>
+<div class="wrap">
+
+<div class="gauge">
+  <div class="big">37%</div>
+  <div class="txt">
+    <strong>Cumplimiento global ponderado</strong> sobre 55 ítems evaluados en 18 dominios.<br>
+    El producto <strong>funciona y el núcleo de negocio está bien construido</strong>: el modelo de datos, las restricciones de integridad, la parametrización de consultas y la transaccionalidad están a nivel profesional.
+    La deuda se concentra fuera del código de negocio: <strong>no hay CI, no hay observabilidad, no hay respaldos verificados y hay 9 vulnerabilidades activas en dependencias</strong>.
+    En términos prácticos: es una aplicación sólida como prototipo avanzado / uso interno controlado, pero <strong>aún no está lista para operar sin supervisión en producción</strong>.
+  </div>
+</div>
+
+<div class="kpis">
+  <div class="kpi k-score"><div class="v">55</div><div class="l">Ítems evaluados</div></div>
+  <div class="kpi k-crit"><div class="v">12</div><div class="l">Críticos</div></div>
+  <div class="kpi k-alto"><div class="v">20</div><div class="l">Riesgo alto</div></div>
+  <div class="kpi k-medio"><div class="v">13</div><div class="l">Riesgo medio</div></div>
+  <div class="kpi k-bajo"><div class="v">7</div><div class="l">Riesgo bajo</div></div>
+  <div class="kpi k-ok"><div class="v">3</div><div class="l">Conforme</div></div>
+</div>
+
+<section>
+<h2>1. Resultado por dominio</h2>
+<p class="lead">Ordenado de menor a mayor cumplimiento. Los primeros de la lista son los que concentran el riesgo.</p>
+<table>
+<thead><tr><th>Dominio</th><th class="cen">Ítems</th><th>Cumplimiento</th></tr></thead>
+<tbody><tr><td>14. Correo</td><td class="cen">1</td><td><div class="bar"><div class="fill r" style="width:0%"></div><span class="pct">0%</span></div></td></tr><tr><td>17. Datos y cumplimiento</td><td class="cen">4</td><td><div class="bar"><div class="fill r" style="width:12%"></div><span class="pct">12%</span></div></td></tr><tr><td>12. Pruebas</td><td class="cen">5</td><td><div class="bar"><div class="fill r" style="width:15%"></div><span class="pct">15%</span></div></td></tr><tr><td>6. Seguridad — Credenciales</td><td class="cen">2</td><td><div class="bar"><div class="fill r" style="width:18%"></div><span class="pct">18%</span></div></td></tr><tr><td>9. Continuidad</td><td class="cen">5</td><td><div class="bar"><div class="fill r" style="width:21%"></div><span class="pct">21%</span></div></td></tr><tr><td>6. Seguridad — Datos</td><td class="cen">1</td><td><div class="bar"><div class="fill r" style="width:25%"></div><span class="pct">25%</span></div></td></tr><tr><td>6. Seguridad — AuthZ</td><td class="cen">1</td><td><div class="bar"><div class="fill r" style="width:30%"></div><span class="pct">30%</span></div></td></tr><tr><td>18. Mantenimiento</td><td class="cen">1</td><td><div class="bar"><div class="fill r" style="width:30%"></div><span class="pct">30%</span></div></td></tr><tr><td>11. CI/CD</td><td class="cen">3</td><td><div class="bar"><div class="fill r" style="width:32%"></div><span class="pct">32%</span></div></td></tr><tr><td>13. Observabilidad</td><td class="cen">2</td><td><div class="bar"><div class="fill r" style="width:32%"></div><span class="pct">32%</span></div></td></tr><tr><td>16. Calidad de experiencia</td><td class="cen">3</td><td><div class="bar"><div class="fill r" style="width:33%"></div><span class="pct">33%</span></div></td></tr><tr><td>6. Seguridad — AuthN</td><td class="cen">1</td><td><div class="bar"><div class="fill o" style="width:35%"></div><span class="pct">35%</span></div></td></tr><tr><td>6. Seguridad — Sesiones</td><td class="cen">1</td><td><div class="bar"><div class="fill o" style="width:35%"></div><span class="pct">35%</span></div></td></tr><tr><td>1. Producto y Requerimientos</td><td class="cen">2</td><td><div class="bar"><div class="fill o" style="width:38%"></div><span class="pct">38%</span></div></td></tr><tr><td>10. Entornos y secretos</td><td class="cen">2</td><td><div class="bar"><div class="fill o" style="width:38%"></div><span class="pct">38%</span></div></td></tr><tr><td>7. Seguridad — Vulnerabilidades</td><td class="cen">5</td><td><div class="bar"><div class="fill o" style="width:48%"></div><span class="pct">48%</span></div></td></tr><tr><td>8. Infraestructura</td><td class="cen">5</td><td><div class="bar"><div class="fill o" style="width:49%"></div><span class="pct">49%</span></div></td></tr><tr><td>3. Frontend</td><td class="cen">2</td><td><div class="bar"><div class="fill o" style="width:52%"></div><span class="pct">52%</span></div></td></tr><tr><td>15. Móvil</td><td class="cen">1</td><td><div class="bar"><div class="fill o" style="width:55%"></div><span class="pct">55%</span></div></td></tr><tr><td>4. Backend y API</td><td class="cen">2</td><td><div class="bar"><div class="fill y" style="width:65%"></div><span class="pct">65%</span></div></td></tr><tr><td>5. Base de datos</td><td class="cen">4</td><td><div class="bar"><div class="fill y" style="width:74%"></div><span class="pct">74%</span></div></td></tr><tr><td>2. Stack y Arquitectura</td><td class="cen">2</td><td><div class="bar"><div class="fill y" style="width:75%"></div><span class="pct">75%</span></div></td></tr></tbody>
+</table>
+</section>
+
+<section>
+<h2>2. Evidencia ejecutada</h2>
+<p class="lead">Comandos realmente ejecutados sobre un clon limpio del repositorio; no son estimaciones.</p>
+<table>
+<thead><tr><th>Verificación</th><th>Comando</th><th>Resultado</th></tr></thead>
+<tbody><tr><td>Backend — compilación</td><td><code>npx tsc --noEmit</code></td><td class="ev-ok">Sin errores</td></tr><tr><td>Backend — pruebas</td><td><code>npm test (vitest)</code></td><td class="ev-warn">16/16 pruebas pasan en 3 archivos — requiere instalar manualmente @rolldown/binding-linux-x64-gnu</td></tr><tr><td>Frontend — compilación</td><td><code>npx tsc -b</code></td><td class="ev-ok">Sin errores</td></tr><tr><td>Frontend — lint</td><td><code>npm run lint</code></td><td class="ev-bad">FALLA: Cannot find package &#x27;@eslint/js&#x27;</td></tr><tr><td>Frontend — build</td><td><code>npx vite build</code></td><td class="ev-warn">OK en 1,30 s — bundle 2.135,55 kB (683,45 kB gzip) en un solo chunk + aviso de tamaño</td></tr><tr><td>Frontend — pruebas</td><td><code>npm test (vitest)</code></td><td class="ev-bad">FALLA: ERR_REQUIRE_ESM en jsdom/html-encoding-sniffer — 0 pruebas ejecutadas</td></tr><tr><td>Backend — dependencias</td><td><code>npm audit --omit=dev</code></td><td class="ev-bad">6 vulnerabilidades: 1 crítica, 3 altas, 1 moderada, 1 baja</td></tr><tr><td>Frontend — dependencias</td><td><code>npm audit --omit=dev</code></td><td class="ev-bad">3 vulnerabilidades: 2 altas (react-router, xlsx), 1 moderada (dompurify)</td></tr><tr><td>Repositorio</td><td><code>git log / branches</code></td><td class="ev-warn">84 commits, trabajo directo sobre master, sin .github/workflows</td></tr></tbody>
+</table>
+<div class="note"><strong>Hallazgo transversal:</strong> en un clon limpio, <strong>ninguna</strong> de las tres verificaciones de calidad del proyecto (lint, pruebas de frontend, pruebas de backend) funciona sin intervención manual. Cualquier control de calidad que no se pueda ejecutar con un solo comando, en la práctica no existe.</div>
+</section>
+
+<section>
+<h2>3. Matriz de auditoría — qué tengo, qué falta, qué está en uso</h2>
+<p class="lead">Matriz completa ítem por ítem del checklist. El ítem de pasarela de pagos, webhooks, conciliación y reembolsos queda fuera de alcance por indicación expresa.</p>
+<table>
+<thead><tr>
+<th style="width:12%">Ítem</th><th style="width:22%">Lo que tengo</th><th style="width:22%">Lo que falta</th>
+<th style="width:9%">Cumplim.</th><th style="width:7%">Estado</th><th style="width:6%">Riesgo</th><th style="width:22%">Sugerencia de mejora</th>
+</tr></thead>
+<tbody><tr class="domrow"><td colspan="7">1. Producto y Requerimientos</td></tr><tr>
+<td class="item"><strong>Requerimientos funcionales</strong></td>
+<td>Alcance descrito en README + 7 documentos MD (AUDITORIA_SENIOR_CMMS, PROMPT_CORRECCION_v2/v3, PROMPT_QA_v4, MODULO_COTIZACIONES_RESUMEN). Módulos implementados: Cotizaciones, Clientes, Catálogo, Proyectos (Kanban/Gantt), Ejecución/Costos, Facturación, Dashboard, Logística.</td>
+<td class="falta">No existe documento único de requerimientos con criterios de aceptación, trazabilidad requisito→endpoint→prueba, ni backlog versionado. El README marca FASE 2 a FASE 8 como pendientes cuando ya están implementadas.</td>
+<td class="num"><div class="bar"><div class="fill y" style="width:60%"></div><span class="pct">60%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Consolidar un docs/REQUERIMIENTOS.md con IDs (RF-01…) y matriz de trazabilidad; sincronizar el checklist de fases del README con la realidad del código.</td>
+</tr><tr>
+<td class="item"><strong>Requerimientos no funcionales</strong></td>
+<td>Objetivos implícitos: uso offline (Dexie/IndexedDB + Service Worker), export PDF/DOCX/XLSX.</td>
+<td class="falta">Sin RNF explícitos: no hay SLO de disponibilidad, latencia objetivo (p95), RTO/RPO, límites de concurrencia, retención de datos ni volumetría esperada.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:15%"></div><span class="pct">15%</span></div></td>
+<td class="cen"><span class="uso u-NO_DEFINIDO">NO DEFINIDO</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Definir SLOs mínimos (p.ej. 99.5% disponibilidad, p95 API &lt; 500 ms, RPO 24 h / RTO 4 h) y usarlos como criterio de aceptación de despliegue.</td>
+</tr><tr class="domrow"><td colspan="7">2. Stack y Arquitectura</td></tr><tr>
+<td class="item"><strong>Lenguaje y framework</strong></td>
+<td>TypeScript end-to-end. Frontend React 19.2 + Vite 8 + Zustand + React Router 7. Backend Node + Express (4.18 en backend/, 5.x en la raíz) + PostgreSQL (Neon).</td>
+<td class="falta">Duplicidad de dependencias entre package.json raíz y backend/package.json con versiones divergentes de Express (4 vs 5), body-parser (1 vs 2) y dotenv (16 vs 17). Conviven bcrypt (nativo) y bcryptjs.</td>
+<td class="num"><div class="bar"><div class="fill g" style="width:85%"></div><span class="pct">85%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Unificar en un workspace npm (o eliminar las dependencias runtime del package.json raíz) y quedarse solo con bcryptjs, que además elimina 4 CVEs heredadas de node-pre-gyp/tar.</td>
+</tr><tr>
+<td class="item"><strong>Diseño de arquitectura</strong></td>
+<td>Separación clara frontend / backend / api (función serverless de Vercel) / db. Routers por dominio con inyección del Pool. Vista SQL v_quotation_totals y v_project_spending para cálculos.</td>
+<td class="falta">Tres entrypoints de servidor divergentes: backend/src/app.ts (el que usa producción), backend/src/server.ts (no monta el router /api/admin y aplica CORS distinto) y backend/src/server-dev.ts (982 líneas, backend paralelo sobre db.json). No hay diagrama ni ADRs.</td>
+<td class="num"><div class="bar"><div class="fill y" style="width:65%"></div><span class="pct">65%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Dejar app.ts como única fuente de verdad: server.ts debe limitarse a app.listen(app) y server-dev.ts debe marcarse como legacy o eliminarse. El drift entre los tres es una fuente segura de bugs de producción.</td>
+</tr><tr class="domrow"><td colspan="7">3. Frontend</td></tr><tr>
+<td class="item"><strong>Desarrollo frontend</strong></td>
+<td>10 páginas y componentes reutilizables (CatalogAutocomplete, CostIndicator), estado en Zustand con persistencia Dexie, CSS por módulo, export PDF/DOCX/HTML/XLSX, PWA con manifest e íconos.</td>
+<td class="falta">Quotations.tsx tiene 1.279 líneas y Projects.tsx 804: componentes monolíticos difíciles de testear. No hay design system ni librería de componentes, ni manejo global de estados de carga/error.</td>
+<td class="num"><div class="bar"><div class="fill y" style="width:75%"></div><span class="pct">75%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Extraer la lógica de Quotations.tsx a hooks (useQuotationForm, useQuotationTotals) y dividir en subcomponentes; añadir ErrorBoundary y un toast/notification centralizado.</td>
+</tr><tr>
+<td class="item"><strong>Compilación y lint</strong></td>
+<td>tsc -b compila sin errores. vite build produce bundle funcional.</td>
+<td class="falta">npm run lint FALLA: eslint.config.js importa &#x27;@eslint/js&#x27; y ese paquete no está en devDependencies (ERR_MODULE_NOT_FOUND). El lint del frontend nunca se ha podido ejecutar en un clon limpio.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:30%"></div><span class="pct">30%</span></div></td>
+<td class="cen"><span class="uso u-ROTO">ROTO</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>npm i -D @eslint/js eslint-plugin-react-hooks eslint-plugin-react-refresh en frontend/ y ejecutar el lint en CI como gate obligatorio.</td>
+</tr><tr class="domrow"><td colspan="7">4. Backend y API</td></tr><tr>
+<td class="item"><strong>Desarrollo backend</strong></td>
+<td>9 routers (auth, admin, config, catalog, clients, quotations, projects, invoices, dashboard), ~2.350 líneas TS, transacciones con BEGIN/COMMIT/ROLLBACK en quotations e importación, soft-delete consistente (deleted_at IS NULL), correlativos secuenciales.</td>
+<td class="falta">Sin capa de servicios: la lógica de negocio vive dentro de los handlers HTTP. Sin manejo de idempotencia en POST.</td>
+<td class="num"><div class="bar"><div class="fill y" style="width:75%"></div><span class="pct">75%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge bajo">BAJO</span></td>
+<td>Separar handlers de servicios (services/quotationService.ts) para poder testear la lógica sin HTTP ni base de datos.</td>
+</tr><tr>
+<td class="item"><strong>Diseño de la API</strong></td>
+<td>REST coherente por recurso, verbos correctos, códigos 400/401/403/404/500/503, endpoint /api/health.</td>
+<td class="falta">Sin especificación OpenAPI/Swagger, sin versionado (/api/v1), sin paginación ni filtros en los listados (GET /api/quotations devuelve todas las filas), sin rate limiting y sin cabecera de request-id.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:55%"></div><span class="pct">55%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Publicar un contrato OpenAPI, versionar en /api/v1 y añadir paginación keyset (?limit&amp;cursor) antes de que los listados crezcan: hoy escalan de forma lineal e ilimitada.</td>
+</tr><tr class="domrow"><td colspan="7">5. Base de datos</td></tr><tr>
+<td class="item"><strong>Modelado de datos</strong></td>
+<td>schema.sql de 409 líneas: users, sessions, app_config, catalog_items, clients, client_contacts, quotations, quotation_categories, quotation_line_items, quotation_terms, projects, project_assignments, execution_costs, invoices + 2 vistas + triggers updated_at. UUID como PK, NUMERIC para dinero.</td>
+<td class="falta">No hay tabla de auditoría (quién cambió qué) más allá de created_by/updated_at.</td>
+<td class="num"><div class="bar"><div class="fill g" style="width:90%"></div><span class="pct">90%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge ok">OK</span></td>
+<td>Añadir tabla audit_log (tabla, registro_id, actor, accion, diff, timestamp) alimentada por trigger; es requisito habitual en sistemas comerciales/facturación.</td>
+</tr><tr>
+<td class="item"><strong>Migraciones</strong></td>
+<td>4 archivos SQL versionados en backend/src/db (schema.sql, migration_v2_missing.sql, migration_v3_project_tasks.sql, migration_v4_quote_borrador.sql) y un seed.ts.</td>
+<td class="falta">No existe herramienta de migraciones (node-pg-migrate, Prisma, Drizzle, Flyway): ninguna referencia a &#x27;migration&#x27; en el código TypeScript. No hay tabla schema_migrations, ni orden de aplicación, ni rollback, ni ejecución automática en el despliegue. Se aplican a mano.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:30%"></div><span class="pct">30%</span></div></td>
+<td class="cen"><span class="uso u-MANUAL">MANUAL</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Migrar a node-pg-migrate o Drizzle Kit con tabla de control y ejecutar &#x27;migrate up&#x27; en el pipeline de despliegue. Hoy no hay forma de saber qué versión de esquema corre en producción.</td>
+</tr><tr>
+<td class="item"><strong>Índices</strong></td>
+<td>24 índices, varios parciales y alineados con soft-delete: uix_users_email (lower(email)) WHERE deleted_at IS NULL, ix_quotations_status/date/client_id, ix_qli_quotation_id, ix_excosts_project_id, ix_sessions_active.</td>
+<td class="falta">Sin índices para búsqueda de texto (pg_trgm) en clients.name / catalog_items.description, usados por los autocompletes. Sin EXPLAIN ANALYZE ni revisión de planes.</td>
+<td class="num"><div class="bar"><div class="fill g" style="width:85%"></div><span class="pct">85%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge bajo">BAJO</span></td>
+<td>Añadir GIN + pg_trgm sobre lower(name) y lower(description) cuando el catálogo/cartera supere unos miles de filas.</td>
+</tr><tr>
+<td class="item"><strong>Relaciones e integridad</strong></td>
+<td>FKs en todas las tablas con ON DELETE CASCADE / SET NULL explícitos, CHECKs de dominio (iva_pct 0-100, margin_pct, quantity &gt;= 0, progress_pct 0-100, ck_project_dates), UNIQUE de correlativo y de email por lower(email).</td>
+<td class="falta">Sin constraint de exclusión/estado que impida modificar cotizaciones ya adjudicadas o facturas emitidas a nivel de base de datos.</td>
+<td class="num"><div class="bar"><div class="fill g" style="width:90%"></div><span class="pct">90%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge ok">OK</span></td>
+<td>Reforzar reglas de negocio críticas con CHECK/trigger (p.ej. impedir UPDATE de líneas cuando status=&#x27;Adjudicada&#x27;).</td>
+</tr><tr class="domrow"><td colspan="7">6. Seguridad — AuthN</td></tr><tr>
+<td class="item"><strong>Autenticación</strong></td>
+<td>JWT firmado (HS256) con access 8h y refresh 30d, bcrypt para el hash, normalización de email, verificación de is_active y deleted_at, endpoint /api/auth/refresh y /api/auth/me.</td>
+<td class="falta">1) El secreto cae a valores por defecto: &#x27;default-secret&#x27; (backend) y &#x27;dev-secret-maestro&#x27; (api/index.ts) si JWT_SECRET no está definido — cualquiera puede firmar tokens de admin. 2) La contraseña es un PIN de 4 dígitos (10.000 combinaciones). 3) Sin rate limiting ni bloqueo de cuenta tras N intentos. 4) Sin MFA. 5) ALLOW_NO_PIN=true permite iniciar sesión SIN contraseña con solo conocer el email.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:35%"></div><span class="pct">35%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Hacer que el arranque falle si JWT_SECRET no está definido (throw en boot), eliminar por completo la rama ALLOW_NO_PIN del código de producción, añadir express-rate-limit (5 intentos/15 min por IP+email) y subir el mínimo de contraseña a 8+ caracteres.</td>
+</tr><tr class="domrow"><td colspan="7">6. Seguridad — AuthZ</td></tr><tr>
+<td class="item"><strong>Autorización</strong></td>
+<td>authMiddleware aplicado a nivel de router en quotations, projects, clients, invoices, catalog, config y dashboard. roleMiddleware existe y valida roles.</td>
+<td class="falta">roleMiddleware solo se usa en 4 rutas (catalog POST/PUT/DELETE y config PATCH). Ningún control de rol en quotations, projects, clients, invoices: cualquier usuario autenticado con rol &#x27;user&#x27; puede borrar cotizaciones, proyectos y facturas. Cero comprobaciones de rol en el frontend (0 coincidencias de role=== en frontend/src). Sin control de pertenencia (un usuario ve todo).</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:30%"></div><span class="pct">30%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Definir una matriz rol×acción y aplicarla en todos los routers (mínimo: DELETE y cambios de estado restringidos a admin/manager), y ocultar en la UI las acciones no permitidas.</td>
+</tr><tr class="domrow"><td colspan="7">6. Seguridad — Sesiones</td></tr><tr>
+<td class="item"><strong>Manejo de sesiones</strong></td>
+<td>Tabla sessions con user_id, refresh_token, expires_at, revoked_at e índice ix_sessions_active. El login inserta la sesión.</td>
+<td class="falta">La tabla se escribe pero nunca se lee: /api/auth/refresh valida solo la firma del JWT, no consulta sessions ni revoked_at. No existe endpoint de logout ni revocación. El refresh_token se guarda en texto plano en la base de datos. Si el fallo al insertar ocurre, solo se registra un warn.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:35%"></div><span class="pct">35%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>En /refresh, validar contra sessions (existe, no revocada, no expirada) y rotar el token; añadir POST /api/auth/logout que marque revoked_at; almacenar solo el SHA-256 del refresh token.</td>
+</tr><tr class="domrow"><td colspan="7">6. Seguridad — Credenciales</td></tr><tr>
+<td class="item"><strong>Recuperación de contraseñas</strong></td>
+<td>Nada.</td>
+<td class="falta">No existe flujo de olvido/reset de contraseña, ni cambio de PIN autogestionado, ni endpoint de gestión de usuarios. La única vía de recuperación es POST /api/admin/setup con ADMIN_SETUP_SECRET.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:5%"></div><span class="pct">5%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Implementar reset por token de un solo uso con expiración corta (15 min) enviado por correo, más un endpoint autenticado de cambio de contraseña.</td>
+</tr><tr>
+<td class="item"><strong>Almacenamiento seguro de credenciales</strong></td>
+<td>bcrypt con cost 10, nunca se devuelve password_hash (safeUser()), comparación en tiempo constante (crypto.timingSafeEqual) para ADMIN_SETUP_SECRET.</td>
+<td class="falta">backend/db.json está versionado en Git con los hashes bcrypt reales de los usuarios de producción, y los mismos hashes están hardcodeados en api/index.ts (TEST_USERS). Con un PIN de 4 dígitos, esos hashes son crackeables en segundos offline. Los tokens se guardan en localStorage (accesibles a cualquier XSS).</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:30%"></div><span class="pct">30%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Purgar db.json y TEST_USERS del repositorio, rotar TODOS los PIN, y mover el token a cookie httpOnly+Secure+SameSite=Strict (o, como mínimo, reducir la vida del access token).</td>
+</tr><tr class="domrow"><td colspan="7">6. Seguridad — Datos</td></tr><tr>
+<td class="item"><strong>Cifrado de datos sensibles</strong></td>
+<td>TLS en tránsito por Vercel y Neon; ssl activado en el Pool de pg.</td>
+<td class="falta">Sin cifrado a nivel de aplicación para datos personales de contactos/clientes (RUT, teléfono, email). ssl: { rejectUnauthorized: false } en app.ts desactiva la validación del certificado del servidor de base de datos, habilitando MITM sobre la conexión a Neon.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:25%"></div><span class="pct">25%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Usar rejectUnauthorized: true con el CA de Neon (o el driver @neondatabase/serverless, ya declarado como dependencia pero no utilizado) y evaluar pgcrypto para los campos personales.</td>
+</tr><tr class="domrow"><td colspan="7">7. Seguridad — Vulnerabilidades</td></tr><tr>
+<td class="item"><strong>Validación de entradas</strong></td>
+<td>Validaciones puntuales: normalización de email, listas blancas de estados (VALID_STATUSES, VALID_OPER_STATES), CATEGORY_IDS, comprobación de campos requeridos (client_id, value), y CHECKs en la base de datos como última línea.</td>
+<td class="falta">Sin librería de validación de esquemas (no hay zod/joi/express-validator en ninguna dependencia). Los cuerpos JSON se desestructuran directamente; no hay límites de longitud de strings ni validación de tipos numéricos. body limit de 10 MB en todos los endpoints.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:35%"></div><span class="pct">35%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Adoptar zod con un middleware validate(schema) por endpoint; es el cambio con mejor relación esfuerzo/beneficio de todo el informe.</td>
+</tr><tr>
+<td class="item"><strong>Inyección SQL</strong></td>
+<td>100% de las consultas usan placeholders parametrizados ($1,$2…). Búsqueda de concatenación en template literals dentro de query(): 0 coincidencias.</td>
+<td class="falta">Nada relevante.</td>
+<td class="num"><div class="bar"><div class="fill g" style="width:95%"></div><span class="pct">95%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge ok">OK</span></td>
+<td>Mantener la regla; añadir una regla de lint que prohíba query(`...${}`).</td>
+</tr><tr>
+<td class="item"><strong>XSS</strong></td>
+<td>React escapa por defecto; 0 usos de dangerouslySetInnerHTML, innerHTML o document.write en frontend/src.</td>
+<td class="falta">Sin Content-Security-Policy ni cabeceras de seguridad. Los exportadores (htmlExport.ts, docxExport.ts) construyen HTML por concatenación de datos del usuario. dompurify (transitiva de jspdf) tiene 3 advisories abiertos.</td>
+<td class="num"><div class="bar"><div class="fill y" style="width:60%"></div><span class="pct">60%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Añadir CSP restrictiva y escapar explícitamente los valores interpolados en htmlExport.ts.</td>
+</tr><tr>
+<td class="item"><strong>CSRF</strong></td>
+<td>El token viaja en la cabecera Authorization, no en cookie: el vector CSRF clásico no aplica hoy.</td>
+<td class="falta">app.ts configura CORS con origin: (_origin, callback) =&gt; callback(null, true) — es decir, refleja CUALQUIER origen — combinado con credentials: true. Cualquier sitio web puede llamar a la API del usuario desde su navegador. Además la protección desaparecerá en cuanto se migre a cookies.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:40%"></div><span class="pct">40%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Reemplazar por una allowlist explícita de orígenes (dominio de producción + localhost) leída de variable de entorno.</td>
+</tr><tr>
+<td class="item"><strong>Hardening y otras vulnerabilidades conocidas</strong></td>
+<td>Manejo de error centralizado que oculta el mensaje en producción; 404 handler; logs de intentos fallidos.</td>
+<td class="falta">Sin helmet (faltan HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy), sin rate limiting global, sin protección contra fuerza bruta, sin WAF, sin límite de tamaño diferenciado por endpoint. El middleware de error está registrado ANTES del handler 404 en app.ts, orden inverso al correcto en Express.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:10%"></div><span class="pct">10%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Instalar helmet + express-rate-limit (10 líneas) y corregir el orden 404→error handler. Es la mejora de seguridad más barata disponible.</td>
+</tr><tr class="domrow"><td colspan="7">8. Infraestructura</td></tr><tr>
+<td class="item"><strong>Servidores e infraestructura cloud</strong></td>
+<td>Vercel (frontend estático + función serverless en api/index.ts) y Neon PostgreSQL gestionado. docker-compose.yml con Postgres 15 + pgAdmin para desarrollo local.</td>
+<td class="falta">Sin Infrastructure as Code (Terraform/Pulumi): toda la configuración vive en la consola de Vercel/Neon y no es reproducible ni auditable. Credenciales de docker-compose en texto plano (bravocrm_password, pgadmin admin/admin).</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:55%"></div><span class="pct">55%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Versionar la configuración de Vercel/Neon con Terraform, o al menos documentar en docs/INFRA.md todos los ajustes hechos por consola.</td>
+</tr><tr>
+<td class="item"><strong>Redes, DNS y dominios</strong></td>
+<td>Resolución por defecto de Vercel; frontend en producción usa rutas relativas /api (sin CORS cross-origin en el camino feliz).</td>
+<td class="falta">Sin evidencia de dominio propio, zona DNS gestionada ni política de subdominios (app./api./staging.).</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:35%"></div><span class="pct">35%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Registrar dominio corporativo y apuntarlo a Vercel; reservar staging.&lt;dominio&gt; desde ya.</td>
+</tr><tr>
+<td class="item"><strong>Certificados SSL</strong></td>
+<td>HTTPS y renovación automática provistos por Vercel y Neon.</td>
+<td class="falta">Sin HSTS (requiere helmet) y sin monitoreo de expiración para el caso de un dominio propio.</td>
+<td class="num"><div class="bar"><div class="fill y" style="width:75%"></div><span class="pct">75%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge bajo">BAJO</span></td>
+<td>Activar Strict-Transport-Security con max-age de 1 año una vez el dominio propio esté operativo.</td>
+</tr><tr>
+<td class="item"><strong>Balanceo de carga</strong></td>
+<td>Delegado en la red edge de Vercel, que enruta y escala las funciones automáticamente.</td>
+<td class="falta">Sin control ni observabilidad propia del balanceo; sin health checks configurados contra /api/health.</td>
+<td class="num"><div class="bar"><div class="fill y" style="width:65%"></div><span class="pct">65%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge bajo">BAJO</span></td>
+<td>Registrar /api/health en un monitor externo (UptimeRobot/Better Stack) para tener señal independiente de la plataforma.</td>
+</tr><tr>
+<td class="item"><strong>Firewall / WAF</strong></td>
+<td>Nada configurado a nivel de aplicación.</td>
+<td class="falta">Sin WAF, sin bot protection, sin IP allowlist para Neon, sin protección DDoS más allá de la incluida por defecto en Vercel.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:15%"></div><span class="pct">15%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Activar Vercel Firewall (rate limit por ruta, especialmente /api/auth/login) y restringir el acceso a Neon por IP/proyecto.</td>
+</tr><tr class="domrow"><td colspan="7">9. Continuidad</td></tr><tr>
+<td class="item"><strong>Backups</strong></td>
+<td>Neon ofrece PITR según plan (capacidad de la plataforma, no configuración del proyecto).</td>
+<td class="falta">Sin política de respaldo documentada, sin dumps externos fuera del proveedor, sin prueba de restauración jamás ejecutada, sin retención definida.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:20%"></div><span class="pct">20%</span></div></td>
+<td class="cen"><span class="uso u-NO_VERIFICADO">NO VERIFICADO</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Job diario de pg_dump a almacenamiento externo (S3/R2) con retención 30 días y un simulacro de restore trimestral documentado. Un backup no probado no es un backup.</td>
+</tr><tr>
+<td class="item"><strong>Redundancia y recuperación ante desastres</strong></td>
+<td>Redundancia implícita de la plataforma serverless.</td>
+<td class="falta">Sin plan de DR, sin RTO/RPO, sin réplica de lectura, sin runbook de incidentes, sin región secundaria. Punto único de fallo: la cuenta de Neon.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:10%"></div><span class="pct">10%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Escribir un runbook de 1 página: qué hacer si Neon cae, si Vercel cae, si se corrompen datos; con RTO/RPO acordados con el negocio.</td>
+</tr><tr>
+<td class="item"><strong>Escalabilidad horizontal y vertical</strong></td>
+<td>Frontend estático en CDN; funciones serverless que escalan por concurrencia; Neon escala verticalmente.</td>
+<td class="falta">Antipatrón serverless: app.ts crea un pg.Pool clásico (max: 5) por instancia de función; bajo concurrencia agota las conexiones de Neon. La dependencia @neondatabase/serverless (driver HTTP pensado exactamente para esto) está declarada pero NO se usa. Además no hay paginación, así que la carga crece con el volumen de datos.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:45%"></div><span class="pct">45%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Migrar app.ts al driver @neondatabase/serverless (o activar el pooler de Neon con max: 1) antes de crecer en usuarios.</td>
+</tr><tr>
+<td class="item"><strong>Caché</strong></td>
+<td>Cache-Control immutable de 1 año para /assets/* en vercel.json; Service Worker con cache-first de la shell y network-only para /api.</td>
+<td class="falta">Sin caché de datos en servidor (Redis/Upstash), sin ETag/Cache-Control en respuestas de API, sin memoización de las consultas del dashboard (que agregan sobre vistas en cada request).</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:30%"></div><span class="pct">30%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Cachear config y catálogo (datos casi estáticos) con Cache-Control: private, max-age=60 y ETag.</td>
+</tr><tr>
+<td class="item"><strong>Colas y tareas en segundo plano</strong></td>
+<td>Nada.</td>
+<td class="falta">No hay cola de trabajos ni cron. La importación de cotizaciones, los exports y cualquier proceso pesado corren de forma síncrona dentro del request, expuestos al timeout de la función serverless.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:0%"></div><span class="pct">0%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Introducir Vercel Cron para tareas periódicas (limpieza de sesiones expiradas, backups) y una cola (QStash/Inngest) cuando aparezcan procesos largos.</td>
+</tr><tr class="domrow"><td colspan="7">10. Entornos y secretos</td></tr><tr>
+<td class="item"><strong>Ambientes dev / staging / producción</strong></td>
+<td>Desarrollo (vite dev + tsx watch, docker-compose, modo db.json), producción (Vercel). Modos de arranque documentados en MODO_DEV_RAPIDO.md, SETUP_LOCAL.md e INICIO_RAPIDO.txt.</td>
+<td class="falta">No existe staging: todo cambio en master va directo a producción sin entorno intermedio de verificación. Existen 4 formas distintas de levantar el backend (server.ts, app.ts, server-dev.ts, api/index.ts fallback), lo que hace que &#x27;funciona en local&#x27; no garantice nada.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:35%"></div><span class="pct">35%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Crear un proyecto/preview de Vercel con base de datos de staging (branch de Neon) y exigir validación allí antes de promover a producción.</td>
+</tr><tr>
+<td class="item"><strong>Variables de entorno, credenciales y secretos</strong></td>
+<td>.env.example completo y comentado; .env en .gitignore; secretos en el panel de Vercel; ADMIN_SETUP_SECRET deshabilita el endpoint si no está definido (503).</td>
+<td class="falta">Fallbacks inseguros: JWT_SECRET || &#x27;default-secret&#x27; y || &#x27;dev-secret-maestro&#x27; hacen que un despliegue mal configurado arranque igualmente con un secreto público. frontend/.env.lan y .env.production están versionados. El README publica emails y PIN reales (3571 / 4321). Discrepancia: .env.example dice JWT_EXPIRY=7d y el código usa 8h por defecto.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:40%"></div><span class="pct">40%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Validar el entorno al arrancar con zod (fail-fast si falta JWT_SECRET o DATABASE_URL), borrar los PIN del README y rotarlos.</td>
+</tr><tr class="domrow"><td colspan="7">11. CI/CD</td></tr><tr>
+<td class="item"><strong>Integración continua</strong></td>
+<td>Nada.</td>
+<td class="falta">No existe directorio .github: cero workflows. Ningún commit pasa por lint, typecheck, tests ni auditoría de dependencias antes de fusionarse.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:0%"></div><span class="pct">0%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Añadir .github/workflows/ci.yml con matrix (backend/frontend): npm ci → tsc --noEmit → lint → test → npm audit. Es el control aislado de mayor impacto de este informe.</td>
+</tr><tr>
+<td class="item"><strong>Despliegue continuo</strong></td>
+<td>Despliegue automático de Vercel al hacer push a master, con buildCommand y rewrites definidos en vercel.json.</td>
+<td class="falta">Deploy sin gates de calidad, sin ejecución de migraciones, sin smoke test posterior y sin procedimiento de rollback documentado.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:55%"></div><span class="pct">55%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Condicionar el deploy a producción al éxito de CI y añadir un smoke test post-deploy contra /api/health.</td>
+</tr><tr>
+<td class="item"><strong>Control de versiones</strong></td>
+<td>Git con 84 commits, .gitignore razonable, repositorio en GitHub.</td>
+<td class="falta">Se trabaja directo sobre master (solo 1 rama remota adicional). Sin pull requests, sin revisión de código, sin protección de rama, sin convención de commits (mensajes reales: &#x27;mejora&#x27;, &#x27;mejoras&#x27;, &#x27;merjora&#x27;, &#x27;actuazalicion&#x27;), sin tags ni releases, sin CHANGELOG. Hay 3,2 MB de .xlsx binarios versionados.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:40%"></div><span class="pct">40%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Proteger master, exigir PR + CI en verde, adoptar Conventional Commits y mover los .xlsx grandes fuera del repositorio (o a Git LFS).</td>
+</tr><tr class="domrow"><td colspan="7">12. Pruebas</td></tr><tr>
+<td class="item"><strong>Pruebas unitarias</strong></td>
+<td>16 pruebas en 4 archivos: backend (clients, quotations, quotations-import) con vitest + supertest, y frontend (maestro-store). Las 16 pruebas del backend PASAN en 1,38 s.</td>
+<td class="falta">Cobertura muy baja frente a ~10.700 líneas de código: 0 pruebas de auth/middleware JWT, 0 de projects, invoices, dashboard, catalog y config. Sin umbral de cobertura ni reporte.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:35%"></div><span class="pct">35%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Priorizar pruebas de authMiddleware/roleMiddleware y de los cálculos de totales/IVA/márgenes; fijar un umbral de cobertura del 60% y subirlo gradualmente.</td>
+</tr><tr>
+<td class="item"><strong>Ejecutabilidad de la suite</strong></td>
+<td>La suite del backend corre correctamente tras resolver el binario nativo.</td>
+<td class="falta">En un clon limpio, &#x27;npm test&#x27; del backend FALLA (Cannot find module &#x27;@rolldown/binding-linux-x64-gnu&#x27;) y &#x27;npm test&#x27; del frontend FALLA por completo (ERR_REQUIRE_ESM en jsdom/html-encoding-sniffer): 0 pruebas de frontend ejecutadas. &#x27;npm run lint&#x27; también falla. Es decir: hoy ninguna de las tres verificaciones de calidad funciona out-of-the-box.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:15%"></div><span class="pct">15%</span></div></td>
+<td class="cen"><span class="uso u-ROTO">ROTO</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Corregir la instalación (dependencias opcionales de rolldown, fijar jsdom a una versión compatible o cambiar a happy-dom) y proteger el resultado con CI para que no vuelva a romperse en silencio.</td>
+</tr><tr>
+<td class="item"><strong>Pruebas de integración</strong></td>
+<td>Los tests de API usan supertest sobre routers reales con un Pool simulado.</td>
+<td class="falta">No se prueba nada contra una PostgreSQL real: las consultas SQL, triggers, vistas (v_quotation_totals), CHECKs y transacciones nunca se ejercitan. Un error de SQL solo se descubre en producción.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:25%"></div><span class="pct">25%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Levantar Postgres con Testcontainers (o el servicio postgres de GitHub Actions) y ejecutar el schema.sql real en la suite de integración.</td>
+</tr><tr>
+<td class="item"><strong>Pruebas end-to-end</strong></td>
+<td>Nada.</td>
+<td class="falta">Sin Playwright/Cypress. Ningún flujo de usuario (login → cotización → proyecto → factura) está verificado automáticamente.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:0%"></div><span class="pct">0%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Playwright con 3 escenarios críticos: login, crear y emitir cotización, convertir a proyecto. Cubre el 80% del riesgo de regresión con poco esfuerzo.</td>
+</tr><tr>
+<td class="item"><strong>Pruebas de carga</strong></td>
+<td>Nada.</td>
+<td class="falta">Sin k6/Artillery. No se conoce el punto de saturación, especialmente relevante dado el pool de 5 conexiones y los listados sin paginación.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:0%"></div><span class="pct">0%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Un script k6 de 50 usuarios concurrentes sobre GET /api/quotations bastaría para confirmar (o descartar) el cuello de botella de conexiones.</td>
+</tr><tr class="domrow"><td colspan="7">13. Observabilidad</td></tr><tr>
+<td class="item"><strong>Logging</strong></td>
+<td>Winston con formato JSON, timestamps, defaultMeta service:bravocrm-api, niveles por LOG_LEVEL, transporte a archivo solo fuera de serverless, logging de login, fallos de JWT y permisos insuficientes.</td>
+<td class="falta">Sin correlation-id por request, sin logging de request/response en app.ts (solo existe en server.ts, que no es el entrypoint de producción), sin redacción de PII, y en serverless los logs solo van a stdout de Vercel con retención corta.</td>
+<td class="num"><div class="bar"><div class="fill y" style="width:60%"></div><span class="pct">60%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Añadir un middleware de request-id (crypto.randomUUID) propagado a todos los logs y exportar a un backend de logs (Betterstack/Datadog).</td>
+</tr><tr>
+<td class="item"><strong>Monitoreo, métricas, alertas y trazabilidad</strong></td>
+<td>Solo el endpoint /api/health.</td>
+<td class="falta">Sin APM, sin Sentry ni ningún error tracking, sin métricas (latencia, tasa de error, saturación del pool), sin alertas, sin tracing distribuido, sin dashboard de salud. Hoy la única forma de enterarse de una caída es que un usuario la reporte.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:5%"></div><span class="pct">5%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Instalar Sentry (frontend + función serverless) y un monitor de uptime sobre /api/health con alerta a correo/WhatsApp. Media hora de trabajo, impacto inmediato.</td>
+</tr><tr class="domrow"><td colspan="7">14. Correo</td></tr><tr>
+<td class="item"><strong>Proveedor de correo, SPF, DKIM y DMARC</strong></td>
+<td>Nada.</td>
+<td class="falta">No hay envío de correo de ningún tipo, lo que a su vez bloquea el reset de contraseña, la notificación de cotizaciones al cliente y el envío de facturas. Sin registros SPF/DKIM/DMARC en el dominio.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:0%"></div><span class="pct">0%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Integrar Resend o Amazon SES con dominio verificado (SPF + DKIM + DMARC p=quarantine); es prerrequisito del flujo de recuperación de contraseña.</td>
+</tr><tr class="domrow"><td colspan="7">15. Móvil</td></tr><tr>
+<td class="item"><strong>Aplicación móvil / PWA / tiendas</strong></td>
+<td>PWA operativa: manifest.json, íconos 192/512, Service Worker con precache y estrategia cache-first para la shell, script start-mobile.bat y modo LAN documentado.</td>
+<td class="falta">Sin app nativa: no aplican certificados, perfiles de aprovisionamiento ni revisión en Play/App Store. El Service Worker no maneja actualizaciones de versión (skipWaiting sin aviso al usuario puede servir mezcla de assets viejos y nuevos).</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:55%"></div><span class="pct">55%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge bajo">BAJO</span></td>
+<td>Añadir aviso de &#x27;nueva versión disponible&#x27; al detectar un SW en waiting; si en el futuro se requiere tienda, evaluar Capacitor sobre la misma PWA.</td>
+</tr><tr class="domrow"><td colspan="7">16. Calidad de experiencia</td></tr><tr>
+<td class="item"><strong>Rendimiento</strong></td>
+<td>Build exitoso en 1,3 s; assets con cache immutable; PWA con precache.</td>
+<td class="falta">Bundle único de 2.135 kB (683 kB gzip) sin code-splitting: el propio build emite la advertencia. Todas las páginas, recharts, jspdf, docx y xlsx se descargan en la primera carga. Sin presupuesto de rendimiento ni medición Lighthouse/Core Web Vitals.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:35%"></div><span class="pct">35%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>React.lazy por ruta e import() dinámico para jspdf/xlsx/docx (solo se usan al exportar): reducción esperada del bundle inicial superior al 60%.</td>
+</tr><tr>
+<td class="item"><strong>Compatibilidad entre dispositivos</strong></td>
+<td>CSS por módulo, modo LAN para pruebas en móvil, PWA instalable.</td>
+<td class="falta">Sin matriz de navegadores/dispositivos soportados, sin pruebas responsive automatizadas, sin browserslist definido.</td>
+<td class="num"><div class="bar"><div class="fill o" style="width:45%"></div><span class="pct">45%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge bajo">BAJO</span></td>
+<td>Definir browserslist en package.json y validar los 3 flujos principales en móvil real.</td>
+</tr><tr>
+<td class="item"><strong>Accesibilidad</strong></td>
+<td>Atributos aria-/alt presentes de forma dispersa en 4 de los 10 archivos de páginas y componentes.</td>
+<td class="falta">Sin auditoría WCAG, sin navegación por teclado verificada, sin gestión de foco en modales, sin contraste validado, sin eslint-plugin-jsx-a11y, sin etiquetas asociadas a los inputs de forma sistemática.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:20%"></div><span class="pct">20%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Activar eslint-plugin-jsx-a11y y pasar axe DevTools sobre Cotizaciones y Dashboard; corregir primero labels y foco en modales.</td>
+</tr><tr class="domrow"><td colspan="7">17. Datos y cumplimiento</td></tr><tr>
+<td class="item"><strong>Analítica</strong></td>
+<td>Nada.</td>
+<td class="falta">Sin analítica de producto ni de uso: no se sabe qué módulos se usan, dónde abandonan los usuarios ni qué errores encuentran.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:0%"></div><span class="pct">0%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge bajo">BAJO</span></td>
+<td>Vercel Analytics o Plausible (respetuoso con la privacidad); 5 minutos de configuración.</td>
+</tr><tr>
+<td class="item"><strong>Privacidad, datos personales y términos</strong></td>
+<td>Soft-delete que preserva historial.</td>
+<td class="falta">Sin política de privacidad, sin términos y condiciones, sin aviso de cookies, sin procedimiento de borrado a solicitud del titular, sin registro de tratamiento. El sistema almacena datos personales de contactos de clientes (nombre, email, teléfono, cargo) y RUT, dato personal bajo la Ley 19.628 y la nueva Ley 21.719 de Chile (vigente desde diciembre de 2026).</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:5%"></div><span class="pct">5%</span></div></td>
+<td class="cen"><span class="uso u-AUSENTE">AUSENTE</span></td>
+<td class="cen"><span class="badge alto">ALTO</span></td>
+<td>Publicar política de privacidad y T&amp;C, definir base de licitud y retención, e implementar borrado real (no solo soft-delete) ante solicitud del titular. Con la Ley 21.719 en el horizonte, esto pasa de recomendable a obligatorio.</td>
+</tr><tr>
+<td class="item"><strong>Actualización de dependencias y vulnerabilidades de terceros</strong></td>
+<td>Versiones modernas (React 19, Vite 8, TS 6). Se ejecutó npm audit como parte de esta revisión.</td>
+<td class="falta">9 vulnerabilidades en dependencias de producción: backend 6 (1 crítica, 3 altas, 1 moderada, 1 baja) — cadena bcrypt→@mapbox/node-pre-gyp→tar y uuid &lt;11.1.1; frontend 3 — react-router (5 advisories altos: open redirect, XSS en RSCErrorHandler, DoS por route matching), dompurify (3 moderados) y xlsx (prototype pollution + ReDoS, SIN parche disponible). Sin Dependabot/Renovate, sin npm audit en CI, sin SBOM.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:20%"></div><span class="pct">20%</span></div></td>
+<td class="cen"><span class="uso u-EN_USO">EN USO</span></td>
+<td class="cen"><span class="badge crit">CRITICO</span></td>
+<td>Actualizar react-router (fix disponible), eliminar bcrypt nativo dejando bcryptjs (resuelve las 4 CVEs de tar), actualizar uuid y reemplazar xlsx por exceljs (xlsx no tiene parche). Activar Dependabot.</td>
+</tr><tr>
+<td class="item"><strong>Costos de infraestructura</strong></td>
+<td>Arquitectura de bajo costo por diseño (planes gratuitos/bajos de Vercel + Neon).</td>
+<td class="falta">Sin presupuesto, sin alertas de gasto, sin límites de uso configurados. Un bucle de peticiones o un abuso del endpoint de login sin rate limit puede disparar la factura de invocaciones.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:25%"></div><span class="pct">25%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Configurar spend limits y alertas de presupuesto en Vercel y Neon.</td>
+</tr><tr class="domrow"><td colspan="7">18. Mantenimiento</td></tr><tr>
+<td class="item"><strong>Mantenimiento y gestión del cambio</strong></td>
+<td>Documentación abundante (10 archivos MD/TXT: setup, QA guide, auditorías previas, prompts de corrección) y scripts de arranque para Windows.</td>
+<td class="falta">Documentación fragmentada, parcialmente contradictoria y con instrucciones desactualizadas (el README marca como pendientes fases ya implementadas). Sin CHANGELOG, sin issue tracker, sin roadmap, sin owner definido, sin política de soporte. Los archivos PROMPT_*.md mezclan documentación con instrucciones para agentes de IA.</td>
+<td class="num"><div class="bar"><div class="fill r" style="width:30%"></div><span class="pct">30%</span></div></td>
+<td class="cen"><span class="uso u-PARCIAL">PARCIAL</span></td>
+<td class="cen"><span class="badge medio">MEDIO</span></td>
+<td>Consolidar en docs/ con un único README de entrada, mover los PROMPT_*.md a docs/historico/ y abrir issues por cada hallazgo crítico de este informe.</td>
+</tr></tbody>
+</table>
+</section>
+
+<section>
+<h2>4. Estado crítico — atender antes de seguir</h2>
+<p class="lead">12 hallazgos clasificados como críticos, ordenados por severidad. Cada uno puede provocar pérdida de datos, acceso no autorizado o indisponibilidad silenciosa.</p>
+<table>
+<thead><tr><th style="width:5%">#</th><th style="width:20%">Ítem</th><th style="width:40%">Riesgo concreto</th><th style="width:35%">Acción correctiva</th></tr></thead>
+<tbody><tr><td class="cen"><span class="rk">R1</span></td><td><strong>Integración continua</strong><div class="sub">11. CI/CD</div></td><td>No existe directorio .github: cero workflows. Ningún commit pasa por lint, typecheck, tests ni auditoría de dependencias antes de fusionarse.</td><td>Añadir .github/workflows/ci.yml con matrix (backend/frontend): npm ci → tsc --noEmit → lint → test → npm audit. Es el control aislado de mayor impacto de este informe.</td></tr><tr><td class="cen"><span class="rk">R2</span></td><td><strong>Monitoreo, métricas, alertas y trazabilidad</strong><div class="sub">13. Observabilidad</div></td><td>Sin APM, sin Sentry ni ningún error tracking, sin métricas (latencia, tasa de error, saturación del pool), sin alertas, sin tracing distribuido, sin dashboard de salud. Hoy la única forma de enterarse de una caída es que un usuario la reporte.</td><td>Instalar Sentry (frontend + función serverless) y un monitor de uptime sobre /api/health con alerta a correo/WhatsApp. Media hora de trabajo, impacto inmediato.</td></tr><tr><td class="cen"><span class="rk">R3</span></td><td><strong>Hardening y otras vulnerabilidades conocidas</strong><div class="sub">7. Seguridad — Vulnerabilidades</div></td><td>Sin helmet (faltan HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy), sin rate limiting global, sin protección contra fuerza bruta, sin WAF, sin límite de tamaño diferenciado por endpoint. El middleware de error está registrado ANTES del handler 404 en app.ts, orden inverso al correcto en Express.</td><td>Instalar helmet + express-rate-limit (10 líneas) y corregir el orden 404→error handler. Es la mejora de seguridad más barata disponible.</td></tr><tr><td class="cen"><span class="rk">R4</span></td><td><strong>Ejecutabilidad de la suite</strong><div class="sub">12. Pruebas</div></td><td>En un clon limpio, &#x27;npm test&#x27; del backend FALLA (Cannot find module &#x27;@rolldown/binding-linux-x64-gnu&#x27;) y &#x27;npm test&#x27; del frontend FALLA por completo (ERR_REQUIRE_ESM en jsdom/html-encoding-sniffer): 0 pruebas de frontend ejecutadas. &#x27;npm run lint&#x27; también falla. Es decir: hoy ninguna de las tres verificaciones de calidad funciona out-of-the-box.</td><td>Corregir la instalación (dependencias opcionales de rolldown, fijar jsdom a una versión compatible o cambiar a happy-dom) y proteger el resultado con CI para que no vuelva a romperse en silencio.</td></tr><tr><td class="cen"><span class="rk">R5</span></td><td><strong>Backups</strong><div class="sub">9. Continuidad</div></td><td>Sin política de respaldo documentada, sin dumps externos fuera del proveedor, sin prueba de restauración jamás ejecutada, sin retención definida.</td><td>Job diario de pg_dump a almacenamiento externo (S3/R2) con retención 30 días y un simulacro de restore trimestral documentado. Un backup no probado no es un backup.</td></tr><tr><td class="cen"><span class="rk">R6</span></td><td><strong>Actualización de dependencias y vulnerabilidades de terceros</strong><div class="sub">17. Datos y cumplimiento</div></td><td>9 vulnerabilidades en dependencias de producción: backend 6 (1 crítica, 3 altas, 1 moderada, 1 baja) — cadena bcrypt→@mapbox/node-pre-gyp→tar y uuid &lt;11.1.1; frontend 3 — react-router (5 advisories altos: open redirect, XSS en RSCErrorHandler, DoS por route matching), dompurify (3 moderados) y xlsx (prototype pollution + ReDoS, SIN parche disponible). Sin Dependabot/Renovate, sin npm audit en CI, sin SBOM.</td><td>Actualizar react-router (fix disponible), eliminar bcrypt nativo dejando bcryptjs (resuelve las 4 CVEs de tar), actualizar uuid y reemplazar xlsx por exceljs (xlsx no tiene parche). Activar Dependabot.</td></tr><tr><td class="cen"><span class="rk">R7</span></td><td><strong>Migraciones</strong><div class="sub">5. Base de datos</div></td><td>No existe herramienta de migraciones (node-pg-migrate, Prisma, Drizzle, Flyway): ninguna referencia a &#x27;migration&#x27; en el código TypeScript. No hay tabla schema_migrations, ni orden de aplicación, ni rollback, ni ejecución automática en el despliegue. Se aplican a mano.</td><td>Migrar a node-pg-migrate o Drizzle Kit con tabla de control y ejecutar &#x27;migrate up&#x27; en el pipeline de despliegue. Hoy no hay forma de saber qué versión de esquema corre en producción.</td></tr><tr><td class="cen"><span class="rk">R8</span></td><td><strong>Autorización</strong><div class="sub">6. Seguridad — AuthZ</div></td><td>roleMiddleware solo se usa en 4 rutas (catalog POST/PUT/DELETE y config PATCH). Ningún control de rol en quotations, projects, clients, invoices: cualquier usuario autenticado con rol &#x27;user&#x27; puede borrar cotizaciones, proyectos y facturas. Cero comprobaciones de rol en el frontend (0 coincidencias de role=== en frontend/src). Sin control de pertenencia (un usuario ve todo).</td><td>Definir una matriz rol×acción y aplicarla en todos los routers (mínimo: DELETE y cambios de estado restringidos a admin/manager), y ocultar en la UI las acciones no permitidas.</td></tr><tr><td class="cen"><span class="rk">R9</span></td><td><strong>Almacenamiento seguro de credenciales</strong><div class="sub">6. Seguridad — Credenciales</div></td><td>backend/db.json está versionado en Git con los hashes bcrypt reales de los usuarios de producción, y los mismos hashes están hardcodeados en api/index.ts (TEST_USERS). Con un PIN de 4 dígitos, esos hashes son crackeables en segundos offline. Los tokens se guardan en localStorage (accesibles a cualquier XSS).</td><td>Purgar db.json y TEST_USERS del repositorio, rotar TODOS los PIN, y mover el token a cookie httpOnly+Secure+SameSite=Strict (o, como mínimo, reducir la vida del access token).</td></tr><tr><td class="cen"><span class="rk">R10</span></td><td><strong>Autenticación</strong><div class="sub">6. Seguridad — AuthN</div></td><td>1) El secreto cae a valores por defecto: &#x27;default-secret&#x27; (backend) y &#x27;dev-secret-maestro&#x27; (api/index.ts) si JWT_SECRET no está definido — cualquiera puede firmar tokens de admin. 2) La contraseña es un PIN de 4 dígitos (10.000 combinaciones). 3) Sin rate limiting ni bloqueo de cuenta tras N intentos. 4) Sin MFA. 5) ALLOW_NO_PIN=true permite iniciar sesión SIN contraseña con solo conocer el email.</td><td>Hacer que el arranque falle si JWT_SECRET no está definido (throw en boot), eliminar por completo la rama ALLOW_NO_PIN del código de producción, añadir express-rate-limit (5 intentos/15 min por IP+email) y subir el mínimo de contraseña a 8+ caracteres.</td></tr><tr><td class="cen"><span class="rk">R11</span></td><td><strong>CSRF</strong><div class="sub">7. Seguridad — Vulnerabilidades</div></td><td>app.ts configura CORS con origin: (_origin, callback) =&gt; callback(null, true) — es decir, refleja CUALQUIER origen — combinado con credentials: true. Cualquier sitio web puede llamar a la API del usuario desde su navegador. Además la protección desaparecerá en cuanto se migre a cookies.</td><td>Reemplazar por una allowlist explícita de orígenes (dominio de producción + localhost) leída de variable de entorno.</td></tr><tr><td class="cen"><span class="rk">R12</span></td><td><strong>Variables de entorno, credenciales y secretos</strong><div class="sub">10. Entornos y secretos</div></td><td>Fallbacks inseguros: JWT_SECRET || &#x27;default-secret&#x27; y || &#x27;dev-secret-maestro&#x27; hacen que un despliegue mal configurado arranque igualmente con un secreto público. frontend/.env.lan y .env.production están versionados. El README publica emails y PIN reales (3571 / 4321). Discrepancia: .env.example dice JWT_EXPIRY=7d y el código usa 8h por defecto.</td><td>Validar el entorno al arrancar con zod (fail-fast si falta JWT_SECRET o DATABASE_URL), borrar los PIN del README y rotarlos.</td></tr></tbody>
+</table>
+</section>
+
+<section>
+<h2>5. Riesgo alto</h2>
+<p class="lead">20 hallazgos de riesgo alto: no bloquean la operación hoy, pero la degradan de forma previsible a medida que crezca el uso.</p>
+<table>
+<thead><tr><th style="width:22%">Ítem</th><th style="width:41%">Riesgo</th><th style="width:37%">Acción</th></tr></thead>
+<tbody><tr><td><strong>Pruebas end-to-end</strong><div class="sub">12. Pruebas</div></td><td>Sin Playwright/Cypress. Ningún flujo de usuario (login → cotización → proyecto → factura) está verificado automáticamente.</td><td>Playwright con 3 escenarios críticos: login, crear y emitir cotización, convertir a proyecto. Cubre el 80% del riesgo de regresión con poco esfuerzo.</td></tr><tr><td><strong>Proveedor de correo, SPF, DKIM y DMARC</strong><div class="sub">14. Correo</div></td><td>No hay envío de correo de ningún tipo, lo que a su vez bloquea el reset de contraseña, la notificación de cotizaciones al cliente y el envío de facturas. Sin registros SPF/DKIM/DMARC en el dominio.</td><td>Integrar Resend o Amazon SES con dominio verificado (SPF + DKIM + DMARC p=quarantine); es prerrequisito del flujo de recuperación de contraseña.</td></tr><tr><td><strong>Recuperación de contraseñas</strong><div class="sub">6. Seguridad — Credenciales</div></td><td>No existe flujo de olvido/reset de contraseña, ni cambio de PIN autogestionado, ni endpoint de gestión de usuarios. La única vía de recuperación es POST /api/admin/setup con ADMIN_SETUP_SECRET.</td><td>Implementar reset por token de un solo uso con expiración corta (15 min) enviado por correo, más un endpoint autenticado de cambio de contraseña.</td></tr><tr><td><strong>Privacidad, datos personales y términos</strong><div class="sub">17. Datos y cumplimiento</div></td><td>Sin política de privacidad, sin términos y condiciones, sin aviso de cookies, sin procedimiento de borrado a solicitud del titular, sin registro de tratamiento. El sistema almacena datos personales de contactos de clientes (nombre, email, teléfono, cargo) y RUT, dato personal bajo la Ley 19.628 y la nueva Ley 21.719 de Chile (vigente desde diciembre de 2026).</td><td>Publicar política de privacidad y T&amp;C, definir base de licitud y retención, e implementar borrado real (no solo soft-delete) ante solicitud del titular. Con la Ley 21.719 en el horizonte, esto pasa de recomendable a obligatorio.</td></tr><tr><td><strong>Redundancia y recuperación ante desastres</strong><div class="sub">9. Continuidad</div></td><td>Sin plan de DR, sin RTO/RPO, sin réplica de lectura, sin runbook de incidentes, sin región secundaria. Punto único de fallo: la cuenta de Neon.</td><td>Escribir un runbook de 1 página: qué hacer si Neon cae, si Vercel cae, si se corrompen datos; con RTO/RPO acordados con el negocio.</td></tr><tr><td><strong>Requerimientos no funcionales</strong><div class="sub">1. Producto y Requerimientos</div></td><td>Sin RNF explícitos: no hay SLO de disponibilidad, latencia objetivo (p95), RTO/RPO, límites de concurrencia, retención de datos ni volumetría esperada.</td><td>Definir SLOs mínimos (p.ej. 99.5% disponibilidad, p95 API &lt; 500 ms, RPO 24 h / RTO 4 h) y usarlos como criterio de aceptación de despliegue.</td></tr><tr><td><strong>Firewall / WAF</strong><div class="sub">8. Infraestructura</div></td><td>Sin WAF, sin bot protection, sin IP allowlist para Neon, sin protección DDoS más allá de la incluida por defecto en Vercel.</td><td>Activar Vercel Firewall (rate limit por ruta, especialmente /api/auth/login) y restringir el acceso a Neon por IP/proyecto.</td></tr><tr><td><strong>Cifrado de datos sensibles</strong><div class="sub">6. Seguridad — Datos</div></td><td>Sin cifrado a nivel de aplicación para datos personales de contactos/clientes (RUT, teléfono, email). ssl: { rejectUnauthorized: false } en app.ts desactiva la validación del certificado del servidor de base de datos, habilitando MITM sobre la conexión a Neon.</td><td>Usar rejectUnauthorized: true con el CA de Neon (o el driver @neondatabase/serverless, ya declarado como dependencia pero no utilizado) y evaluar pgcrypto para los campos personales.</td></tr><tr><td><strong>Pruebas de integración</strong><div class="sub">12. Pruebas</div></td><td>No se prueba nada contra una PostgreSQL real: las consultas SQL, triggers, vistas (v_quotation_totals), CHECKs y transacciones nunca se ejercitan. Un error de SQL solo se descubre en producción.</td><td>Levantar Postgres con Testcontainers (o el servicio postgres de GitHub Actions) y ejecutar el schema.sql real en la suite de integración.</td></tr><tr><td><strong>Compilación y lint</strong><div class="sub">3. Frontend</div></td><td>npm run lint FALLA: eslint.config.js importa &#x27;@eslint/js&#x27; y ese paquete no está en devDependencies (ERR_MODULE_NOT_FOUND). El lint del frontend nunca se ha podido ejecutar en un clon limpio.</td><td>npm i -D @eslint/js eslint-plugin-react-hooks eslint-plugin-react-refresh en frontend/ y ejecutar el lint en CI como gate obligatorio.</td></tr><tr><td><strong>Manejo de sesiones</strong><div class="sub">6. Seguridad — Sesiones</div></td><td>La tabla se escribe pero nunca se lee: /api/auth/refresh valida solo la firma del JWT, no consulta sessions ni revoked_at. No existe endpoint de logout ni revocación. El refresh_token se guarda en texto plano en la base de datos. Si el fallo al insertar ocurre, solo se registra un warn.</td><td>En /refresh, validar contra sessions (existe, no revocada, no expirada) y rotar el token; añadir POST /api/auth/logout que marque revoked_at; almacenar solo el SHA-256 del refresh token.</td></tr><tr><td><strong>Validación de entradas</strong><div class="sub">7. Seguridad — Vulnerabilidades</div></td><td>Sin librería de validación de esquemas (no hay zod/joi/express-validator en ninguna dependencia). Los cuerpos JSON se desestructuran directamente; no hay límites de longitud de strings ni validación de tipos numéricos. body limit de 10 MB en todos los endpoints.</td><td>Adoptar zod con un middleware validate(schema) por endpoint; es el cambio con mejor relación esfuerzo/beneficio de todo el informe.</td></tr><tr><td><strong>Ambientes dev / staging / producción</strong><div class="sub">10. Entornos y secretos</div></td><td>No existe staging: todo cambio en master va directo a producción sin entorno intermedio de verificación. Existen 4 formas distintas de levantar el backend (server.ts, app.ts, server-dev.ts, api/index.ts fallback), lo que hace que &#x27;funciona en local&#x27; no garantice nada.</td><td>Crear un proyecto/preview de Vercel con base de datos de staging (branch de Neon) y exigir validación allí antes de promover a producción.</td></tr><tr><td><strong>Pruebas unitarias</strong><div class="sub">12. Pruebas</div></td><td>Cobertura muy baja frente a ~10.700 líneas de código: 0 pruebas de auth/middleware JWT, 0 de projects, invoices, dashboard, catalog y config. Sin umbral de cobertura ni reporte.</td><td>Priorizar pruebas de authMiddleware/roleMiddleware y de los cálculos de totales/IVA/márgenes; fijar un umbral de cobertura del 60% y subirlo gradualmente.</td></tr><tr><td><strong>Rendimiento</strong><div class="sub">16. Calidad de experiencia</div></td><td>Bundle único de 2.135 kB (683 kB gzip) sin code-splitting: el propio build emite la advertencia. Todas las páginas, recharts, jspdf, docx y xlsx se descargan en la primera carga. Sin presupuesto de rendimiento ni medición Lighthouse/Core Web Vitals.</td><td>React.lazy por ruta e import() dinámico para jspdf/xlsx/docx (solo se usan al exportar): reducción esperada del bundle inicial superior al 60%.</td></tr><tr><td><strong>Control de versiones</strong><div class="sub">11. CI/CD</div></td><td>Se trabaja directo sobre master (solo 1 rama remota adicional). Sin pull requests, sin revisión de código, sin protección de rama, sin convención de commits (mensajes reales: &#x27;mejora&#x27;, &#x27;mejoras&#x27;, &#x27;merjora&#x27;, &#x27;actuazalicion&#x27;), sin tags ni releases, sin CHANGELOG. Hay 3,2 MB de .xlsx binarios versionados.</td><td>Proteger master, exigir PR + CI en verde, adoptar Conventional Commits y mover los .xlsx grandes fuera del repositorio (o a Git LFS).</td></tr><tr><td><strong>Escalabilidad horizontal y vertical</strong><div class="sub">9. Continuidad</div></td><td>Antipatrón serverless: app.ts crea un pg.Pool clásico (max: 5) por instancia de función; bajo concurrencia agota las conexiones de Neon. La dependencia @neondatabase/serverless (driver HTTP pensado exactamente para esto) está declarada pero NO se usa. Además no hay paginación, así que la carga crece con el volumen de datos.</td><td>Migrar app.ts al driver @neondatabase/serverless (o activar el pooler de Neon con max: 1) antes de crecer en usuarios.</td></tr><tr><td><strong>Diseño de la API</strong><div class="sub">4. Backend y API</div></td><td>Sin especificación OpenAPI/Swagger, sin versionado (/api/v1), sin paginación ni filtros en los listados (GET /api/quotations devuelve todas las filas), sin rate limiting y sin cabecera de request-id.</td><td>Publicar un contrato OpenAPI, versionar en /api/v1 y añadir paginación keyset (?limit&amp;cursor) antes de que los listados crezcan: hoy escalan de forma lineal e ilimitada.</td></tr><tr><td><strong>Despliegue continuo</strong><div class="sub">11. CI/CD</div></td><td>Deploy sin gates de calidad, sin ejecución de migraciones, sin smoke test posterior y sin procedimiento de rollback documentado.</td><td>Condicionar el deploy a producción al éxito de CI y añadir un smoke test post-deploy contra /api/health.</td></tr><tr><td><strong>Diseño de arquitectura</strong><div class="sub">2. Stack y Arquitectura</div></td><td>Tres entrypoints de servidor divergentes: backend/src/app.ts (el que usa producción), backend/src/server.ts (no monta el router /api/admin y aplica CORS distinto) y backend/src/server-dev.ts (982 líneas, backend paralelo sobre db.json). No hay diagrama ni ADRs.</td><td>Dejar app.ts como única fuente de verdad: server.ts debe limitarse a app.listen(app) y server-dev.ts debe marcarse como legacy o eliminarse. El drift entre los tres es una fuente segura de bugs de producción.</td></tr></tbody>
+</table>
+</section>
+
+<section>
+<h2>6. Recomendaciones — plan de remediación por olas</h2>
+<p class="lead">Secuencia sugerida priorizando impacto sobre esfuerzo. Las olas 1 y 2 son las que cambian materialmente el perfil de riesgo.</p>
+
+<p><span class="tag">OLA 1</span><strong>Blindaje inmediato (1–2 días)</strong></p>
+<ol class="plan">
+<li>Hacer que el servidor <strong>falle al arrancar</strong> si <code>JWT_SECRET</code> o <code>DATABASE_URL</code> no están definidos; eliminar los fallbacks <code>'default-secret'</code> y <code>'dev-secret-maestro'</code>.</li>
+<li>Eliminar la rama <code>ALLOW_NO_PIN</code> del código de producción (permite entrar sin contraseña).</li>
+<li>Reemplazar el CORS reflejante (<code>callback(null, true)</code> con <code>credentials:true</code>) por una allowlist de orígenes.</li>
+<li>Instalar <code>helmet</code> + <code>express-rate-limit</code> (limitar <code>/api/auth/login</code>) y corregir el orden 404 → error handler en <code>app.ts</code>.</li>
+<li>Purgar <code>backend/db.json</code> y los <code>TEST_USERS</code> de <code>api/index.ts</code>; borrar los PIN del README y <strong>rotar todas las credenciales</strong>.</li>
+<li>Aplicar <code>roleMiddleware</code> a las operaciones destructivas de quotations, projects, clients e invoices.</li>
+</ol>
+
+<p><span class="tag">OLA 2</span><strong>Red de seguridad (3–5 días)</strong></p>
+<ol class="plan">
+<li>Crear <code>.github/workflows/ci.yml</code>: <code>npm ci</code> → <code>tsc --noEmit</code> → lint → test → <code>npm audit</code>, en backend y frontend.</li>
+<li>Reparar lint (<code>@eslint/js</code>) y las pruebas de frontend (jsdom) para que CI tenga algo real que ejecutar.</li>
+<li>Proteger <code>master</code>: PR obligatorio + CI en verde.</li>
+<li>Instalar <strong>Sentry</strong> y un monitor de uptime contra <code>/api/health</code> con alerta.</li>
+<li>Programar <code>pg_dump</code> diario a almacenamiento externo y <strong>ejecutar una restauración de prueba documentada</strong>.</li>
+<li>Actualizar <code>react-router</code> y <code>uuid</code>, eliminar <code>bcrypt</code> nativo (deja solo <code>bcryptjs</code>) y activar Dependabot.</li>
+</ol>
+
+<p><span class="tag">OLA 3</span><strong>Robustez (1–2 semanas)</strong></p>
+<ol class="plan">
+<li>Validación de entrada con <code>zod</code> en todos los endpoints; validación del entorno al arrancar.</li>
+<li>Herramienta de migraciones real con tabla de control, ejecutada por el pipeline.</li>
+<li>Sesiones: validar y rotar refresh tokens contra la tabla <code>sessions</code>, almacenar solo su hash, y añadir <code>logout</code>.</li>
+<li>Entorno de <strong>staging</strong> con branch de base de datos de Neon.</li>
+<li>Code-splitting por ruta e <code>import()</code> dinámico de jspdf/xlsx/docx (bundle inicial &minus;60%).</li>
+<li>Consolidar los tres entrypoints de servidor en uno solo.</li>
+</ol>
+
+<p><span class="tag">OLA 4</span><strong>Madurez (continuo)</strong></p>
+<ol class="plan">
+<li>E2E con Playwright sobre login → cotización → proyecto → factura; pruebas de integración con Postgres real.</li>
+<li>Proveedor de correo con SPF/DKIM/DMARC, y sobre él el flujo de recuperación de contraseña.</li>
+<li>Política de privacidad, T&amp;C y procedimiento de borrado de datos personales (Ley 21.719).</li>
+<li>Accesibilidad: <code>eslint-plugin-jsx-a11y</code> + auditoría axe.</li>
+<li>Paginación en los listados, caché de catálogo/config y prueba de carga con k6.</li>
+<li>Reemplazar <code>xlsx</code> por <code>exceljs</code> (no existe parche para las vulnerabilidades de <code>xlsx</code>).</li>
+</ol>
+</section>
+
+<section>
+<h2>7. Conclusión</h2>
+<p style="font-size:14px">
+El proyecto está <strong>notablemente mejor construido en su núcleo que en su entorno</strong>. El modelo relacional (14 tablas, 24 índices, restricciones de integridad completas, vistas de agregación, triggers), la disciplina de consultas parametrizadas y el uso de transacciones y soft-delete reflejan criterio de ingeniería sólido; ahí no hay deuda relevante.
+</p>
+<p style="font-size:14px">
+El riesgo real está en la capa que rodea al código: se despliega directo a producción desde <code>master</code> sin ninguna verificación automática, no existe forma de enterarse de una caída antes que el usuario, los respaldos nunca se han probado, y varias decisiones de seguridad —secretos con valor por defecto, CORS abierto, PIN de 4 dígitos sin límite de intentos, autorización por rol aplicada solo en 4 rutas— convierten un sistema funcional en un sistema frágil.
+</p>
+<p style="font-size:14px">
+La buena noticia es la relación esfuerzo/beneficio: <strong>las olas 1 y 2 son aproximadamente una semana de trabajo</strong> y elevan el cumplimiento global estimado del 37% a un rango del 65–70%, eliminando la totalidad de los hallazgos críticos.
+</p>
+</section>
+
+<footer>Auditoría QA generada por Devin · alcance: checklist completo de ciclo de vida excluyendo el ítem de Pagos · 31-07-2026 02:13 UTC</footer>
+</div>
+</body>
+</html>

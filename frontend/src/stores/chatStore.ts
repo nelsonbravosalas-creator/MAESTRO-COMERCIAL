@@ -26,11 +26,17 @@ export interface ChatMessage {
   data?: ChatMessageResponse
 }
 
+// Estado de cada propuesta de escritura del agente, por id de acción. Vive
+// solo en la sesión: al recargar, la base manda (una acción ya resuelta
+// responde 409 y se marca como cerrada).
+export type PendingActionState = 'busy' | 'confirmed' | 'cancelled' | 'closed'
+
 interface ChatState {
   isOpen: boolean
   isSending: boolean
   messages: ChatMessage[]
   agentMode: boolean
+  actionStates: Record<string, PendingActionState>
 }
 
 export const useChatStore = create<ChatState>()(() => {
@@ -49,6 +55,7 @@ export const useChatStore = create<ChatState>()(() => {
     isSending: false,
     messages: [],
     agentMode: initialAgentMode,
+    actionStates: {},
   }
 })
 
@@ -119,6 +126,43 @@ export async function sendChatMessage(instruction: string, quotationId?: string 
 
 export function clearChat() {
   useChatStore.setState({ messages: [] })
+}
+
+function setActionState(actionId: string, state: PendingActionState) {
+  useChatStore.setState(s => ({ actionStates: { ...s.actionStates, [actionId]: state } }))
+}
+
+/**
+ * Confirma o cancela una escritura propuesta por el agente. Mientras la
+ * respuesta llega, la acción queda en 'busy' para que un doble clic no la
+ * mande dos veces (el backend además la reclama de forma atómica).
+ */
+export async function resolveChatAction(actionId: string, decision: 'confirm' | 'cancel') {
+  if (useChatStore.getState().actionStates[actionId]) return
+  setActionState(actionId, 'busy')
+
+  try {
+    const res =
+      decision === 'confirm'
+        ? await api.confirmChatbotAction(actionId)
+        : await api.cancelChatbotAction(actionId)
+    setActionState(actionId, decision === 'confirm' ? 'confirmed' : 'cancelled')
+    const data: ChatMessageResponse = {
+      reply: res.reply,
+      quotation: res.quotation,
+      rule: res.rule,
+    }
+    useChatStore.setState(s => ({
+      messages: [...s.messages, { id: ++nextMessageId, role: 'bot', text: res.reply, data }],
+    }))
+  } catch (error) {
+    // 404, 409 o 410: la acción ya no se puede resolver (vencida, resuelta o ajena).
+    setActionState(actionId, 'closed')
+    const message = error instanceof ApiError ? error.message : 'No se pudo resolver la acción.'
+    useChatStore.setState(s => ({
+      messages: [...s.messages, { id: ++nextMessageId, role: 'error', text: message }],
+    }))
+  }
 }
 
 /** Carga de forma proactiva el briefing comercial matutino (OpenJarvis scheduled ops). */

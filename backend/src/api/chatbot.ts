@@ -6,6 +6,9 @@ import { env } from '../config/env'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 import { runAgentLoop } from '../agent/loop'
+import { defaultToolRegistry } from '../agent/registry'
+import { confirmPendingAction, cancelPendingAction } from '../agent/pendingActions'
+import { uuidParams } from '../schemas/common'
 import { createAuthThrottle } from '../middleware/authThrottle'
 import {
   chatbotMessageSchema,
@@ -301,6 +304,63 @@ export const createChatbotRouter = (pool: Pool) => {
     }
   })
 
+  // Confirmación de una escritura propuesta por el agente (control de escrituras).
+  // Solo la confirma el usuario que la originó; ver agent/pendingActions.ts.
+  router.post(
+    '/actions/:id/confirm',
+    chatThrottle,
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      const userId = req.user?.id
+      if (!userId) return res.status(401).json({ error: 'No autenticado' })
+      try {
+        const { reply, result } = await confirmPendingAction(pool, defaultToolRegistry, {
+          id: req.params.id,
+          userId,
+          userRole: req.user?.role,
+          model: env.AGENT_MODEL,
+        })
+        return res.json({
+          status: 'confirmed',
+          reply,
+          quotation: result.mutatedQuotation,
+          rule: result.mutatedRule,
+        })
+      } catch (error) {
+        const httpStatus = asHttpError(error).status
+        if (httpStatus) {
+          return res.status(httpStatus).json({ error: errorMessage(error) })
+        }
+        logger.error('Chatbot: error al confirmar acción', { error: errorMessage(error), userId })
+        return res.status(500).json({ error: 'No se pudo confirmar la acción' })
+      }
+    }
+  )
+
+  router.post(
+    '/actions/:id/cancel',
+    chatThrottle,
+    validate({ params: uuidParams('id') }),
+    async (req: AuthRequest, res) => {
+      const userId = req.user?.id
+      if (!userId) return res.status(401).json({ error: 'No autenticado' })
+      try {
+        await cancelPendingAction(pool, { id: req.params.id, userId })
+        return res.json({
+          status: 'cancelled',
+          reply: 'Acción cancelada. No se realizó ningún cambio.',
+        })
+      } catch (error) {
+        const httpStatus = asHttpError(error).status
+        if (httpStatus) {
+          return res.status(httpStatus).json({ error: errorMessage(error) })
+        }
+        logger.error('Chatbot: error al cancelar acción', { error: errorMessage(error), userId })
+        return res.status(500).json({ error: 'No se pudo cancelar la acción' })
+      }
+    }
+  )
+
   router.get('/briefing', async (_req: AuthRequest, res) => {
     try {
       const briefing = await generateMorningBriefing(pool)
@@ -362,6 +422,7 @@ export const createChatbotRouter = (pool: Pool) => {
             pasos: agentResult.steps.map(s => s.summary),
             steps: agentResult.steps,
             notas: agentResult.notas,
+            acciones_pendientes: agentResult.acciones_pendientes,
             quotation: agentResult.quotation,
             rule: agentResult.rule,
             material: agentResult.material,

@@ -88,6 +88,7 @@ export const ensenarReglaTool: AgentTool = {
     required: ['rule_key', 'value'],
   },
   kind: 'write',
+  describe: args => `Cambiar la regla ${String(args.rule_key)} a ${JSON.stringify(args.value)}`,
   execute: async (args: Record<string, unknown>, ctx: AgentContext): Promise<AgentToolResult> => {
     const res = await teachRuleOp(
       ctx.pool,

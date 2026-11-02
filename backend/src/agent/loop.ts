@@ -3,6 +3,7 @@ import { logger } from '../utils/logger'
 import { callLlmWithTools, GeminiContent, GeminiPart } from '../services/llm'
 import { AgentContext, AgentRunResult, AgentStepRecord, AgentToolResult } from './types'
 import { defaultToolRegistry, ToolRegistry } from './registry'
+import { createPendingAction, describeWriteAction, PendingActionRef } from './pendingActions'
 import {
   scrubPii,
   PERSONA_PROMPT,
@@ -57,7 +58,8 @@ function buildAgentSystemPrompt(ctx: AgentContext): string {
     '1. Planificación autónoma: si la instrucción requiere varios pasos (ej. averiguar precio de un material antes de cotizar), ejecuta primero la consulta y luego la creación/modificación.',
     '2. NUNCA inventes precios de materiales ni totales: usa buscar_catalogo o consultar_precio_web.',
     '3. Si faltan datos indispensables (como el nombre del cliente para cotizar), pide el dato directamente al usuario.',
-    '4. Sé conciso y profesional en tu respuesta final en español.',
+    '4. Las herramientas que escriben (crear_cotizacion, modificar_cotizacion, ensenar_regla) NO se ejecutan de inmediato: quedan pendientes hasta que el usuario las confirme. En tu respuesta di qué quedó pendiente de confirmación; nunca digas que ya se creó, modificó o cambió.',
+    '5. Sé conciso y profesional en tu respuesta final en español.',
     '',
     ...(ctx.recentTurns.length
       ? [
@@ -167,6 +169,7 @@ export async function runAgentLoop(
   let lastMutatedQuotation: unknown = undefined
   let lastMutatedRule: unknown = undefined
   let lastPriceData: AgentToolResult['priceData'] = undefined
+  const pendingActions: PendingActionRef[] = []
 
   let finalReply = ''
   let status: AgentRunResult['status'] = 'done'
@@ -217,6 +220,47 @@ export async function runAgentLoop(
           toolResult = {
             output: { error: stepError },
             summary: `Intento de llamada a herramienta desconocida: ${call.name}`,
+          }
+        } else if (!registry.getToolsForRole(ctx.userRole).includes(tool)) {
+          // El modelo solo ve las herramientas de su rol, pero puede pedir otra
+          // igual. Se rechaza aquí, no solo en la declaración.
+          stepError = `Herramienta no disponible para tu rol: "${call.name}"`
+          toolResult = {
+            output: { error: stepError },
+            summary: `Herramienta fuera de rol: ${call.name}`,
+          }
+        } else if (tool.kind === 'write') {
+          // Control de escrituras: no se ejecuta; queda como propuesta que el
+          // usuario confirma o cancela desde el chat.
+          try {
+            if (!ctx.userId) {
+              throw new Error('Se requiere una sesión de usuario para proponer un cambio.')
+            }
+            const summary = describeWriteAction(tool, call.name, call.args)
+            const pending = await createPendingAction(ctx.pool, {
+              runId: ctx.runId,
+              tenantId: ctx.tenantId,
+              userId: ctx.userId,
+              tool: call.name,
+              args: call.args,
+              summary,
+            })
+            pendingActions.push(pending)
+            toolResult = {
+              output: {
+                status: 'pendiente_confirmacion',
+                accion_id: pending.id,
+                resumen: summary,
+                mensaje: 'Aún no se ejecutó. Solo se ejecuta si el usuario la confirma.',
+              },
+              summary: `Propuesta pendiente de confirmación: ${summary}`,
+            }
+          } catch (err) {
+            stepError = errorMessage(err)
+            toolResult = {
+              output: { error: stepError },
+              summary: `No se pudo registrar la propuesta de ${call.name}: ${stepError}`,
+            }
           }
         } else {
           try {
@@ -291,6 +335,10 @@ export async function runAgentLoop(
     throw err
   }
 
+  // Con propuestas pendientes el run espera a la persona, aunque el modelo
+  // haya cerrado con texto. Un error o un corte de presupuesto no se tapa.
+  if (pendingActions.length && status === 'done') status = 'needs_input'
+
   const totalDuration = Date.now() - startTime
   await recordRunEnd(
     ctx.pool,
@@ -308,6 +356,7 @@ export async function runAgentLoop(
     status,
     steps: recordedSteps,
     notas: accumulatedNotes.length ? accumulatedNotes : undefined,
+    acciones_pendientes: pendingActions.length ? pendingActions : undefined,
     quotation: lastMutatedQuotation,
     rule: lastMutatedRule,
     material: lastPriceData?.material,

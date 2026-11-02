@@ -674,11 +674,20 @@ export interface ChatbotProactiveNote {
   text: string
 }
 
+// Escritura que el agente propuso y que espera confirmación del usuario.
+export interface ChatPendingAction {
+  id: string
+  tool: string
+  summary: string
+  expires_at: string
+}
+
 export interface ChatMessageResponse {
   reply: string
   pasos?: string[]
   steps?: Array<{ tool: string; summary: string; durationMs?: number }>
   notas?: ChatbotProactiveNote[]
+  acciones_pendientes?: ChatPendingAction[]
   quotation?: MasterQuotation
   reporte_importacion?: ImportQuotationReport
   rule?: ChatbotRule
@@ -686,6 +695,12 @@ export interface ChatMessageResponse {
   precio_medio?: number
   muestras?: Array<{ precio: number; fuente_url: string; tienda: string }>
   advertencia?: string | null
+}
+
+export interface ChatActionResponse {
+  reply: string
+  quotation?: MasterQuotation
+  rule?: ChatbotRule
 }
 
 export interface ChatRecentTurn {
@@ -1039,6 +1054,21 @@ export const api = {
     )
     return { ...raw, quotation: raw.quotation ? toMasterQuotation(raw.quotation) : undefined }
   },
+
+  confirmChatbotAction: async (id: string): Promise<ChatActionResponse> => {
+    const raw = await post<{
+      reply: string
+      quotation?: RawQuotation
+      rule?: ChatbotRule
+    }>(`/api/chatbot/actions/${id}/confirm`, {})
+    return {
+      reply: raw.reply,
+      rule: raw.rule,
+      quotation: raw.quotation ? toMasterQuotation(raw.quotation) : undefined,
+    }
+  },
+  cancelChatbotAction: (id: string) =>
+    post<ChatActionResponse>(`/api/chatbot/actions/${id}/cancel`, {}),
 
   getChatbotRules: (): Promise<{ rules: ChatbotRule[] }> => get('/api/chatbot/rules'),
   getCommercialBriefing: (): Promise<CommercialBriefingResponse> => get('/api/chatbot/briefing'),

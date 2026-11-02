@@ -116,6 +116,11 @@ export const crearCotizacionTool: AgentTool = {
     required: ['cliente_nombre'],
   },
   kind: 'write',
+  describe: args => {
+    const materiales = Array.isArray(args.materiales) ? args.materiales.length : 0
+    const cliente = String(args.cliente_nombre ?? 'cliente sin nombre').trim()
+    return `Crear cotización para ${cliente}${materiales ? ` con ${materiales} material(es)` : ''}`
+  },
   execute: async (args: Record<string, unknown>, ctx: AgentContext): Promise<AgentToolResult> => {
     const clienteNombre = String(args.cliente_nombre ?? '').trim()
     const client = await resolveClientByName(ctx.pool, clienteNombre)
@@ -212,6 +217,11 @@ export const modificarCotizacionTool: AgentTool = {
     },
   },
   kind: 'write',
+  describe: args => {
+    const items = Array.isArray(args.materiales) ? args.materiales.length : 0
+    const destino = args.quotation_id ? 'indicada' : 'abierta'
+    return `Agregar ${items} ítem(es) a la cotización ${destino}`
+  },
   execute: async (args: Record<string, unknown>, ctx: AgentContext): Promise<AgentToolResult> => {
     const qId = (args.quotation_id as string) || ctx.quotationId
     if (!qId) {

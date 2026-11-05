@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { Pool } from 'pg'
-import { authMiddleware, roleMiddleware } from '../middleware/auth'
+import { authMiddleware, roleMiddleware, type AuthRequest } from '../middleware/auth'
 import { logger } from '../utils/logger'
 import { validate } from '../middleware/validate'
 import { uuidParams } from '../schemas/common'
@@ -21,6 +21,8 @@ import {
 // líquido → costo empresa por día trabajado, que vuelve al precio unitario.
 // El cálculo vive solo aquí (services/remuneraciones.ts); el cliente nunca
 // manda el resultado, lo recalcula el servidor con los parámetros vigentes.
+const mensaje = (error: unknown) => (error instanceof Error ? error.message : String(error))
+
 export const createRemuneracionesRouter = (pool: Pool) => {
   const router = Router()
   router.use(authMiddleware)
@@ -43,8 +45,8 @@ export const createRemuneracionesRouter = (pool: Pool) => {
     try {
       const { id, params } = await cargarVigente()
       return res.json({ parametrosId: id, params, topes: topesDerivados(params) })
-    } catch (error: any) {
-      logger.error('Get remuneraciones parametros error', { error: error.message })
+    } catch (error) {
+      logger.error('Get remuneraciones parametros error', { error: mensaje(error) })
       return res.status(500).json({ error: 'Failed to fetch remuneraciones parametros' })
     }
   })
@@ -56,7 +58,7 @@ export const createRemuneracionesRouter = (pool: Pool) => {
     '/parametros',
     roleMiddleware('admin'),
     validate({ body: remuneracionParametrosSchema }),
-    async (req: any, res) => {
+    async (req: AuthRequest, res) => {
       const client = await pool.connect()
       try {
         await client.query('BEGIN')
@@ -76,9 +78,9 @@ export const createRemuneracionesRouter = (pool: Pool) => {
           params: row.params,
           topes: topesDerivados(row.params),
         })
-      } catch (error: any) {
+      } catch (error) {
         await client.query('ROLLBACK').catch(() => undefined)
-        logger.error('Update remuneraciones parametros error', { error: error.message })
+        logger.error('Update remuneraciones parametros error', { error: mensaje(error) })
         return res.status(500).json({ error: 'Failed to update remuneraciones parametros' })
       } finally {
         client.release()
@@ -97,8 +99,8 @@ export const createRemuneracionesRouter = (pool: Pool) => {
         const { inputs, params } = req.body
         const parametros = params ?? (await cargarVigente()).params
         return res.json(calcularPerfil(inputs, parametros))
-      } catch (error: any) {
-        logger.error('Calcular remuneracion error', { error: error.message })
+      } catch (error) {
+        logger.error('Calcular remuneracion error', { error: mensaje(error) })
         return res.status(500).json({ error: 'Failed to calculate remuneracion' })
       }
     }
@@ -111,8 +113,8 @@ export const createRemuneracionesRouter = (pool: Pool) => {
            FROM remuneraciones_perfiles`
       )
       return res.json(result.rows)
-    } catch (error: any) {
-      logger.error('Get remuneraciones perfiles error', { error: error.message })
+    } catch (error) {
+      logger.error('Get remuneraciones perfiles error', { error: mensaje(error) })
       return res.status(500).json({ error: 'Failed to fetch remuneraciones perfiles' })
     }
   })
@@ -123,7 +125,7 @@ export const createRemuneracionesRouter = (pool: Pool) => {
     '/perfiles/:catalogItemId',
     roleMiddleware('admin', 'manager'),
     validate({ params: uuidParams('catalogItemId'), body: perfilInputsSchema }),
-    async (req: any, res) => {
+    async (req: AuthRequest, res) => {
       try {
         const catalogItemId = req.params.catalogItemId
         const inputs: PerfilInputs = req.body
@@ -165,9 +167,9 @@ export const createRemuneracionesRouter = (pool: Pool) => {
           ]
         )
         return res.json(result.rows[0])
-      } catch (error: any) {
+      } catch (error) {
         logger.error('Save remuneracion perfil error', {
-          error: error.message,
+          error: mensaje(error),
           id: req.params.catalogItemId,
         })
         return res.status(500).json({ error: 'Failed to save remuneracion perfil' })
@@ -228,8 +230,8 @@ export const createRemuneracionesRouter = (pool: Pool) => {
           precioNuevo,
         })),
       })
-    } catch (error: any) {
-      logger.error('Recalcular remuneraciones error', { error: error.message })
+    } catch (error) {
+      logger.error('Recalcular remuneraciones error', { error: mensaje(error) })
       return res.status(500).json({ error: 'Failed to recalculate remuneraciones' })
     }
   })

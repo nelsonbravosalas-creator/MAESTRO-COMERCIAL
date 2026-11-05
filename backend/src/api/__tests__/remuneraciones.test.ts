@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- fake pool tipado de forma laxa, igual que electrical-catalog.test.ts */
 import { describe, it, expect } from 'vitest'
 import express from 'express'
 import request from 'supertest'

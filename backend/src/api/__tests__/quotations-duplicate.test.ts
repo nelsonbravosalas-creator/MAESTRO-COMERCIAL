@@ -39,9 +39,9 @@ const sourceRow = {
 // Solo cubre lo que POST /:id/duplicate necesita: leer la cotización origen,
 // insertar la copia (guardando los parámetros para inspección) y releerla.
 function makeFakeDb() {
-  const inserted: { params: any[] } = { params: [] }
+  const inserted: { params: unknown[] } = { params: [] }
 
-  async function query(sql: string, params: any[] = []) {
+  async function query(sql: string, params: unknown[] = []) {
     const s = sql.trim()
     if (s.startsWith('BEGIN') || s.startsWith('COMMIT') || s.startsWith('ROLLBACK')) {
       return { rows: [] }
@@ -73,10 +73,10 @@ function makeFakeDb() {
 
 function buildApp() {
   const db = makeFakeDb()
-  const fakePool: any = {
+  const fakePool = {
     query: db.query,
     connect: async () => ({ query: db.query, release: () => {} }),
-  }
+  } as unknown as Parameters<typeof createQuotationsRouter>[0]
   const app = express()
   app.use(express.json())
   app.use('/api/quotations', createQuotationsRouter(fakePool))

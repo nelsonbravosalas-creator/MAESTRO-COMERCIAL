@@ -34,6 +34,11 @@ export interface AgentTool {
   parameters: Record<string, unknown>
   kind: 'read' | 'write'
   roles?: string[]
+  /**
+   * Solo para herramientas 'write': resume en una frase lo que haría con estos
+   * argumentos. Es lo que el usuario ve antes de confirmar la acción.
+   */
+  describe?: (args: Record<string, unknown>) => string
   execute: (args: Record<string, unknown>, ctx: AgentContext) => Promise<AgentToolResult>
 }
 
@@ -52,6 +57,7 @@ export interface AgentRunResult {
   status: 'done' | 'budget_exhausted' | 'error' | 'needs_input'
   steps: Array<{ tool: string; summary: string; durationMs: number }>
   notas?: ChatbotProactiveNote[]
+  acciones_pendientes?: Array<{ id: string; tool: string; summary: string; expires_at: string }>
   quotation?: unknown
   rule?: unknown
   material?: string

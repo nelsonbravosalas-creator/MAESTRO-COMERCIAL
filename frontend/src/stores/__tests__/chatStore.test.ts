@@ -3,30 +3,89 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // vi.mock() se hoistea al tope del archivo, asi que cualquier variable que
 // use la factory debe declararse con vi.hoisted() para no romper por orden
 // (mismo patron que maestro-store.test.ts).
-const { MockApiError, sendChatMessageMock } = vi.hoisted(() => {
-  class MockApiError extends Error {
-    status: number
-    data?: unknown
-    constructor(status: number, message: string, data?: unknown) {
-      super(message)
-      this.status = status
-      this.data = data
+const { MockApiError, sendChatMessageMock, confirmActionMock, cancelActionMock } = vi.hoisted(
+  () => {
+    class MockApiError extends Error {
+      status: number
+      data?: unknown
+      constructor(status: number, message: string, data?: unknown) {
+        super(message)
+        this.status = status
+        this.data = data
+      }
+    }
+    return {
+      MockApiError,
+      sendChatMessageMock: vi.fn(),
+      confirmActionMock: vi.fn(),
+      cancelActionMock: vi.fn(),
     }
   }
-  return { MockApiError, sendChatMessageMock: vi.fn() }
-})
+)
 
 vi.mock('../../api/api', () => ({
   ApiError: MockApiError,
-  api: { sendChatMessage: sendChatMessageMock },
+  api: {
+    sendChatMessage: sendChatMessageMock,
+    confirmChatbotAction: confirmActionMock,
+    cancelChatbotAction: cancelActionMock,
+  },
   default: { sendChatMessage: sendChatMessageMock },
 }))
 
-import { useChatStore, sendChatMessage, clearChat } from '../chatStore'
+import { useChatStore, sendChatMessage, clearChat, resolveChatAction } from '../chatStore'
 
 beforeEach(() => {
   clearChat()
   sendChatMessageMock.mockReset()
+  confirmActionMock.mockReset()
+  cancelActionMock.mockReset()
+  useChatStore.setState({ actionStates: {} })
+})
+
+describe('resolveChatAction — control de escrituras', () => {
+  it('confirma una propuesta y agrega la respuesta del bot', async () => {
+    confirmActionMock.mockResolvedValue({ reply: 'Creó Q-9', quotation: undefined })
+
+    await resolveChatAction('acc-1', 'confirm')
+
+    expect(confirmActionMock).toHaveBeenCalledWith('acc-1')
+    expect(useChatStore.getState().actionStates['acc-1']).toBe('confirmed')
+    const last = useChatStore.getState().messages.slice(-1)[0]
+    expect(last).toMatchObject({ role: 'bot', text: 'Creó Q-9' })
+  })
+
+  it('no manda dos veces la misma propuesta (doble clic)', async () => {
+    let release: (v: unknown) => void = () => {}
+    confirmActionMock.mockImplementation(() => new Promise(r => (release = r)))
+
+    const first = resolveChatAction('acc-1', 'confirm')
+    await resolveChatAction('acc-1', 'confirm')
+    release({ reply: 'ok' })
+    await first
+
+    expect(confirmActionMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancela sin llamar a confirmar', async () => {
+    cancelActionMock.mockResolvedValue({ reply: 'Acción cancelada.' })
+
+    await resolveChatAction('acc-2', 'cancel')
+
+    expect(cancelActionMock).toHaveBeenCalledWith('acc-2')
+    expect(confirmActionMock).not.toHaveBeenCalled()
+    expect(useChatStore.getState().actionStates['acc-2']).toBe('cancelled')
+  })
+
+  it('cierra la propuesta si ya venció o fue resuelta (410/409)', async () => {
+    confirmActionMock.mockRejectedValue(new MockApiError(410, 'La acción expiró.'))
+
+    await resolveChatAction('acc-3', 'confirm')
+
+    expect(useChatStore.getState().actionStates['acc-3']).toBe('closed')
+    const last = useChatStore.getState().messages.slice(-1)[0]
+    expect(last).toMatchObject({ role: 'error', text: 'La acción expiró.' })
+  })
 })
 
 describe('sendChatMessage — memoria corta de la conversacion', () => {

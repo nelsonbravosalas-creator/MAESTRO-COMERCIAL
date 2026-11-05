@@ -192,6 +192,37 @@
   color: var(--text-muted);
 }
 
+/* Propuestas de escritura del agente (control de escrituras): el usuario las
+   confirma o cancela antes de que cambien cotizaciones o reglas. */
+.chat-pending-action {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border: 1px dashed var(--border, var(--text-muted));
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.chat-pending-summary {
+  margin: 0 0 6px;
+  font-weight: 500;
+}
+
+.chat-pending-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-pending-state {
+  margin: 0;
+  font-weight: 500;
+}
+
+.chat-pending-meta {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 .chat-msg-steps {
   margin: 8px 0 0;
   font-size: 0.78rem;

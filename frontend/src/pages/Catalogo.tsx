@@ -1,9 +1,15 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import '../styles/Catalogo.css'
+import '../styles/Remuneraciones.css'
 import { useMaestro, fmtCLP, CatalogSaveError } from '../stores/maestro-store'
 import { CategoryId, CatalogItemUI } from '../types'
 import { showToast } from '../stores/uiStore'
 import { getErrorMessage } from '../utils/apiError'
+import { api } from '../api/api'
+import { usePermissions } from '../hooks/usePermissions'
+import type { PerfilGuardado, RecalculoItem, RemuneracionParametros } from '../types/remuneraciones'
+import { CalculoPerfilModal } from '../components/remuneraciones/CalculoPerfilModal'
+import { ParametrosRemuneracionesModal } from '../components/remuneraciones/ParametrosRemuneracionesModal'
 
 // ── Metadata de categorías ────────────────────────────────────────────────────
 
@@ -36,6 +42,22 @@ function maxPrice(items: CatalogItemUI[]) {
   return Math.max(...items.map(i => i.price))
 }
 
+// Botón 🧮 de la fila MO y, si ya hay un cálculo guardado, su resumen.
+interface CalcProps {
+  perfil?: PerfilGuardado
+  onCalc: () => void
+}
+
+// Solo las tablas de Mano de Obra reciben esto: el cálculo de remuneraciones
+// y la ventana de parámetros.
+interface RemuProps {
+  perfiles: Record<string, PerfilGuardado>
+  canEdit: boolean
+  onCalc: (idx: number) => void
+  onParams: () => void
+  onMinimo: () => void
+}
+
 // ── Fila editable ─────────────────────────────────────────────────────────────
 
 interface ItemRowProps {
@@ -44,9 +66,10 @@ interface ItemRowProps {
   hasError: boolean
   onPatch: (field: keyof CatalogItemUI, value: string | number) => void
   onDelete: () => void
+  calc?: CalcProps
 }
 
-function ItemRow({ idx, item, hasError, onPatch, onDelete }: ItemRowProps) {
+function ItemRow({ idx, item, hasError, onPatch, onDelete, calc }: ItemRowProps) {
   // Una sola columna de precio: se ve con formato ($120.000) y al editar
   // muestra el número. El valor local existe solo mientras se edita, así nunca
   // queda desfasado del ítem.
@@ -85,6 +108,23 @@ function ItemRow({ idx, item, hasError, onPatch, onDelete }: ItemRowProps) {
           aria-label="Descripción"
         />
       </td>
+      {calc && (
+        <td className="cat-col-calc">
+          <button
+            type="button"
+            className="cat-btn-calc"
+            onClick={calc.onCalc}
+            aria-label="Calcular costo por día del perfil"
+            title={
+              calc.perfil
+                ? `Último cálculo: ${fmtCLP.format(calc.perfil.costo_diario)} por día · líquido ${fmtCLP.format(calc.perfil.inputs.sueldoLiquido)}`
+                : 'Calcular costo por día desde el sueldo líquido'
+            }
+          >
+            🧮
+          </button>
+        </td>
+      )}
       <td className="cat-col-unit">
         <input
           className="cat-cell-input cat-cell-unit"
@@ -126,9 +166,10 @@ interface CatTableProps {
   globalSearch: string
   errorIdx: number | null
   onRowEdited: (idx: number) => void
+  remu?: RemuProps
 }
 
-function CatTable({ catId, globalSearch, errorIdx, onRowEdited }: CatTableProps) {
+function CatTable({ catId, globalSearch, errorIdx, onRowEdited, remu }: CatTableProps) {
   const { catalogs, upsertCatalogItem, addCatalogItem, deleteCatalogItem } = useMaestro()
   const meta = CAT_META[catId]
   const items = catalogs[catId]
@@ -202,6 +243,26 @@ function CatTable({ catId, globalSearch, errorIdx, onRowEdited }: CatTableProps)
           </div>
         </div>
         <div className="cat-section-header-right">
+          {remu?.canEdit && (
+            <button
+              type="button"
+              className="cat-btn-sm cat-btn-ghost"
+              onClick={remu.onMinimo}
+              title="Costo jornada con el sueldo mínimo (IMM)"
+            >
+              🧮 Sueldo mínimo
+            </button>
+          )}
+          {remu?.canEdit && (
+            <button
+              type="button"
+              className="cat-btn-sm cat-btn-ghost"
+              onClick={remu.onParams}
+              title="Parámetros legales y de dotación para el cálculo de remuneraciones"
+            >
+              ⚙ Parámetros
+            </button>
+          )}
           <button
             type="button"
             className="cat-btn-sm cat-btn-ghost"
@@ -246,6 +307,11 @@ function CatTable({ catId, globalSearch, errorIdx, onRowEdited }: CatTableProps)
               <tr>
                 <th className="cat-col-idx">#</th>
                 <th className="cat-col-desc">Descripción</th>
+                {remu && (
+                  <th className="cat-col-calc">
+                    <span className="sr-only">Calcular</span>
+                  </th>
+                )}
                 <th className="cat-col-unit">Unidad</th>
                 <th className="cat-col-price">Precio unitario</th>
                 <th className="cat-col-del">
@@ -262,6 +328,12 @@ function CatTable({ catId, globalSearch, errorIdx, onRowEdited }: CatTableProps)
                   hasError={errorIdx === i}
                   onPatch={(field, value) => handlePatch(i, field, value)}
                   onDelete={() => deleteCatalogItem(catId, i)}
+                  calc={
+                    remu && {
+                      perfil: item.id ? remu.perfiles[item.id] : undefined,
+                      onCalc: () => remu.onCalc(i),
+                    }
+                  }
                 />
               ))}
             </tbody>
@@ -275,7 +347,8 @@ function CatTable({ catId, globalSearch, errorIdx, onRowEdited }: CatTableProps)
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export const Catalogo: React.FC = () => {
-  const { catalogs, catalogDirty, saveCatalogs } = useMaestro()
+  const { catalogs, catalogDirty, saveCatalogs, applyCatalogPrice } = useMaestro()
+  const { canEditCatalog, canEditConfig } = usePermissions()
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<CategoryId | 'all'>('all')
   const [saving, setSaving] = useState(false)
@@ -283,8 +356,44 @@ export const Catalogo: React.FC = () => {
   const [toastMsg, setToastMsg] = useState('')
   // Fila que no se pudo guardar: se marca, se enfoca y se limpia al editarla.
   const [errorRow, setErrorRow] = useState<{ catId: CategoryId; idx: number } | null>(null)
+  // Calculadora de remuneraciones: parámetros vigentes, último cálculo por perfil,
+  // fila abierta en la ventana de cálculo y ventana de parámetros.
+  const [remuParams, setRemuParams] = useState<RemuneracionParametros | null>(null)
+  const [perfiles, setPerfiles] = useState<Record<string, PerfilGuardado>>({})
+  const [calcIdx, setCalcIdx] = useState<number | null>(null)
+  const [showParams, setShowParams] = useState(false)
+  const [showMinimo, setShowMinimo] = useState(false)
 
   const totalItems = CATS.reduce((s, c) => s + catalogs[c].length, 0)
+
+  const recargarPerfiles = async () => {
+    try {
+      const lista = await api.getRemuneracionesPerfiles()
+      setPerfiles(Object.fromEntries(lista.map(p => [p.catalog_item_id, p])))
+    } catch (err) {
+      showToast(
+        getErrorMessage(err, 'No se pudieron cargar los cálculos de remuneraciones'),
+        'error'
+      )
+    }
+  }
+
+  useEffect(() => {
+    if (!canEditCatalog) return
+    let vigente = true
+    Promise.all([api.getRemuneracionesParametros(), api.getRemuneracionesPerfiles()])
+      .then(([parametros, lista]) => {
+        if (!vigente) return
+        setRemuParams(parametros.params)
+        setPerfiles(Object.fromEntries(lista.map(p => [p.catalog_item_id, p])))
+      })
+      // Si la migración 0026 aún no está aplicada, la calculadora simplemente no
+      // aparece: el catálogo sigue funcionando y no se muestra un error al abrirlo.
+      .catch(() => undefined)
+    return () => {
+      vigente = false
+    }
+  }, [canEditCatalog])
 
   const handleExportAll = () => {
     const blob = new Blob([JSON.stringify(catalogs, null, 2)], { type: 'application/json' })
@@ -316,6 +425,19 @@ export const Catalogo: React.FC = () => {
   }
 
   const visibleCats = activeTab === 'all' ? CATS : [activeTab]
+
+  const remuProps: RemuProps | undefined =
+    canEditCatalog && remuParams
+      ? {
+          perfiles,
+          canEdit: canEditCatalog,
+          onCalc: idx => setCalcIdx(idx),
+          onParams: () => setShowParams(true),
+          onMinimo: () => setShowMinimo(true),
+        }
+      : undefined
+
+  const calcItem = calcIdx !== null ? catalogs.mo[calcIdx] : undefined
 
   return (
     <div className="catalogo-root">
@@ -403,9 +525,51 @@ export const Catalogo: React.FC = () => {
             onRowEdited={idx =>
               setErrorRow(prev => (prev?.catId === c && prev.idx === idx ? null : prev))
             }
+            remu={c === 'mo' ? remuProps : undefined}
           />
         ))}
       </div>
+
+      {calcItem && remuParams && (
+        <CalculoPerfilModal
+          key={calcItem.id ?? calcIdx}
+          item={calcItem}
+          perfil={calcItem.id ? perfiles[calcItem.id] : undefined}
+          params={remuParams}
+          canEdit={canEditCatalog}
+          onClose={() => setCalcIdx(null)}
+          onApplied={price => {
+            if (calcIdx !== null) applyCatalogPrice('mo', calcIdx, price)
+            setCalcIdx(null)
+            void recargarPerfiles()
+          }}
+        />
+      )}
+
+      {showMinimo && remuParams && (
+        <CalculoPerfilModal
+          params={remuParams}
+          canEdit={canEditCatalog}
+          onClose={() => setShowMinimo(false)}
+        />
+      )}
+
+      {showParams && remuParams && (
+        <ParametrosRemuneracionesModal
+          params={remuParams}
+          canEdit={canEditConfig}
+          catalogItems={catalogs.mo}
+          onClose={() => setShowParams(false)}
+          onSaved={params => setRemuParams(params)}
+          onRecalculated={(actualizados: RecalculoItem[]) => {
+            actualizados.forEach(a => {
+              const idx = catalogs.mo.findIndex(i => i.id === a.catalogItemId)
+              if (idx >= 0) applyCatalogPrice('mo', idx, a.precioNuevo)
+            })
+            void recargarPerfiles()
+          }}
+        />
+      )}
     </div>
   )
 }

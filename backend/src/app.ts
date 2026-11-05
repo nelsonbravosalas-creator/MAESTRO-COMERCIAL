@@ -21,6 +21,7 @@ import { createAdminRouter } from './api/admin'
 import { createConfigRouter } from './api/config'
 import { createCatalogRouter } from './api/catalog'
 import { createElectricalCatalogRouter } from './api/electrical-catalog'
+import { createRemuneracionesRouter } from './api/remuneraciones'
 import { createClientsRouter } from './api/clients'
 import { createQuotationsRouter } from './api/quotations'
 import { createProjectsRouter } from './api/projects'
@@ -161,8 +162,10 @@ app.get('/api/health', async (_req: Request, res: Response) => {
   try {
     await pool.query('SELECT 1')
     res.json({ status: 'ok', timestamp: new Date().toISOString(), mode: 'postgresql', db: 'ok' })
-  } catch (error: any) {
-    logger.error('Health check: database unreachable', { error: error.message })
+  } catch (error) {
+    logger.error('Health check: database unreachable', {
+      error: error instanceof Error ? error.message : String(error),
+    })
     res
       .status(503)
       .json({ status: 'degraded', timestamp: new Date().toISOString(), db: 'unreachable' })
@@ -174,6 +177,7 @@ app.use('/api/admin', createAdminRouter(pool))
 app.use('/api/config', createConfigRouter(pool))
 app.use('/api/catalog', createCatalogRouter(pool))
 app.use('/api/electrical-catalog', createElectricalCatalogRouter(pool))
+app.use('/api/remuneraciones', createRemuneracionesRouter(pool))
 app.use('/api/clients', createClientsRouter(pool))
 app.use('/api/quotations', createQuotationsRouter(pool))
 app.use('/api/projects', createProjectsRouter(pool))
@@ -189,8 +193,8 @@ app.use((_req: Request, res: Response) => {
 
 // Manejador de errores centralizado: siempre al final de la cadena.
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
-  const requestId = (req as any).requestId
-  const log = (req as any).log ?? logger
+  const requestId = (req as Request & { requestId?: string }).requestId
+  const log = (req as Request & { log?: typeof logger }).log ?? logger
   log.error('Unhandled error', { message: err.message, stack: err.stack, requestId })
   captureException(err, { requestId, path: req.path, method: req.method })
   res.status(500).json({

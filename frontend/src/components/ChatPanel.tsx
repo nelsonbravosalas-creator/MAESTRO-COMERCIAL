@@ -6,6 +6,8 @@ import {
   clearChat,
   toggleAgentMode,
   loadCommercialBriefing,
+  resolveChatAction,
+  type PendingActionState,
 } from '../stores/chatStore'
 import { useActiveQuotation } from '../stores/maestro-store'
 import '../styles/ChatPanel.css'
@@ -17,6 +19,20 @@ import '../styles/ChatPanel.css'
 // se muestra como texto plano en vez de como link clickeable.
 function isSafeUrl(url: string): boolean {
   return /^https?:\/\//i.test(url)
+}
+
+const ACTION_STATE_LABEL: Record<PendingActionState, string> = {
+  busy: 'Procesando…',
+  confirmed: '✅ Confirmada',
+  cancelled: '✖ Cancelada',
+  closed: 'Ya no está disponible',
+}
+
+function formatExpiry(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
 }
 
 // Panel de chat del asistente de cotizaciones. Se carga lazy desde App.tsx
@@ -33,6 +49,7 @@ export function ChatPanel() {
   const isSending = useChatStore(s => s.isSending)
   const messages = useChatStore(s => s.messages)
   const agentMode = useChatStore(s => s.agentMode)
+  const actionStates = useChatStore(s => s.actionStates)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -232,6 +249,40 @@ export function ChatPanel() {
                 ))}
               </ul>
             )}
+            {m.data?.acciones_pendientes?.map(action => {
+              const state = actionStates[action.id]
+              return (
+                <div key={action.id} className="chat-pending-action">
+                  <p className="chat-pending-summary">⏳ {action.summary}</p>
+                  {state ? (
+                    <p className="chat-pending-state">{ACTION_STATE_LABEL[state]}</p>
+                  ) : (
+                    <div className="chat-pending-buttons">
+                      <button
+                        type="button"
+                        className="btn-primary-sm"
+                        onClick={() => void resolveChatAction(action.id, 'confirm')}
+                      >
+                        Confirmar
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-sm"
+                        onClick={() => void resolveChatAction(action.id, 'cancel')}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                  {!state && (
+                    <p className="chat-pending-meta">
+                      Nada cambia hasta que confirmes. Vence a las {formatExpiry(action.expires_at)}
+                      .
+                    </p>
+                  )}
+                </div>
+              )
+            })}
           </div>
         ))}
         {isSending && <div className="chat-msg chat-msg--bot chat-msg--thinking">Pensando…</div>}

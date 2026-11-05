@@ -163,12 +163,22 @@ describe('generateCorrelative', () => {
     expect(generateCorrelative([])).toMatch(/^SYM-001-\d{2}-\d{4}$/)
   })
 
-  it('continúa desde el correlativo más alto existente', () => {
+  it('continúa desde el correlativo más alto del año en curso', () => {
+    const yyyy = new Date().getFullYear()
     const existing = [
-      makeQuotation({ correlative: 'SYM-005-01-2026' }),
-      makeQuotation({ correlative: 'SYM-002-01-2026' }),
+      makeQuotation({ correlative: `SYM-005-01-${yyyy}` }),
+      makeQuotation({ correlative: `SYM-002-01-${yyyy}` }),
     ]
-    expect(generateCorrelative(existing)).toMatch(/^SYM-006-\d{2}-\d{4}$/)
+    expect(generateCorrelative(existing)).toMatch(new RegExp(`^SYM-006-\\d{2}-${yyyy}$`))
+  })
+
+  it('reinicia la numeración en un año nuevo: ignora correlativos de otros años', () => {
+    const yyyy = new Date().getFullYear()
+    const existing = [
+      makeQuotation({ correlative: `SYM-028-11-${yyyy - 1}` }),
+      makeQuotation({ correlative: `SYM-030-11-${yyyy - 1}-V2` }),
+    ]
+    expect(generateCorrelative(existing)).toMatch(new RegExp(`^SYM-001-\\d{2}-${yyyy}$`))
   })
 })
 

@@ -267,12 +267,11 @@ export function generateCorrelative(quotations: MasterQuotation[]): string {
   const now = new Date()
   const mm = String(now.getMonth() + 1).padStart(2, '0')
   const yyyy = String(now.getFullYear())
+  // La numeración se reinicia cada año: solo cuentan los correlativos del año en curso.
   const yearNums = quotations
-    .map(q => {
-      const m = q.correlative.match(/SYM-(\d+)-/)
-      return m ? parseInt(m[1]) : 0
-    })
-    .filter(n => !isNaN(n))
+    .map(q => q.correlative.match(/^SYM-(\d+)-\d{2}-(\d{4})/))
+    .filter((m): m is RegExpMatchArray => m !== null && m[2] === yyyy)
+    .map(m => parseInt(m[1], 10))
   const next = (yearNums.length > 0 ? Math.max(...yearNums) : 0) + 1
   return `SYM-${String(next).padStart(3, '0')}-${mm}-${yyyy}`
 }
@@ -349,7 +348,7 @@ interface MaestroState {
   newDraft: (kind?: QuotationKind) => void
   loadQuote: (id: string) => void
   duplicateQuote: (id: string) => Promise<void>
-  createVersion: (id: string) => Promise<void>
+  createVersion: (id: string, versionReason: string) => Promise<void>
   deleteQuote: (id: string) => Promise<void>
   setStatus: (id: string, s: QuoteStatus) => Promise<void>
   setOperState: (id: string, s: OperState) => Promise<void>
@@ -417,12 +416,13 @@ async function cloneQuoteWithCorrelative(
   set: (partial: Partial<MaestroState> | ((s: MaestroState) => Partial<MaestroState>)) => void,
   src: MasterQuotation,
   initialCorrelative: string,
-  regenerateCorrelative: (freshQuotations: MasterQuotation[]) => string
+  regenerateCorrelative: (freshQuotations: MasterQuotation[]) => string,
+  versionReason?: string
 ) {
   let correlative = initialCorrelative
   for (let attempt = 0; ; attempt++) {
     try {
-      const copy = await api.duplicateQuotation(src.id, correlative)
+      const copy = await api.duplicateQuotation(src.id, correlative, versionReason)
       set(s => ({ quotations: [...s.quotations, copy], activeId: copy.id, unsaved: false }))
       return
     } catch (err) {
@@ -716,13 +716,17 @@ export const useMaestro = create<MaestroState>()(
 
       // Copia la cotización manteniendo el mismo N° pero con sufijo -V{n},
       // para reestudiar (p.ej. el margen) sin generar un correlativo nuevo.
-      createVersion: async id => {
+      createVersion: async (id, versionReason) => {
         const { quotations } = get()
         const src = quotations.find(q => q.id === id)
         if (!src) return
         const newCorr = generateVersionCorrelative(quotations, src.correlative)
-        await cloneQuoteWithCorrelative(set, src, newCorr, fresh =>
-          generateVersionCorrelative(fresh, src.correlative)
+        await cloneQuoteWithCorrelative(
+          set,
+          src,
+          newCorr,
+          fresh => generateVersionCorrelative(fresh, src.correlative),
+          versionReason
         )
       },
 

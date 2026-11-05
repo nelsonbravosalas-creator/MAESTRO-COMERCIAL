@@ -7,6 +7,7 @@ import {
   calcTotals,
   fmtCLP,
   fmtDecimal,
+  generateVersionCorrelative,
 } from '../stores/maestro-store'
 import type {
   CategoryId,
@@ -19,6 +20,7 @@ import type {
 } from '../types'
 import { primaryContact, quotationContact } from '../utils/contacts'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
+import { VersionReasonModal } from '../components/VersionReasonModal'
 import { usePermissions } from '../hooks/usePermissions'
 import { ApiError, api } from '../api/api'
 import { getErrorMessage } from '../utils/apiError'
@@ -661,6 +663,7 @@ function QuotationsList({
   const [importing, setImporting] = useState(false)
   const [billingModal, setBillingModal] = useState<string | null>(null)
   const [lossModal, setLossModal] = useState<string | null>(null)
+  const [versionModal, setVersionModal] = useState<string | null>(null)
   const [ocModal, setOcModal] = useState<string | null>(null)
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set())
 
@@ -768,14 +771,8 @@ function QuotationsList({
     }
   }
 
-  const handleNewVersion = async (id: string) => {
-    try {
-      await createVersion(id)
-      onEdit()
-    } catch (err) {
-      showToast(getErrorMessage(err, 'No se pudo crear la nueva versión'), 'error')
-    }
-  }
+  // El motivo de la versión es obligatorio: se pide en un modal antes de crearla.
+  const handleNewVersion = (id: string) => setVersionModal(id)
 
   const handleDelete = (id: string) => {
     deleteQuote(id)
@@ -1284,6 +1281,23 @@ function QuotationsList({
           </div>
         </div>
       )}
+
+      {versionModal &&
+        (() => {
+          const q = allQuotations.find(x => x.id === versionModal)
+          if (!q) return null
+          return (
+            <VersionReasonModal
+              correlative={q.correlative}
+              nextCorrelative={generateVersionCorrelative(allQuotations, q.correlative)}
+              onConfirm={async reason => {
+                await createVersion(versionModal, reason)
+                onEdit()
+              }}
+              onClose={() => setVersionModal(null)}
+            />
+          )
+        })()}
 
       {lossModal &&
         (() => {

@@ -14,7 +14,6 @@ import {
   quotationFollowUpSchema,
   quotationMilestoneSchema,
   quotationActivitySchema,
-  quotationVersionReasonSchema,
   quotationApprovalSchema,
   quotationOcSchema,
   quotationOcDocumentSchema,
@@ -1364,11 +1363,18 @@ export const createQuotationsRouter = (pool: Pool) => {
 
   router.post(
     '/:id/duplicate',
-    validate({ params: uuidParams('id'), body: quotationVersionReasonSchema }),
+    validate({ params: uuidParams('id'), body: quotationDuplicateSchema }),
     async (req: AuthRequest, res) => {
       const db = await pool.connect()
       const quotationId = paramString(req.params.id)
       try {
+        // Una copia normal no lleva motivo; una nueva versión (-V{n}) sí.
+        const isNewVersion = /-V\d+$/i.test(req.body.correlative)
+        if (isNewVersion && !req.body.version_reason)
+          return res
+            .status(400)
+            .json({ error: 'version_reason es obligatorio para crear una nueva versión' })
+
         const source = await fullQuotation(pool, quotationId)
         if (!source) return res.status(404).json({ error: 'Quotation not found' })
 
@@ -1389,13 +1395,16 @@ export const createQuotationsRouter = (pool: Pool) => {
             source.contact_id,
             source.enduser,
             source.ref,
-            source.valid_until,
+            // Copia normal: vigencia y estado de ejecución vuelven al default.
+            // Nueva versión (V+): conserva los datos del original.
+            isNewVersion ? source.valid_until : null,
             'Borrador',
-            source.oper_state,
+            isNewVersion ? source.oper_state : null,
             source.uf_value,
             source.iva_pct,
             source.notes,
-            Number(source.version || 1) + 1,
+            // Copia normal = cotización independiente (versión 1); V+ continúa la serie.
+            isNewVersion ? Number(source.version || 1) + 1 : 1,
             req.user?.id ?? null,
             source.kind,
             source.equipment_count,
@@ -1406,8 +1415,8 @@ export const createQuotationsRouter = (pool: Pool) => {
             source.show_uf_equivalent,
             source.show_usd_equivalent,
             source.usd_value,
-            req.body.version_reason,
-            quotationId,
+            req.body.version_reason ?? null,
+            isNewVersion ? quotationId : null,
           ]
         )
 

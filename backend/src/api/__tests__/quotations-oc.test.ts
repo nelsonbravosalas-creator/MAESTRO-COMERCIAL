@@ -40,7 +40,7 @@ function makeFakeDb({ exists = true }: { exists?: boolean } = {}) {
 
 function buildApp(opts: { exists?: boolean } = {}) {
   const db = makeFakeDb(opts)
-  const fakePool: any = { query: db.query }
+  const fakePool = { query: db.query } as unknown as Parameters<typeof createQuotationsRouter>[0]
   const app = express()
   app.use(express.json({ limit: '15mb' }))
   app.use('/api/quotations', createQuotationsRouter(fakePool))

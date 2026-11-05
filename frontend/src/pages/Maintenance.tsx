@@ -9,7 +9,9 @@ import {
   fmtDecimal,
   VISITS_PER_YEAR,
   FREQUENCY_LABELS,
+  generateVersionCorrelative,
 } from '../stores/maestro-store'
+import { VersionReasonModal } from '../components/VersionReasonModal'
 import { QuoteStatus, MtcFrequency } from '../types'
 import {
   STATUS_META,
@@ -83,6 +85,7 @@ function MaintenanceList({
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [confirm, setConfirm] = useState<string | null>(null)
   const [ocModal, setOcModal] = useState<string | null>(null)
+  const [versionModal, setVersionModal] = useState<string | null>(null)
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set())
 
   const handleGenerateInvoice = async (q: (typeof quotations)[0]) => {
@@ -160,14 +163,8 @@ function MaintenanceList({
     }
   }
 
-  const handleNewVersion = async (id: string) => {
-    try {
-      await createVersion(id)
-      onEdit()
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'No se pudo crear la nueva versión', 'error')
-    }
-  }
+  // El motivo de la versión es obligatorio: se pide en un modal antes de crearla.
+  const handleNewVersion = (id: string) => setVersionModal(id)
 
   const handleDelete = (id: string) => {
     deleteQuote(id)
@@ -371,6 +368,23 @@ function MaintenanceList({
           </div>
         </div>
       )}
+
+      {versionModal &&
+        (() => {
+          const q = allQuotations.find(x => x.id === versionModal)
+          if (!q) return null
+          return (
+            <VersionReasonModal
+              correlative={q.correlative}
+              nextCorrelative={generateVersionCorrelative(allQuotations, q.correlative)}
+              onConfirm={async reason => {
+                await createVersion(versionModal, reason)
+                onEdit()
+              }}
+              onClose={() => setVersionModal(null)}
+            />
+          )
+        })()}
 
       {ocModal &&
         (() => {

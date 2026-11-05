@@ -1003,8 +1003,14 @@ export const api = {
   setQuotationStatus: (id: string, status: string, oper_state?: string) =>
     patch(`/api/quotations/${id}/status`, { status, oper_state }),
 
-  duplicateQuotation: async (id: string, correlative: string): Promise<MasterQuotation> => {
-    const raw = await post<RawQuotation>(`/api/quotations/${id}/duplicate`, { correlative })
+  // versionReason solo se envía al crear una nueva versión (-V{n}); la copia normal no lo lleva.
+  duplicateQuotation: async (
+    id: string,
+    correlative: string,
+    versionReason?: string
+  ): Promise<MasterQuotation> => {
+    const body = versionReason ? { correlative, version_reason: versionReason } : { correlative }
+    const raw = await post<RawQuotation>(`/api/quotations/${id}/duplicate`, body)
     return toMasterQuotation(raw)
   },
 

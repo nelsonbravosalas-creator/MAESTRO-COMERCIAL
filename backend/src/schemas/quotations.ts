@@ -92,8 +92,12 @@ export const quotationStatusSchema = z.object({
   oper_state: z.enum(OPER_STATES).nullish(),
 })
 
+// Copia de cotización (botón Duplicar y Nueva versión comparten esta ruta).
+// version_reason solo es obligatorio cuando el correlativo es una versión
+// (-V{n}); la validación de esa regla está en la ruta, no aquí.
 export const quotationDuplicateSchema = z.object({
   correlative: z.string().trim().min(1).max(50),
+  version_reason: z.string().trim().min(1).max(500).nullish(),
 })
 
 // Configuración de cuántas facturas puede generar una cotización Adjudicada.
@@ -133,12 +137,6 @@ const ACTIVITY_TYPES = ['llamada', 'reunion', 'correo', 'nota_interna', 'otro'] 
 export const quotationActivitySchema = z.object({
   activity_type: z.enum(ACTIVITY_TYPES).default('nota_interna'),
   content: z.string().trim().min(1).max(5000),
-})
-
-// Motivo de versión (obligatorio al crear V+)
-export const quotationVersionReasonSchema = z.object({
-  correlative: z.string().trim().min(1).max(50),
-  version_reason: z.string().trim().min(1).max(500),
 })
 
 // Aprobación interna

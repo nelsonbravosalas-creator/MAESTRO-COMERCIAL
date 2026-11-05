@@ -349,7 +349,7 @@ interface MaestroState {
   newDraft: (kind?: QuotationKind) => void
   loadQuote: (id: string) => void
   duplicateQuote: (id: string) => Promise<void>
-  createVersion: (id: string) => Promise<void>
+  createVersion: (id: string, versionReason: string) => Promise<void>
   deleteQuote: (id: string) => Promise<void>
   setStatus: (id: string, s: QuoteStatus) => Promise<void>
   setOperState: (id: string, s: OperState) => Promise<void>
@@ -414,12 +414,13 @@ async function cloneQuoteWithCorrelative(
   set: (partial: Partial<MaestroState> | ((s: MaestroState) => Partial<MaestroState>)) => void,
   src: MasterQuotation,
   initialCorrelative: string,
-  regenerateCorrelative: (freshQuotations: MasterQuotation[]) => string
+  regenerateCorrelative: (freshQuotations: MasterQuotation[]) => string,
+  versionReason?: string
 ) {
   let correlative = initialCorrelative
   for (let attempt = 0; ; attempt++) {
     try {
-      const copy = await api.duplicateQuotation(src.id, correlative)
+      const copy = await api.duplicateQuotation(src.id, correlative, versionReason)
       set(s => ({ quotations: [...s.quotations, copy], activeId: copy.id, unsaved: false }))
       return
     } catch (err) {
@@ -712,13 +713,17 @@ export const useMaestro = create<MaestroState>()(
 
       // Copia la cotización manteniendo el mismo N° pero con sufijo -V{n},
       // para reestudiar (p.ej. el margen) sin generar un correlativo nuevo.
-      createVersion: async id => {
+      createVersion: async (id, versionReason) => {
         const { quotations } = get()
         const src = quotations.find(q => q.id === id)
         if (!src) return
         const newCorr = generateVersionCorrelative(quotations, src.correlative)
-        await cloneQuoteWithCorrelative(set, src, newCorr, fresh =>
-          generateVersionCorrelative(fresh, src.correlative)
+        await cloneQuoteWithCorrelative(
+          set,
+          src,
+          newCorr,
+          fresh => generateVersionCorrelative(fresh, src.correlative),
+          versionReason
         )
       },
 

@@ -14,7 +14,6 @@ import {
   quotationFollowUpSchema,
   quotationMilestoneSchema,
   quotationActivitySchema,
-  quotationVersionReasonSchema,
   quotationApprovalSchema,
   quotationOcSchema,
   quotationOcDocumentSchema,
@@ -1364,11 +1363,18 @@ export const createQuotationsRouter = (pool: Pool) => {
 
   router.post(
     '/:id/duplicate',
-    validate({ params: uuidParams('id'), body: quotationVersionReasonSchema }),
+    validate({ params: uuidParams('id'), body: quotationDuplicateSchema }),
     async (req: AuthRequest, res) => {
       const db = await pool.connect()
       const quotationId = paramString(req.params.id)
       try {
+        // Una copia normal no lleva motivo; una nueva versión (-V{n}) sí.
+        const isNewVersion = /-V\d+$/i.test(req.body.correlative)
+        if (isNewVersion && !req.body.version_reason)
+          return res
+            .status(400)
+            .json({ error: 'version_reason es obligatorio para crear una nueva versión' })
+
         const source = await fullQuotation(pool, quotationId)
         if (!source) return res.status(404).json({ error: 'Quotation not found' })
 
@@ -1406,7 +1412,7 @@ export const createQuotationsRouter = (pool: Pool) => {
             source.show_uf_equivalent,
             source.show_usd_equivalent,
             source.usd_value,
-            req.body.version_reason,
+            req.body.version_reason ?? null,
             quotationId,
           ]
         )

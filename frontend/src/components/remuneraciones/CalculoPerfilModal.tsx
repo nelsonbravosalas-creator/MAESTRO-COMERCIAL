@@ -262,7 +262,7 @@ export function CalculoPerfilModal({ item, perfil, params, canEdit, onClose, onA
                       ? `Valor jornada (total mensual ÷ ${params.diasTrabajadosMes} días) → precio unitario`
                       : `Valor jornada (total mensual ÷ ${params.diasTrabajadosMes} días)`}
                   </span>
-                  <strong>{pesos(r.costoDiarioTrabajado)}</strong>
+                  <strong>{pesos(r.valorJornada)}</strong>
                 </div>
                 <dl className="rem-dl">
                   <dt>Referencia planilla (÷ 30)</dt>

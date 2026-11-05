@@ -161,7 +161,7 @@ export const createRemuneracionesRouter = (pool: Pool) => {
             catalogItemId,
             JSON.stringify(inputs),
             JSON.stringify(resultado),
-            resultado.costoDiarioTrabajado,
+            resultado.valorJornada,
             parametrosId,
             req.user?.id ?? null,
           ]
@@ -196,7 +196,7 @@ export const createRemuneracionesRouter = (pool: Pool) => {
         return {
           catalogItemId: row.catalog_item_id as string,
           precioAnterior: Number(row.unit_price),
-          precioNuevo: resultado.costoDiarioTrabajado,
+          precioNuevo: resultado.valorJornada,
           resultado,
         }
       })

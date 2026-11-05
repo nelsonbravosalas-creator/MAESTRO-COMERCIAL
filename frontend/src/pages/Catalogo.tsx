@@ -387,13 +387,9 @@ export const Catalogo: React.FC = () => {
         setRemuParams(parametros.params)
         setPerfiles(Object.fromEntries(lista.map(p => [p.catalog_item_id, p])))
       })
-      .catch(err => {
-        if (vigente)
-          showToast(
-            getErrorMessage(err, 'No se pudo cargar la calculadora de remuneraciones'),
-            'error'
-          )
-      })
+      // Si la migración 0026 aún no está aplicada, la calculadora simplemente no
+      // aparece: el catálogo sigue funcionando y no se muestra un error al abrirlo.
+      .catch(() => undefined)
     return () => {
       vigente = false
     }

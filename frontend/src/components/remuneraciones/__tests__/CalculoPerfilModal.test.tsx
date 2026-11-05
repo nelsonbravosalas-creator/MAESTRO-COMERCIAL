@@ -73,7 +73,7 @@ const RESULTADO = {
   costoCajaMensual: 1019753,
   costoLicitacionMensual: 1130919,
   costoLicitacionDiarioPlanilla: 37697,
-  costoDiarioTrabajado: 56546,
+  valorJornada: 56546,
   valorHoraOrdinaria: 0,
   horaExtra50: 0,
   costoHoraExtra50: 0,

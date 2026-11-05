@@ -103,17 +103,52 @@ function tasasContrato(
   }
 }
 
-// Del líquido al imponible y de ahí al sueldo base y la gratificación Art. 50.
+// Base y gratificación Art. 50 a partir del imponible sin fijos.
 // La gratificación es 25 % de la base, con tope: I = B + MIN(25 % × B, tope).
-function grossingUp(inputs: PerfilInputs, tDesc: number, tope: number) {
-  const noImponible = inputs.colacionMensual + inputs.movilizacionMensual
-  const imponible = xround((inputs.sueldoLiquido - noImponible) / (1 - tDesc))
-  const baseSinTope = imponible / 1.25
+function splitBase(imponibleSinFijos: number, tope: number) {
+  const baseSinTope = imponibleSinFijos / 1.25
   if (0.25 * baseSinTope <= tope) {
     const base = xround(baseSinTope)
     return { base, gratificacion: Math.min(xround(0.25 * base), tope) }
   }
-  return { base: imponible - tope, gratificacion: tope }
+  return { base: imponibleSinFijos - tope, gratificacion: tope }
+}
+
+interface ContextoDespeje {
+  p: RemuneracionParametros
+  tasas: ReturnType<typeof tasasContrato>
+  tope: number
+  topeAfp: number
+  topeAfc: number
+  // Bono de vacaciones y aguinaldos mensualizados: imponibles, no dependen del sueldo.
+  fijos: number
+  noImponible: number
+}
+
+// Líquido que resulta de un imponible total, con el mismo cálculo de descuentos
+// que usa calcularPerfil (AFP, salud, AFC e impuesto único).
+function liquidoPara(imponibleTotal: number, c: ContextoDespeje): number {
+  const { base, gratificacion } = splitBase(imponibleTotal - c.fijos, c.tope)
+  const imponible = base + gratificacion + c.fijos
+  const afp = xround(Math.min(imponible, c.topeAfp) * (c.p.afpFondo + c.p.afpComision))
+  const salud = xround(Math.min(imponible, c.topeAfp) * c.p.salud)
+  const afcTrabajador = xround(Math.min(imponible, c.topeAfc) * c.tasas.afcTrab)
+  const iusc = xround(iuscPorTrabajador(imponible - (afp + salud + afcTrabajador), c.p))
+  return imponible + c.noImponible - (afp + salud + afcTrabajador + iusc)
+}
+
+// Imponible total que deja el líquido objetivo. El impuesto único hace que el
+// líquido no sea lineal en el imponible, así que se busca por bisección (el
+// líquido crece con el imponible).
+function imponibleParaLiquido(objetivo: number, c: ContextoDespeje): number {
+  let lo = 0
+  let hi = 2 * objetivo + 1_000_000
+  for (let i = 0; i < 100; i++) {
+    const mid = (lo + hi) / 2
+    if (liquidoPara(mid, c) < objetivo) lo = mid
+    else hi = mid
+  }
+  return xround(hi)
 }
 
 export interface RemuneracionResultado {
@@ -138,7 +173,7 @@ export interface RemuneracionResultado {
   costoCajaMensual: number
   costoLicitacionMensual: number
   costoLicitacionDiarioPlanilla: number
-  costoDiarioTrabajado: number
+  valorJornada: number
   valorHoraOrdinaria: number
   horaExtra50: number
   costoHoraExtra50: number
@@ -152,12 +187,23 @@ export function calcularPerfil(
 ): RemuneracionResultado {
   const { topeGratificacion, topeAfpSaludClp, topeAfcClp } = topesDerivados(p)
   const tasas = tasasContrato(inputs.tipoContrato, inputs.seguroElectrico, p)
-  const { base, gratificacion } = grossingUp(inputs, tasas.tDesc, topeGratificacion)
-
   const bono = xround(inputs.bonoVacacionesAnual / 12)
   const aguinaldoFp = xround(inputs.aguinaldoFiestasPatriasAnual / 12)
   const aguinaldoNav = xround(inputs.aguinaldoNavidadAnual / 12)
-  const imponible = base + gratificacion + bono + aguinaldoFp + aguinaldoNav
+  const fijos = bono + aguinaldoFp + aguinaldoNav
+  const contexto: ContextoDespeje = {
+    p,
+    tasas,
+    tope: topeGratificacion,
+    topeAfp: topeAfpSaludClp,
+    topeAfc: topeAfcClp,
+    fijos,
+    noImponible: xround(inputs.movilizacionMensual) + xround(inputs.colacionMensual),
+  }
+  const imponibleObjetivo = imponibleParaLiquido(inputs.sueldoLiquido, contexto)
+  const { base, gratificacion } = splitBase(imponibleObjetivo - fijos, topeGratificacion)
+
+  const imponible = base + gratificacion + fijos
   const movilizacion = xround(inputs.movilizacionMensual)
   const colacion = xround(inputs.colacionMensual)
   const haberes = imponible + movilizacion + colacion
@@ -196,7 +242,7 @@ export function calcularPerfil(
   // allí INCLUIR_IUSC_COSTO = 1 por defecto; aquí el default es 0. Es la única diferencia
   // de criterio entre motores; con INCLUIR_IUSC_COSTO = 0 ambos dan el mismo costo mensual.
   // El divisor 20 no viene del motor (que divide por DIAS_BASE_MES = 30 en su planilla).
-  const costoDiarioTrabajado = xround(
+  const valorJornada = xround(
     (costoLicitacion + (p.incluirIuscCosto ? iusc : 0)) / p.diasTrabajadosMes
   )
 
@@ -210,8 +256,8 @@ export function calcularPerfil(
   const costoHoraExtra50 = xround(horaExtra50 * (1 + tasaCargasHe))
 
   const alertas: string[] = []
-  if (base < p.imm) alertas.push(`Sueldo base ${base} bajo el ingreso mínimo (${p.imm}).`)
-  if (liquido < p.imm) alertas.push(`Sueldo líquido ${liquido} bajo el ingreso mínimo (${p.imm}).`)
+  // El ingreso mínimo se compara con el total de haberes (imponibles + no imponibles).
+  if (haberes < p.imm) alertas.push(`Total haberes ${haberes} bajo el ingreso mínimo (${p.imm}).`)
 
   return {
     inputs,
@@ -235,7 +281,7 @@ export function calcularPerfil(
     costoCajaMensual: costoCaja,
     costoLicitacionMensual: costoLicitacion,
     costoLicitacionDiarioPlanilla,
-    costoDiarioTrabajado,
+    valorJornada,
     valorHoraOrdinaria,
     horaExtra50,
     costoHoraExtra50,

@@ -96,7 +96,7 @@ export interface RemuneracionResultado {
   costoCajaMensual: number
   costoLicitacionMensual: number
   costoLicitacionDiarioPlanilla: number
-  costoDiarioTrabajado: number
+  valorJornada: number
   valorHoraOrdinaria: number
   horaExtra50: number
   costoHoraExtra50: number

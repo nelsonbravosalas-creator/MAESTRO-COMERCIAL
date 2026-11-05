@@ -177,9 +177,7 @@ describe('POST /api/remuneraciones/calcular', () => {
       .send({ inputs: INPUTS })
 
     expect(res.status).toBe(200)
-    expect(res.body.costoDiarioTrabajado).toBe(
-      calcularPerfil(INPUTS, DEFAULT_PARAMETROS).costoDiarioTrabajado
-    )
+    expect(res.body.valorJornada).toBe(calcularPerfil(INPUTS, DEFAULT_PARAMETROS).valorJornada)
     expect(db.perfiles).toHaveLength(0)
   })
 })
@@ -201,7 +199,7 @@ describe('PUT /api/remuneraciones/perfiles/:catalogItemId', () => {
       .set('Authorization', authHeader('manager'))
       .send(INPUTS)
 
-    const esperado = calcularPerfil(INPUTS, DEFAULT_PARAMETROS).costoDiarioTrabajado
+    const esperado = calcularPerfil(INPUTS, DEFAULT_PARAMETROS).valorJornada
     expect(res.status).toBe(200)
     expect(res.body.costo_diario).toBe(esperado)
     expect(db.items.find(i => i.id === MO_ID).unit_price).toBe(esperado)

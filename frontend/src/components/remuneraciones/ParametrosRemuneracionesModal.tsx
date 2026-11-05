@@ -295,7 +295,8 @@ export function ParametrosRemuneracionesModal({
               />
               <span>
                 Incluir el impuesto único como costo de la empresa (apagado por defecto: lo retiene
-                el trabajador)
+                el trabajador). Difiere del Excel COSTEO INTEGRADO y del motor de referencia del
+                plugin, que lo incluyen (valor 1). Avisar a finanzas si se cambia.
               </span>
             </label>
           </section>

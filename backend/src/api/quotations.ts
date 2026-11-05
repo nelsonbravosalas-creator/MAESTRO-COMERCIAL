@@ -1395,13 +1395,16 @@ export const createQuotationsRouter = (pool: Pool) => {
             source.contact_id,
             source.enduser,
             source.ref,
-            source.valid_until,
+            // Copia normal: vigencia y estado de ejecución vuelven al default.
+            // Nueva versión (V+): conserva los datos del original.
+            isNewVersion ? source.valid_until : null,
             'Borrador',
-            source.oper_state,
+            isNewVersion ? source.oper_state : null,
             source.uf_value,
             source.iva_pct,
             source.notes,
-            Number(source.version || 1) + 1,
+            // Copia normal = cotización independiente (versión 1); V+ continúa la serie.
+            isNewVersion ? Number(source.version || 1) + 1 : 1,
             req.user?.id ?? null,
             source.kind,
             source.equipment_count,
@@ -1413,7 +1416,7 @@ export const createQuotationsRouter = (pool: Pool) => {
             source.show_usd_equivalent,
             source.usd_value,
             req.body.version_reason ?? null,
-            quotationId,
+            isNewVersion ? quotationId : null,
           ]
         )
 

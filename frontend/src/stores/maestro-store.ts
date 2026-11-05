@@ -267,12 +267,11 @@ export function generateCorrelative(quotations: MasterQuotation[]): string {
   const now = new Date()
   const mm = String(now.getMonth() + 1).padStart(2, '0')
   const yyyy = String(now.getFullYear())
+  // La numeración se reinicia cada año: solo cuentan los correlativos del año en curso.
   const yearNums = quotations
-    .map(q => {
-      const m = q.correlative.match(/SYM-(\d+)-/)
-      return m ? parseInt(m[1]) : 0
-    })
-    .filter(n => !isNaN(n))
+    .map(q => q.correlative.match(/^SYM-(\d+)-\d{2}-(\d{4})/))
+    .filter((m): m is RegExpMatchArray => m !== null && m[2] === yyyy)
+    .map(m => parseInt(m[1], 10))
   const next = (yearNums.length > 0 ? Math.max(...yearNums) : 0) + 1
   return `SYM-${String(next).padStart(3, '0')}-${mm}-${yyyy}`
 }

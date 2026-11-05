@@ -17,9 +17,9 @@ const sourceRow = {
   enduser: null,
   ref: 'Referencia',
   date: '2026-11-04',
-  valid_until: null,
+  valid_until: '2026-12-31',
   status: 'Emitida',
-  oper_state: null,
+  oper_state: 'En ejecución',
   uf_value: 39000,
   iva_pct: 19,
   notes: null,
@@ -102,8 +102,12 @@ describe('POST /api/quotations/:id/duplicate', () => {
 
     expect(res.status).toBe(201)
     expect(res.body.id).toBe(NEW_ID)
-    // version_reason queda nulo en una copia normal
-    expect(db.inserted.params[22]).toBeNull()
+    // Índices según el orden del INSERT en quotations.ts
+    expect(db.inserted.params[5]).toBeNull() // valid_until vuelve al default
+    expect(db.inserted.params[7]).toBeNull() // oper_state vuelve al default
+    expect(db.inserted.params[11]).toBe(1) // cotización independiente: versión 1
+    expect(db.inserted.params[22]).toBeNull() // sin version_reason
+    expect(db.inserted.params[23]).toBeNull() // sin parent_version_id
   })
 
   it('rechaza una nueva versión (-V{n}) sin version_reason', async () => {
@@ -127,6 +131,9 @@ describe('POST /api/quotations/:id/duplicate', () => {
       .send({ correlative: 'SYM-028-11-2026-V2', version_reason: 'Ajuste de margen' })
 
     expect(res.status).toBe(201)
+    expect(db.inserted.params[5]).toBe('2026-12-31') // V+ conserva vigencia
+    expect(db.inserted.params[7]).toBe('En ejecución') // y estado de ejecución
+    expect(db.inserted.params[11]).toBe(2) // continúa la serie de versiones
     expect(db.inserted.params[22]).toBe('Ajuste de margen')
     expect(db.inserted.params[23]).toBe(SOURCE_ID)
   })

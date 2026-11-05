@@ -394,6 +394,7 @@ interface MaestroState {
   // Catalogs
   catalogDirty: boolean
   upsertCatalogItem: (catId: CategoryId, idx: number, field: string, value: any) => void
+  applyCatalogPrice: (catId: CategoryId, idx: number, price: number) => void
   addCatalogItem: (catId: CategoryId, item: CatalogItemUI) => void
   deleteCatalogItem: (catId: CategoryId, idx: number) => void
   saveCatalogs: () => Promise<void>
@@ -1045,6 +1046,16 @@ export const useMaestro = create<MaestroState>()(
           const list = [...s.catalogs[catId]]
           list[idx] = { ...list[idx], [field]: field === 'price' ? parseFloat(value) || 0 : value }
           return { catalogs: { ...s.catalogs, [catId]: list }, catalogDirty: true }
+        })
+      },
+
+      // Precio que ya guardó el backend (cálculo de remuneraciones): no marca
+      // catalogDirty porque no hay nada pendiente de sincronizar.
+      applyCatalogPrice: (catId, idx, price) => {
+        set(s => {
+          const list = [...s.catalogs[catId]]
+          list[idx] = { ...list[idx], price }
+          return { catalogs: { ...s.catalogs, [catId]: list } }
         })
       },
 

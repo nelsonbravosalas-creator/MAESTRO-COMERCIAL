@@ -1,3 +1,11 @@
+import type {
+  PerfilInputs,
+  PerfilGuardado,
+  RecalculoItem,
+  RemuneracionParametros,
+  RemuneracionParametrosResponse,
+  RemuneracionResultado,
+} from '../types/remuneraciones'
 // ============================================================
 // MAESTRO COMERCIAL — API Client v2.0
 // Mapea backend ↔ tipos UI del store
@@ -914,6 +922,24 @@ export const api = {
   },
 
   deleteCatalogItem: (id: string) => del(`/api/catalog/${id}`),
+
+  // ── Remuneraciones (calculadora de Mano de Obra) ─────────────
+  getRemuneracionesParametros: () =>
+    get<RemuneracionParametrosResponse>('/api/remuneraciones/parametros'),
+
+  putRemuneracionesParametros: (params: RemuneracionParametros) =>
+    put<RemuneracionParametrosResponse>('/api/remuneraciones/parametros', params),
+
+  calcularRemuneracion: (inputs: PerfilInputs, params?: RemuneracionParametros) =>
+    post<RemuneracionResultado>('/api/remuneraciones/calcular', { inputs, params }),
+
+  getRemuneracionesPerfiles: () => get<PerfilGuardado[]>('/api/remuneraciones/perfiles'),
+
+  guardarRemuneracionPerfil: (catalogItemId: string, inputs: PerfilInputs) =>
+    put<PerfilGuardado>(`/api/remuneraciones/perfiles/${catalogItemId}`, inputs),
+
+  recalcularRemuneraciones: () =>
+    post<{ actualizados: RecalculoItem[] }>('/api/remuneraciones/recalcular', {}),
 
   // ── Catálogo — Materiales Eléctricos (tabla propia) ──────────
   getElectricalCatalog: async (): Promise<CatalogItemUI[]> => {

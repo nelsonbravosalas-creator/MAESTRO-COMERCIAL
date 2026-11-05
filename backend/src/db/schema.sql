@@ -564,3 +564,25 @@ CREATE TABLE sync_events (
 CREATE INDEX ix_sync_pending ON sync_events (client_uid, created_at) WHERE applied_at IS NULL;
 CREATE INDEX ix_sync_entity  ON sync_events (entity_type, entity_id);
 CREATE INDEX ix_sync_seq     ON sync_events (server_seq);
+
+-- Calculadora de remuneraciones (migración 0026). Parámetros: insert-only con
+-- superseded_at; perfiles: último cálculo por ítem de Mano de Obra.
+CREATE TABLE remuneraciones_parametros (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  params         JSONB NOT NULL,
+  created_by     UUID REFERENCES users(id),
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  superseded_at  TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX ix_remuneraciones_parametros_vigente
+  ON remuneraciones_parametros ((superseded_at IS NULL)) WHERE superseded_at IS NULL;
+
+CREATE TABLE remuneraciones_perfiles (
+  catalog_item_id  UUID PRIMARY KEY REFERENCES catalog_items(id) ON DELETE CASCADE,
+  inputs           JSONB NOT NULL,
+  resultado        JSONB NOT NULL,
+  costo_diario     NUMERIC(14,2) NOT NULL,
+  parametros_id    UUID REFERENCES remuneraciones_parametros(id),
+  updated_by       UUID REFERENCES users(id),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

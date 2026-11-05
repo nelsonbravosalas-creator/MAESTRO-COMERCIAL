@@ -30,7 +30,7 @@ function makeFakeDb({ duplicateNumber }: { duplicateNumber?: string } = {}) {
 
 function buildApp(opts: { duplicateNumber?: string } = {}) {
   const db = makeFakeDb(opts)
-  const fakePool: any = { query: db.query }
+  const fakePool = { query: db.query } as unknown as Parameters<typeof createInvoicesRouter>[0]
   const app = express()
   app.use(express.json())
   app.use('/api/invoices', createInvoicesRouter(fakePool))

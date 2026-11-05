@@ -9,8 +9,8 @@ vi.mock('../../config/env', () => ({ env: { ADMIN_SETUP_SECRET: SETUP_SECRET } }
 import { createAdminRouter } from '../admin'
 
 function buildApp() {
-  const fakePool: any = {
-    query: async (sql: string, params: any[] = []) => {
+  const fakePool = {
+    query: async (sql: string, params: unknown[] = []) => {
       const s = sql.trim()
       if (s.startsWith('SELECT id FROM users')) return { rows: [] }
       if (s.startsWith('INSERT INTO users')) {
@@ -30,7 +30,7 @@ function buildApp() {
       }
       throw new Error(`Fake DB: query sin manejar en el test — ${s}`)
     },
-  }
+  } as unknown as Parameters<typeof createAdminRouter>[0]
   const app = express()
   app.use(express.json())
   app.use('/api/admin', createAdminRouter(fakePool))

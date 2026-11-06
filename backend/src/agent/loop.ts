@@ -260,7 +260,8 @@ export async function runAgentLoop(
             }
           } catch (err) {
             stepError = errorMessage(err)
-            const opciones = asHttpError(err).payload?.opciones
+            // A-21: las opciones también pasan por scrubPii (solo nombres, nunca RUT).
+            const opciones = sanitizeForAudit(asHttpError(err).payload?.opciones)
             toolResult = {
               output: { error: stepError, ...(opciones ? { opciones } : {}) },
               summary: `No se pudo registrar la propuesta de ${call.name}: ${stepError}`,

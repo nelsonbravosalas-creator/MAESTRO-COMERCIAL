@@ -37,18 +37,30 @@ export async function createPendingAction(
     summary: string
   }
 ): Promise<PendingActionRef> {
+  // Misma propuesta ya pendiente (mismo usuario, herramienta y args): se reutiliza
+  // en vez de duplicarla, para no dejar dos botones de confirmar la misma acción.
+  const argsJson = JSON.stringify(input.args)
+  const dup = await pool.query(
+    `SELECT id, expires_at FROM agent_pending_actions
+      WHERE user_id = $1 AND tool = $2 AND args = $3::jsonb
+        AND status = 'pending' AND expires_at > NOW()
+      LIMIT 1`,
+    [input.userId, input.tool, argsJson]
+  )
+  if (dup.rows.length > 0) {
+    const existing = dup.rows[0] as { id: string; expires_at: Date | string }
+    return {
+      id: existing.id,
+      tool: input.tool,
+      summary: input.summary,
+      expires_at: new Date(existing.expires_at).toISOString(),
+    }
+  }
   const { rows } = await pool.query(
     `INSERT INTO agent_pending_actions (run_id, tenant_id, user_id, tool, args, summary, expires_at)
      VALUES ($1, $2, $3, $4, $5::jsonb, $6, NOW() + INTERVAL '${PENDING_ACTION_TTL_MINUTES} minutes')
      RETURNING id, expires_at`,
-    [
-      input.runId,
-      input.tenantId ?? null,
-      input.userId,
-      input.tool,
-      JSON.stringify(input.args),
-      input.summary,
-    ]
+    [input.runId, input.tenantId ?? null, input.userId, input.tool, argsJson, input.summary]
   )
   const row = rows[0] as { id: string; expires_at: Date | string }
   return {

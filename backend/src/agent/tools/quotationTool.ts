@@ -9,6 +9,49 @@ import { fullQuotation } from '../../api/quotations'
 import { ImportLinea } from '../../services/chatbotCalc'
 import { httpError } from '../../utils/httpError'
 
+// Categorías de línea que el modelo puede usar al proponer materiales.
+export const CATEGORIAS_LINEA = [
+  'mat',
+  'mec',
+  'ele',
+  'sub',
+  'eq',
+  'ins',
+  'rep',
+  'mo',
+  'log',
+] as const
+
+const clp = (n: number): string =>
+  Math.round(n)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+
+// Una línea por material con su neto (cantidad x precio). Es aritmética simple
+// sobre lo que dijo el usuario; el cálculo oficial lo hace el backend.
+export function describeMateriales(args: Record<string, unknown>): string {
+  const materiales = Array.isArray(args.materiales)
+    ? (args.materiales as Array<Record<string, unknown>>)
+    : []
+  const lineas = materiales.map(m => {
+    const cantidad = Number(m.cantidad) || 1
+    const precio = Number(m.precio_unitario) || 0
+    const unidad = String(m.unidad || 'Und')
+    const neto = cantidad * precio
+    return `- ${String(m.descripcion ?? '').trim()}: ${cantidad} ${unidad} x $${clp(precio)} = $${clp(neto)} neto`
+  })
+  if (Number(args.dias) > 0) lineas.push('Más colación y bono según reglas vigentes')
+  return lineas.join('\n')
+}
+
+function describeDetalle(args: Record<string, unknown>): string {
+  const partes: string[] = []
+  if (Number(args.dias) > 0) partes.push(`${Number(args.dias)} días`)
+  if (Number(args.dotacion) > 0) partes.push(`${Number(args.dotacion)} personas`)
+  if (args.comuna) partes.push(String(args.comuna).trim())
+  return partes.join(', ')
+}
+
 export const verCotizacionTool: AgentTool = {
   name: 'ver_cotizacion',
   description:
@@ -107,7 +150,7 @@ export const crearCotizacionTool: AgentTool = {
             cantidad: { type: 'number' },
             unidad: { type: 'string' },
             precio_unitario: { type: 'number' },
-            categoria: { type: 'string', enum: ['mat', 'mec', 'ele', 'sub', 'eq'] },
+            categoria: { type: 'string', enum: [...CATEGORIAS_LINEA] },
           },
           required: ['descripcion'],
         },
@@ -118,9 +161,19 @@ export const crearCotizacionTool: AgentTool = {
   },
   kind: 'write',
   describe: args => {
-    const materiales = Array.isArray(args.materiales) ? args.materiales.length : 0
     const cliente = String(args.cliente_nombre ?? 'cliente sin nombre').trim()
-    return `Crear cotización para ${cliente}${materiales ? ` con ${materiales} material(es)` : ''}`
+    const detalle = describeDetalle(args)
+    return [
+      `Crear cotización para ${cliente}${detalle ? ` (${detalle})` : ''}`,
+      describeMateriales(args),
+    ]
+      .filter(Boolean)
+      .join('\n')
+  },
+  // Valida el cliente al proponer: sin cliente, ambiguo o sin RUT no se crea propuesta.
+  prepare: async (args, ctx) => {
+    await resolveClientByName(ctx.pool, String(args.cliente_nombre ?? '').trim())
+    return args
   },
   execute: async (args: Record<string, unknown>, ctx: AgentContext): Promise<AgentToolResult> => {
     const clienteNombre = String(args.cliente_nombre ?? '').trim()
@@ -209,7 +262,7 @@ export const modificarCotizacionTool: AgentTool = {
             cantidad: { type: 'number' },
             unidad: { type: 'string' },
             precio_unitario: { type: 'number' },
-            categoria: { type: 'string', enum: ['mat', 'mec', 'ele', 'sub', 'eq'] },
+            categoria: { type: 'string', enum: [...CATEGORIAS_LINEA] },
           },
           required: ['descripcion'],
         },
@@ -221,7 +274,13 @@ export const modificarCotizacionTool: AgentTool = {
   describe: args => {
     const items = Array.isArray(args.materiales) ? args.materiales.length : 0
     const destino = args.quotation_id ? 'indicada' : 'abierta'
-    return `Agregar ${items} ítem(es) a la cotización ${destino}`
+    const detalle = describeDetalle(args)
+    return [
+      `Agregar ${items} ítem(es) a la cotización ${destino}${detalle ? ` (${detalle})` : ''}`,
+      describeMateriales(args),
+    ]
+      .filter(Boolean)
+      .join('\n')
   },
   prepare: async (args, ctx) => {
     const qId = (args.quotation_id as string) || ctx.quotationId

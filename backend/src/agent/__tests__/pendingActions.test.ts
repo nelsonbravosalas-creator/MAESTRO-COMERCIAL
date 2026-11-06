@@ -10,7 +10,7 @@ import {
   PENDING_ACTION_TTL_MINUTES,
 } from '../pendingActions'
 import { runAgentLoop } from '../loop'
-import { modificarCotizacionTool } from '../tools/quotationTool'
+import { crearCotizacionTool, modificarCotizacionTool } from '../tools/quotationTool'
 import { httpError } from '../../utils/httpError'
 
 vi.mock('../../services/llm', async () => {
@@ -104,7 +104,9 @@ describe('createPendingAction', () => {
       summary: 'Escribir para Ana',
       expires_at: expires.toISOString(),
     })
-    const [sql, params] = pool.query.mock.calls[0] as unknown as [string, unknown[]]
+    const [sql, params] = pool.query.mock.calls.find(c =>
+      String(c[0]).includes('INSERT INTO agent_pending_actions')
+    ) as unknown as [string, unknown[]]
     expect(sql).toContain(`INTERVAL '${PENDING_ACTION_TTL_MINUTES} minutes'`)
     expect(params[4]).toBe(JSON.stringify({ nombre: 'Ana' }))
   })
@@ -440,5 +442,138 @@ describe('hook prepare y cotización abierta (E1)', () => {
 
     const opts = mockedCallLlmWithTools.mock.calls[0][1] as { systemInstruction: string }
     expect(opts.systemInstruction).toContain('q1')
+  })
+})
+
+describe('E2 y E3: detalle, validación y duplicados', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const baseCtx = {
+    userId: 'user-1',
+    userRole: 'commercial',
+    instruction: 'crea una cotización',
+    recentTurns: [],
+    graphContext: '',
+    runId: 'run-1',
+    model: 'm',
+  }
+
+  function llmCalls(name: string, args: Record<string, unknown>) {
+    mockedCallLlmWithTools
+      .mockResolvedValueOnce({
+        modelContent: { role: 'model', parts: [] },
+        functionCalls: [{ name, args }],
+        text: '',
+        usage: { tokensIn: 1, tokensOut: 1 },
+      })
+      .mockResolvedValueOnce({
+        modelContent: { role: 'model', parts: [] },
+        functionCalls: [],
+        text: 'listo',
+        usage: { tokensIn: 1, tokensOut: 1 },
+      })
+  }
+
+  type Turn = Array<{ parts: Array<{ functionResponse?: { response: Record<string, unknown> } }> }>
+  const lastResponse = () => {
+    const turn2 = mockedCallLlmWithTools.mock.calls[1][0] as Turn
+    return turn2[turn2.length - 1].parts[0].functionResponse?.response
+  }
+
+  const registry = () => registryWith(crearCotizacionTool)
+
+  it('crear_cotizacion valida el cliente al proponer', async () => {
+    // findClientByName sin filas: no hay cliente -> error y sin INSERT
+    const pool = fakePool()
+    llmCalls('crear_cotizacion', { cliente_nombre: 'Inexistente SpA' })
+
+    await runAgentLoop({ ...baseCtx, pool }, registry())
+
+    expect(lastResponse()?.error).toBeTruthy()
+    const inserts = pool.query.mock.calls.filter(c =>
+      String(c[0]).includes('INSERT INTO agent_pending_actions')
+    )
+    expect(inserts).toHaveLength(0)
+  })
+
+  it('cliente ambiguo devuelve opciones al modelo', async () => {
+    const pool = fakePool(sql =>
+      sql.includes('FROM clients')
+        ? {
+            rows: [
+              { id: 'c1', name: 'Clinica Norte 76.123.456-7', rut: '76.123.456-7' },
+              { id: 'c2', name: 'Clinica Sur', rut: '77.111.222-3' },
+            ],
+          }
+        : undefined
+    )
+    llmCalls('crear_cotizacion', { cliente_nombre: 'Clinica' })
+
+    await runAgentLoop({ ...baseCtx, pool }, registry())
+
+    const opciones = lastResponse()?.opciones as Array<{ id: string; name: string }>
+    expect(opciones).toHaveLength(2)
+    expect(opciones[1]).toEqual({ id: 'c2', name: 'Clinica Sur' })
+    // A-21: un RUT dentro del nombre no llega al modelo
+    expect(JSON.stringify(opciones)).not.toContain('76.123.456-7')
+    expect(opciones[0].name).toContain('[RUT]')
+  })
+
+  it('describe muestra el detalle', () => {
+    const resumen = crearCotizacionTool.describe!({
+      cliente_nombre: 'Clinica Norte',
+      dias: 3,
+      dotacion: 2,
+      comuna: 'Rancagua',
+      materiales: [
+        {
+          descripcion: 'Filtro',
+          cantidad: 1,
+          unidad: 'Uni',
+          precio_unitario: 85400,
+          categoria: 'rep',
+        },
+      ],
+    })
+    expect(resumen).toContain('3 días')
+    expect(resumen).toContain('2 personas')
+    expect(resumen).toContain('Rancagua')
+    expect(resumen).toContain('Filtro')
+    expect(resumen).toContain('85.400')
+  })
+
+  it('propuesta igual reutiliza la pendiente', async () => {
+    const expires = new Date(Date.now() + 10 * 60_000)
+    const pool = fakePool(sql =>
+      sql.includes('SELECT id, expires_at')
+        ? { rows: [{ id: 'acc-9', expires_at: expires }] }
+        : undefined
+    )
+
+    const ref = await createPendingAction(pool, {
+      runId: 'run-1',
+      userId: 'user-1',
+      tool: 'fake_escribir',
+      args: { nombre: 'Ana' },
+      summary: 'Escribir para Ana',
+    })
+
+    expect(ref.id).toBe('acc-9')
+    expect(ref.expires_at).toBe(expires.toISOString())
+    const inserts = pool.query.mock.calls.filter(c =>
+      String(c[0]).includes('INSERT INTO agent_pending_actions')
+    )
+    expect(inserts).toHaveLength(0)
+  })
+
+  it('acepta categoria ins', () => {
+    for (const tool of [crearCotizacionTool, modificarCotizacionTool]) {
+      const props = tool.parameters.properties as Record<
+        string,
+        { items: { properties: Record<string, { enum?: string[] }> } }
+      >
+      const categorias = props.materiales.items.properties.categoria.enum
+      expect(categorias).toEqual(expect.arrayContaining(['ins', 'rep', 'mo', 'log']))
+    }
   })
 })

@@ -48,7 +48,14 @@ export function mezclarParametros(
   const out: Record<string, unknown> = { ...base }
   for (const { clave, valor } of filas) {
     const actual = out[clave]
-    out[clave] = esObjeto(actual) && esObjeto(valor) ? { ...actual, ...valor } : valor
+    if (esObjeto(actual)) {
+      // Una fila que no es objeto no puede corromper la base: se ignora.
+      if (esObjeto(valor)) out[clave] = { ...actual, ...valor }
+    } else if (typeof actual === 'number') {
+      if (typeof valor === 'number' && Number.isFinite(valor)) out[clave] = valor
+    } else {
+      out[clave] = valor
+    }
   }
   return out as unknown as Parametros
 }

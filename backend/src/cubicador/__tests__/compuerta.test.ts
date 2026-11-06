@@ -98,4 +98,61 @@ describe('compuerta del servidor', () => {
     expect(PERFILES.cierre_metalico.segundoNivel({ chapa_electrica: true }).length).toBe(4)
     expect(PERFILES.cierre_metalico.segundoNivel({ chapa_electrica: false })).toEqual([])
   })
+
+  const sinResponder = (datos: Record<string, unknown>, clave: string) =>
+    evaluarCompuerta(PERFILES.hvac, ficha({ ...HVAC_COMPLETO, ...datos })).faltantes.includes(clave)
+
+  it('carga_placa_kg basura no responde la pregunta', () => {
+    for (const v of [0, -5, 'abc', '12', true, {}, NaN, Infinity]) {
+      expect(sinResponder({ carga_placa_kg: v }, 'refrigerante_lineas')).toBe(true)
+    }
+  })
+
+  it('refrigerante basura no responde la pregunta', () => {
+    for (const v of [true, {}, 0, '  ', []]) {
+      expect(sinResponder({ refrigerante: v }, 'refrigerante_lineas')).toBe(true)
+    }
+  })
+
+  it('diametro basura no responde la pregunta', () => {
+    for (const v of [0, -1, {}, [], true, '  ']) {
+      expect(
+        sinResponder({ linea_liquido: { diametro: v, largo_m: 20 } }, 'refrigerante_lineas')
+      ).toBe(true)
+    }
+  })
+
+  it('largo_m basura no responde la pregunta', () => {
+    for (const v of [0, -1, NaN, Infinity, '20']) {
+      expect(
+        sinResponder({ linea_gas: { diametro: '7/8', largo_m: v } }, 'refrigerante_lineas')
+      ).toBe(true)
+    }
+  })
+
+  it('tipo_trabajo, sistema y estado_texto basura no responden', () => {
+    expect(sinResponder({ sistema: 5 }, 'trabajo_equipo')).toBe(true)
+    expect(sinResponder({ tipo_trabajo: true }, 'trabajo_equipo')).toBe(true)
+    expect(sinResponder({ estado_texto: {} }, 'estado_sistema')).toBe(true)
+  })
+
+  it('un no_sabe inventado no responde nada', () => {
+    const e = evaluarCompuerta(PERFILES.hvac, ficha({}, ['inventada']))
+    expect(e.respondidas).toBe(0)
+  })
+
+  it('segundoNivel reconoce camara con tilde y central', () => {
+    for (const sistema of ['cámara', 'Cámara frigorífica', 'camara', 'Central de frío']) {
+      const q = PERFILES.hvac.segundoNivel({ sistema })
+      expect(q).toHaveLength(1)
+      expect(q[0]).toContain('ventana horaria')
+    }
+  })
+
+  it('segundoNivel R-32 y R-22 traen su pregunta', () => {
+    expect(PERFILES.hvac.segundoNivel({ refrigerante: 'R-32' })[0]).toContain(
+      'tamaño tiene el local'
+    )
+    expect(PERFILES.hvac.segundoNivel({ refrigerante: 'r 22' })[0]).toContain('retrofit')
+  })
 })

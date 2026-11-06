@@ -19,6 +19,7 @@ export function evaluarCompuerta(perfil: PerfilEntrevista, ficha: Ficha): Estado
     p => !ficha.no_sabe.includes(p.clave) && !p.completa(ficha.datos)
   )
   const respondidas = perfil.preguntas.length - pendientes.length
+  // `minimo` se ignora cuando todasObligatorias es true.
   const requeridas = perfil.todasObligatorias ? perfil.preguntas.length : perfil.minimo
   return {
     respondidas,

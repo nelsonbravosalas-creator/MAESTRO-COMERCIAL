@@ -31,7 +31,7 @@
 
 ---
 
-### Tarea 0: Guardar especificación y plan
+### Task 0: Guardar especificación y plan
 
 **Files:** Create: los dos `.md` indicados arriba. Add: los 3 HTML de `docs/` sin commitear.
 
@@ -42,7 +42,7 @@
 
 ## Hito 0: Base segura (Fase 0 de la auditoría)
 
-### Tarea 1: Hook `prepare` y E1, cotización abierta
+### Task 1: Hook `prepare` y E1, cotización abierta
 
 **Files:** Modify: `backend/src/agent/types.ts`, `agent/loop.ts`, `agent/tools/quotationTool.ts`. Test: `agent/__tests__/pendingActions.test.ts`.
 
@@ -61,7 +61,7 @@
 - [ ] **Step 5:** Correr el test. Esperado: PASS.
 - [ ] **Step 6:** Commit `fix(agente): la modificacion usa la cotizacion abierta (E1)`.
 
-### Tarea 2: E2 y E3, detalle, validación, duplicados y categoría `ins`
+### Task 2: E2 y E3, detalle, validación, duplicados y categoría `ins`
 
 **Files:** Modify: `agent/tools/quotationTool.ts`, `agent/pendingActions.ts`, `frontend/src/styles/ChatPanel.css`. Test: `agent/__tests__/pendingActions.test.ts`.
 
@@ -78,7 +78,7 @@
 - [ ] **Step 6:** Correr `npx vitest run src/agent`. Esperado: PASS.
 - [ ] **Step 7:** Commit `fix(agente): confirmacion con detalle y validacion al proponer (E2, E3)`.
 
-### Tarea 3: E4, RUT fuera del historial
+### Task 3: E4, RUT fuera del historial
 
 **Files:** Modify: `agent/tools/historyTool.ts`. Test: `agent/__tests__/goldenSet.test.ts`.
 
@@ -94,7 +94,7 @@ La auditoría proponía además buscar por RUT. No se hace: `scrubPii` ya borra 
 
 ## Hito 1: Núcleo del cubicador
 
-### Tarea 4: Tipos, migración y borradores
+### Task 4: Tipos, migración y borradores
 
 **Files:** Create: `backend/src/db/migrations/1700000027000_0027-cubicador.js`, `backend/src/cubicador/types.ts`, `cubicador/borradores.ts`. Test: `cubicador/__tests__/borradores.test.ts`.
 
@@ -164,7 +164,7 @@ export interface Borrador {
 - [ ] **Step 5:** Correr. Esperado: PASS.
 - [ ] **Step 6:** Commit `feat(cubicador): tablas y repositorio de borradores`.
 
-### Tarea 5: Perfiles y compuerta
+### Task 5: Perfiles y compuerta
 
 **Files:** Create: `cubicador/perfiles.ts`, `cubicador/compuerta.ts`. Test: `cubicador/__tests__/compuerta.test.ts`.
 
@@ -213,7 +213,7 @@ export function evaluarCompuerta(perfil: PerfilEntrevista, ficha: Ficha): Estado
 
 ## Hito 2: Calculadoras HVAC
 
-### Tarea 6: Parámetros y refrigerante
+### Task 6: Parámetros y refrigerante
 
 **Files:** Create: `cubicador/params.ts`, `cubicador/calc/refrigerante.ts`. Test: `cubicador/__tests__/refrigerante.test.ts`.
 
@@ -240,7 +240,7 @@ export function evaluarCompuerta(perfil: PerfilEntrevista, ficha: Ficha): Estado
 - [ ] **Step 4:** Correr. Esperado: PASS.
 - [ ] **Step 5:** Commit `feat(cubicador): calculadora de refrigerante`.
 
-### Tarea 7: Nitrógeno
+### Task 7: Nitrógeno
 
 **Files:** Create: `cubicador/calc/nitrogeno.ts`. Modify: `cubicador/params.ts`. Test: `cubicador/__tests__/nitrogeno.test.ts`.
 
@@ -257,7 +257,7 @@ export function evaluarCompuerta(perfil: PerfilEntrevista, ficha: Ficha): Estado
 - [ ] **Step 4:** Correr. Esperado: PASS.
 - [ ] **Step 5:** Commit `feat(cubicador): calculadora de nitrogeno`.
 
-### Tarea 8: Horas-hombre y dotación
+### Task 8: Horas-hombre y dotación
 
 **Files:** Create: `cubicador/calc/horasHombre.ts`, `cubicador/calc/dotacion.ts`. Modify: `cubicador/params.ts`. Test: `cubicador/__tests__/horasHombre.test.ts`.
 
@@ -284,7 +284,7 @@ export function evaluarCompuerta(perfil: PerfilEntrevista, ficha: Ficha): Estado
 - [ ] **Step 4:** Correr. Esperado: PASS.
 - [ ] **Step 5:** Commit `feat(cubicador): horas-hombre y dotacion sugerida`.
 
-### Tarea 9: Motor HVAC y criterios
+### Task 9: Motor HVAC y criterios
 
 **Files:** Create: `cubicador/criterios.ts`, `cubicador/motorHvac.ts`, `cubicador/motor.ts`. Test: `cubicador/__tests__/motorHvac.test.ts`.
 
@@ -312,7 +312,7 @@ export function evaluarCompuerta(perfil: PerfilEntrevista, ficha: Ficha): Estado
 
 ## Hito 3: Cierre metálico y eléctrico
 
-### Tarea 10: Calculadoras de reja y acceso eléctrico
+### Task 10: Calculadoras de reja y acceso eléctrico
 
 **Files:** Create: `cubicador/calc/cierreMetalico.ts`, `cubicador/calc/accesoElectrico.ts`, `cubicador/motorCierre.ts`. Modify: `cubicador/motor.ts`. Test: `cubicador/__tests__/motorCierre.test.ts`.
 
@@ -337,7 +337,7 @@ export function evaluarCompuerta(perfil: PerfilEntrevista, ficha: Ficha): Estado
 
 ## Hito 4: Integración con el agente y el chat
 
-### Tarea 11: Herramientas, entrada única e ingreso
+### Task 11: Herramientas, entrada única e ingreso
 
 **Files:** Create: `cubicador/ejecutar.ts`, `cubicador/ingreso.ts`, `agent/tools/cubicadorTools.ts`. Modify: `agent/types.ts`, `agent/registry.ts`, `agent/loop.ts`, `api/chatbot.ts`. Test: `cubicador/__tests__/ejecutar.test.ts`, `agent/__tests__/cubicadorTools.test.ts`.
 
@@ -373,7 +373,7 @@ export function evaluarCompuerta(perfil: PerfilEntrevista, ficha: Ficha): Estado
 - [ ] **Step 4:** Correr `npx vitest run src/cubicador src/agent`. Esperado: PASS.
 - [ ] **Step 5:** Commit `feat(cubicador): herramientas del agente e ingreso aprobado`.
 
-### Tarea 12: API del botón y tarjeta en el chat
+### Task 12: API del botón y tarjeta en el chat
 
 **Files:** Create: `backend/src/api/cubicador.ts`, `frontend/src/components/CubicadorCard.tsx`. Modify: `backend/src/app.ts`, `frontend/src/api/api.ts`, `frontend/src/stores/chatStore.ts`, `frontend/src/components/ChatPanel.tsx`, `frontend/src/styles/ChatPanel.css`. Test: `backend/src/api/__tests__/cubicador.test.ts`, `frontend/src/stores/__tests__/chatStore.test.ts`.
 
@@ -401,7 +401,7 @@ export function evaluarCompuerta(perfil: PerfilEntrevista, ficha: Ficha): Estado
 
 ## Hito 5: Precios por etapas
 
-### Tarea 13: Resolutor de precios en lotes
+### Task 13: Resolutor de precios en lotes
 
 **Files:** Create: `cubicador/precios.ts`. Modify: `services/llm.ts`, `services/chatbotOps.ts`, `agent/tools/specCubicatorTool.ts`, `api/cubicador.ts`, `frontend/src/stores/chatStore.ts`, `frontend/src/api/api.ts`. Test: `cubicador/__tests__/precios.test.ts`, `services/__tests__/llm.test.ts` (crear si no existe).
 
@@ -431,7 +431,7 @@ export function evaluarCompuerta(perfil: PerfilEntrevista, ficha: Ficha): Estado
 - [ ] **Step 4:** Correr. Esperado: PASS.
 - [ ] **Step 5:** Commit `feat(cubicador): precios por etapas en lotes`.
 
-### Tarea 14: Verificación final
+### Task 14: Verificación final
 
 **Files:** Test: `agent/__tests__/goldenSet.test.ts`. Modify: `docs/DISENO_CUBICADOR_HVAC_REFRIGERACION.html` solo si los números cambian.
 

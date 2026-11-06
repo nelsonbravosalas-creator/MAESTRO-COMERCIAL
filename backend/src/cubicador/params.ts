@@ -9,6 +9,20 @@ export interface Refrigerante {
   densidad_vapor_kg_l?: number
 }
 
+export interface Nitrogeno {
+  /** Caudal de purga durante la soldadura, en L/min. */
+  caudal_lpm: number
+  /** Factor de holgura sobre el total de litros. */
+  holgura: number
+  min_por_union: number
+  /** Volumen de un balón de nitrógeno, en m3. */
+  balon_m3: number
+  barridos_flushing: number
+  presion_barrido_barg: number
+  /** Presión de prueba por código de refrigerante; `default` cubre el resto (supuesto). */
+  presion_prueba_barg: Record<string, number>
+}
+
 // Interfaz extensible: las tareas siguientes agregan claves (nitrogeno, hh, cierre...).
 export interface Parametros {
   /** Diametro interior del cobre en mm, por medida nominal. */
@@ -16,6 +30,7 @@ export interface Parametros {
   refrigerantes: Record<string, Refrigerante>
   merma_pct: number
   bombeo: { tramo: number; merma: number; holgura: number }
+  nitrogeno: Nitrogeno
 }
 
 export const PARAMETROS_BASE: Parametros = {
@@ -34,6 +49,16 @@ export const PARAMETROS_BASE: Parametros = {
   },
   merma_pct: 5,
   bombeo: { tramo: 0.2, merma: 0.3, holgura: 0.5 },
+  nitrogeno: {
+    caudal_lpm: 3,
+    holgura: 1.3,
+    min_por_union: 15,
+    balon_m3: 6,
+    barridos_flushing: 3,
+    presion_barrido_barg: 5,
+    // 37,9 barg = los 550 psi de la plantilla; el resto es un supuesto crítico.
+    presion_prueba_barg: { 'R-410A': 37.9, 'R-32': 37.9, default: 9 },
+  },
 }
 
 function esObjeto(v: unknown): v is Record<string, unknown> {

@@ -25,7 +25,7 @@ export const consultarHistorialClienteTool: AgentTool = {
       cliente_nombre_o_rut: {
         type: 'string',
         description:
-          'Nombre de fantasia, razon social o RUT del cliente a consultar (ej. "Enel", "Mall Plaza", "Echeverria")',
+          'Nombre de fantasia o razon social del cliente a consultar; no se busca por RUT (ej. "Enel", "Mall Plaza", "Echeverria")',
       },
     },
     required: ['cliente_nombre_o_rut'],
@@ -36,12 +36,12 @@ export const consultarHistorialClienteTool: AgentTool = {
     const rawSearch = String(args.cliente_nombre_o_rut ?? '').trim()
     if (!rawSearch) {
       return {
-        output: { error: 'Debe ingresar un nombre o RUT de cliente.' },
+        output: { error: 'Debe ingresar un nombre de cliente.' },
         summary: 'Búsqueda de historial de cliente vacía',
       }
     }
 
-    // 1. Buscar cliente por nombre o RUT
+    // 1. Buscar cliente por nombre (el RUT no se busca ni se devuelve: PII A-21)
     const clients = await findClientByName(ctx.pool, rawSearch)
     if (clients.length === 0) {
       return {
@@ -133,7 +133,6 @@ export const consultarHistorialClienteTool: AgentTool = {
       cliente: {
         id: client.id,
         nombre: client.name,
-        rut: client.rut,
       },
       metricas_comerciales: {
         total_cotizaciones: totalQuotes,

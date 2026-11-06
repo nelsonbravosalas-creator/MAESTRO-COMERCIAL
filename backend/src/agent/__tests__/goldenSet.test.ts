@@ -209,6 +209,14 @@ describe('Golden Set HVAC — Evaluación de Capacidades del Agente Comercial', 
     expect(data.patrones_operacionales[0].dias_habituales).toBe(2)
   })
 
+  // E4 / PII A-21: el RUT del cliente nunca viaja al modelo
+  it('el historial no entrega el RUT al modelo', async () => {
+    const res = await consultarHistorialClienteTool.execute({ cliente_nombre_o_rut: 'Enel' }, ctx)
+    const serializado = JSON.stringify(res.output)
+    expect(serializado).not.toContain('96.555.000-1')
+    expect(serializado).not.toContain('"rut"')
+  })
+
   // Caso 5: Determinismo de cálculo de costos automáticos fuera de Santiago
   it('Prompt #5: Calcula los costos automáticos para 2 días y 3 técnicos en Rancagua (fuera de RM)', async () => {
     const res = await calcularItemsAutoTool.execute(

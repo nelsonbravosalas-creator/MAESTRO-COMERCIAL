@@ -7,6 +7,7 @@ import {
 } from '../../services/chatbotOps'
 import { fullQuotation } from '../../api/quotations'
 import { ImportLinea } from '../../services/chatbotCalc'
+import { httpError } from '../../utils/httpError'
 
 export const verCotizacionTool: AgentTool = {
   name: 'ver_cotizacion',
@@ -222,17 +223,25 @@ export const modificarCotizacionTool: AgentTool = {
     const destino = args.quotation_id ? 'indicada' : 'abierta'
     return `Agregar ${items} ítem(es) a la cotización ${destino}`
   },
+  prepare: async (args, ctx) => {
+    const qId = (args.quotation_id as string) || ctx.quotationId
+    if (!qId) {
+      throw httpError(
+        'No hay una cotización abierta para modificar. Abre una en pantalla o pídeme crear una nueva.',
+        422
+      )
+    }
+    const existente = await fullQuotation(ctx.pool, qId)
+    if (!existente) throw httpError(`La cotización ${qId} no existe.`, 404)
+    return { ...args, quotation_id: qId }
+  },
   execute: async (args: Record<string, unknown>, ctx: AgentContext): Promise<AgentToolResult> => {
     const qId = (args.quotation_id as string) || ctx.quotationId
     if (!qId) {
-      return {
-        output: {
-          modificada: false,
-          mensaje:
-            'No tengo una cotización abierta para modificar. Pídeme crear una nueva o abre una en pantalla primero.',
-        },
-        summary: 'Modificación de cotización sin ID abierto',
-      }
+      throw httpError(
+        'No hay una cotización abierta para modificar. Abre una en pantalla o pídeme crear una nueva.',
+        422
+      )
     }
 
     const rawMaterials = (args.materiales as Array<Record<string, unknown>>) ?? []

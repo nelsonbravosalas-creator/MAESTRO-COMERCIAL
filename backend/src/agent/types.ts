@@ -39,6 +39,12 @@ export interface AgentTool {
    * argumentos. Es lo que el usuario ve antes de confirmar la acción.
    */
   describe?: (args: Record<string, unknown>) => string
+  /**
+   * Solo para herramientas 'write': completa y valida los argumentos antes de
+   * guardar la propuesta (por ejemplo, fija la cotización abierta). Devuelve los
+   * argumentos definitivos; lanza httpError si no son válidos.
+   */
+  prepare?: (args: Record<string, unknown>, ctx: AgentContext) => Promise<Record<string, unknown>>
   execute: (args: Record<string, unknown>, ctx: AgentContext) => Promise<AgentToolResult>
 }
 

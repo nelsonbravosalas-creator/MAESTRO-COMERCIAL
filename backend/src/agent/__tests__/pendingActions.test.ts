@@ -10,12 +10,20 @@ import {
   PENDING_ACTION_TTL_MINUTES,
 } from '../pendingActions'
 import { runAgentLoop } from '../loop'
+import { modificarCotizacionTool } from '../tools/quotationTool'
+import { httpError } from '../../utils/httpError'
 
 vi.mock('../../services/llm', async () => {
   const actual = await vi.importActual<typeof import('../../services/llm')>('../../services/llm')
   return { ...actual, callLlmWithTools: vi.fn() }
 })
 import { callLlmWithTools } from '../../services/llm'
+
+vi.mock('../../api/quotations', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../api/quotations')>('../../api/quotations')
+  return { ...actual, fullQuotation: vi.fn(async (_pool: unknown, id: string) => ({ id })) }
+})
 const mockedCallLlmWithTools = callLlmWithTools as unknown as ReturnType<typeof vi.fn>
 
 type QueryResult = { rows?: unknown[]; rowCount?: number }
@@ -329,5 +337,108 @@ describe('runAgentLoop con control de escrituras', () => {
     expect(execute).not.toHaveBeenCalled()
     expect(res.status).toBe('done')
     expect(res.acciones_pendientes).toBeUndefined()
+  })
+})
+
+describe('hook prepare y cotización abierta (E1)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const baseCtx = {
+    userId: 'user-1',
+    userRole: 'commercial',
+    instruction: 'agrega un ítem',
+    recentTurns: [],
+    graphContext: '',
+    runId: 'run-1',
+    model: 'm',
+  }
+
+  function llmCalls(name: string, args: Record<string, unknown>) {
+    mockedCallLlmWithTools
+      .mockResolvedValueOnce({
+        modelContent: { role: 'model', parts: [] },
+        functionCalls: [{ name, args }],
+        text: '',
+        usage: { tokensIn: 1, tokensOut: 1 },
+      })
+      .mockResolvedValueOnce({
+        modelContent: { role: 'model', parts: [] },
+        functionCalls: [],
+        text: 'listo',
+        usage: { tokensIn: 1, tokensOut: 1 },
+      })
+  }
+
+  const insertPool = () =>
+    fakePool(sql =>
+      sql.includes('INSERT INTO agent_pending_actions')
+        ? { rows: [{ id: 'acc-1', expires_at: new Date(Date.now() + 15 * 60_000) }] }
+        : undefined
+    )
+
+  it('propuesta de modificar_cotizacion guarda quotation_id de la cotización abierta', async () => {
+    const pool = insertPool()
+    llmCalls('modificar_cotizacion', { materiales: [{ descripcion: 'Cañería' }] })
+
+    await runAgentLoop(
+      { ...baseCtx, pool, quotationId: 'q1' },
+      registryWith(modificarCotizacionTool)
+    )
+
+    const insert = pool.query.mock.calls.find(c =>
+      String(c[0]).includes('INSERT INTO agent_pending_actions')
+    ) as unknown as [string, unknown[]]
+    expect(JSON.parse(String(insert[1][4]))).toMatchObject({ quotation_id: 'q1' })
+  })
+
+  it('modificar_cotizacion sin cotización abierta no crea propuesta', async () => {
+    const pool = insertPool()
+    llmCalls('modificar_cotizacion', { materiales: [{ descripcion: 'Cañería' }] })
+
+    await runAgentLoop({ ...baseCtx, pool }, registryWith(modificarCotizacionTool))
+
+    const inserted = pool.query.mock.calls.some(c =>
+      String(c[0]).includes('INSERT INTO agent_pending_actions')
+    )
+    expect(inserted).toBe(false)
+    const turn2 = mockedCallLlmWithTools.mock.calls[1][0] as Array<{
+      parts: Array<{ functionResponse?: { response: Record<string, unknown> } }>
+    }>
+    const response = turn2[turn2.length - 1].parts[0].functionResponse?.response
+    expect(response?.error).toBeTruthy()
+  })
+
+  it('error de prepare viaja con opciones', async () => {
+    const opciones = [{ id: '1', name: 'A' }]
+    const { tool } = writeTool({
+      prepare: async () => {
+        throw httpError('hay varias', 409, { opciones })
+      },
+    })
+    const pool = insertPool()
+    llmCalls('fake_escribir', { nombre: 'X' })
+
+    await runAgentLoop({ ...baseCtx, pool }, registryWith(tool))
+
+    const turn2 = mockedCallLlmWithTools.mock.calls[1][0] as Array<{
+      parts: Array<{ functionResponse?: { response: Record<string, unknown> } }>
+    }>
+    const response = turn2[turn2.length - 1].parts[0].functionResponse?.response
+    expect(response?.opciones).toEqual(opciones)
+  })
+
+  it('el prompt incluye la cotización abierta', async () => {
+    const pool = insertPool()
+    mockedCallLlmWithTools.mockResolvedValueOnce({
+      modelContent: { role: 'model', parts: [] },
+      functionCalls: [],
+      text: 'ok',
+      usage: { tokensIn: 1, tokensOut: 1 },
+    })
+
+    await runAgentLoop({ ...baseCtx, pool, quotationId: 'q1' }, registryWith(writeTool().tool))
+
+    const opts = mockedCallLlmWithTools.mock.calls[0][1] as { systemInstruction: string }
+    expect(opts.systemInstruction).toContain('q1')
   })
 })

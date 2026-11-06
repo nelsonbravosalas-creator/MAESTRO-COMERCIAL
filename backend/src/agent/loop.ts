@@ -10,6 +10,7 @@ import {
   ChatbotProactiveNote,
   errorMessage,
 } from '../services/chatbotOps'
+import { asHttpError } from '../utils/httpError'
 
 export const MAX_STEPS = 5
 export const WALL_CLOCK_BUDGET_MS = 40_000
@@ -70,6 +71,7 @@ function buildAgentSystemPrompt(ctx: AgentContext): string {
           '',
         ]
       : []),
+    ...(ctx.quotationId ? [`## Cotización abierta en pantalla: ${ctx.quotationId}`, ''] : []),
     ...(ctx.graphContext
       ? ['## Apuntes y hechos aprendidos (memoria del negocio):', ctx.graphContext, '']
       : []),
@@ -236,13 +238,14 @@ export async function runAgentLoop(
             if (!ctx.userId) {
               throw new Error('Se requiere una sesión de usuario para proponer un cambio.')
             }
-            const summary = describeWriteAction(tool, call.name, call.args)
+            const args = tool.prepare ? await tool.prepare(call.args, ctx) : call.args
+            const summary = describeWriteAction(tool, call.name, args)
             const pending = await createPendingAction(ctx.pool, {
               runId: ctx.runId,
               tenantId: ctx.tenantId,
               userId: ctx.userId,
               tool: call.name,
-              args: call.args,
+              args,
               summary,
             })
             pendingActions.push(pending)
@@ -257,8 +260,9 @@ export async function runAgentLoop(
             }
           } catch (err) {
             stepError = errorMessage(err)
+            const opciones = asHttpError(err).payload?.opciones
             toolResult = {
-              output: { error: stepError },
+              output: { error: stepError, ...(opciones ? { opciones } : {}) },
               summary: `No se pudo registrar la propuesta de ${call.name}: ${stepError}`,
             }
           }

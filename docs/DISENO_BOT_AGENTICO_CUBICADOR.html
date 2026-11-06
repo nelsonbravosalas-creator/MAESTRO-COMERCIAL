@@ -1,0 +1,333 @@
+<title>Bot Cubicador Agéntico</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: documento de diseño de una columna; diagramas y tablas con scroll propio. */
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#16212b; --muted:#566574; --line:#d5dde4;
+  --accent:#0b6e6e; --accent-soft:#dff1f0; --warn:#b45309; --warn-soft:#fdeed9; --new:#1d4ed8; --new-soft:#e2eafd;
+  --ok:#1b7a43; --ok-soft:#dcf1e4; --crit:#b3261e;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e151b; --surface:#16202a; --ink:#e4ebf0; --muted:#9aabb8; --line:#2b3a47;
+  --accent:#4fc3c0; --accent-soft:#12302f; --warn:#f5b25c; --warn-soft:#3a2a12; --new:#8fb0ff; --new-soft:#18274a;
+  --ok:#6fd49a; --ok-soft:#14301f; --crit:#ff8a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e151b; --surface:#16202a; --ink:#e4ebf0; --muted:#9aabb8; --line:#2b3a47;
+  --accent:#4fc3c0; --accent-soft:#12302f; --warn:#f5b25c; --warn-soft:#3a2a12; --new:#8fb0ff; --new-soft:#18274a;
+  --ok:#6fd49a; --ok-soft:#14301f; --crit:#ff8a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;
+  padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:42px}
+h1{font-size:clamp(26px,4vw,38px);line-height:1.15;margin:0 0 8px;font-weight:600;text-wrap:balance}
+h2{font-size:21px;margin:0 0 4px;font-weight:600;text-wrap:balance}
+h3{font-size:15px;margin:0 0 6px;font-weight:600}
+p{margin:0}
+.lead{color:var(--muted);max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);padding:1px 5px;border-radius:3px}
+section{display:flex;flex-direction:column;gap:14px;min-width:0}
+.sub{color:var(--muted);max-width:72ch}
+.callout{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);padding:14px 18px;border-radius:4px;max-width:82ch}
+.callout.warn{border-left-color:var(--warn)}
+.scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+figure{margin:0;display:flex;flex-direction:column;gap:8px}
+figcaption{color:var(--muted);font-size:13px;max-width:82ch}
+svg{display:block;min-width:960px;width:100%;height:auto;color:var(--ink)}
+svg text{font-family:var(--sans);font-size:12.5px;fill:currentColor}
+svg .t-b{font-weight:600;font-size:13px} svg .t-m{fill:var(--muted);font-size:11.5px}
+svg .box{fill:var(--surface);stroke:var(--line);stroke-width:1.4}
+svg .box-a{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.4}
+svg .box-n{fill:var(--new-soft);stroke:var(--new);stroke-width:1.6}
+svg .box-w{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+svg .ln{stroke:currentColor;stroke-width:1.4;fill:none}
+svg .ln-d{stroke:var(--muted);stroke-width:1.2;fill:none;stroke-dasharray:5 4}
+svg .ln-n{stroke:var(--new);stroke-width:1.6;fill:none}
+svg .ln-w{stroke:var(--warn);stroke-width:1.6;fill:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0}
+.card p{color:var(--muted);font-size:13.5px}
+.tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:3px;margin-right:6px;vertical-align:1px}
+.t-read{background:var(--accent-soft);color:var(--accent)} .t-write{background:var(--warn-soft);color:var(--warn)} .t-new{background:var(--new-soft);color:var(--new)}
+table{border-collapse:collapse;width:100%;min-width:860px;font-size:13.5px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--bg)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.pend{color:var(--muted);font-style:italic}
+tr.cat td{background:var(--accent-soft);font-weight:600;color:var(--accent)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.opt{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.opt.rec{border:2px solid var(--accent)}
+.opt ul{margin:0;padding-left:18px;color:var(--muted);font-size:14px}
+.badge{font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.chat{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;max-width:760px}
+.msg{padding:9px 13px;border-radius:8px;max-width:92%;font-size:14px}
+.msg.u{align-self:flex-end;background:var(--accent-soft)} .msg.b{align-self:flex-start;background:var(--bg);border:1px solid var(--line)}
+.msg small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.phase{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:4px;padding:14px 16px}
+.phase ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+ol.q{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;max-width:80ch}
+.lvl{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:3px;white-space:nowrap;margin:0 2px}
+.l-c{background:var(--warn-soft);color:var(--warn)} .l-i{background:var(--new-soft);color:var(--new)} .l-d{background:var(--accent-soft);color:var(--accent)}
+td.q{font-style:italic;color:var(--muted)}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style>
+
+<main>
+<header>
+  <p class="eyebrow">Diseño · Maestro Comercial · propuesta para tu aprobación</p>
+  <h1>Bot cubicador agéntico</h1>
+  <p class="lead">Escribes un requerimiento como lo harías con Gemini («reja de 8 m de largo, 3 de alto, postes 40x40x2, puerta de 0,9 x 2,2 con chapa»). Antes de calcular, el bot conversa como un maestro de terreno y sigue preguntando hasta que escribas «procede» o pulses Cubicar. Entonces dimensiona, consulta Sodimac, Easy, Imperial y Punto Maestro, te muestra el listado, y si lo apruebas en el chat lo ingresa a la cotización en la categoría correcta, incluida la parte eléctrica y una dotación sugerida para la mano de obra.</p>
+</header>
+
+<section>
+  <div class="callout"><strong>Idea central: Gemini piensa y el código calcula.</strong> Gemini entiende el pedido, hace las preguntas que faltan y decide qué materiales hacen falta. Las cantidades las calcula un módulo con fórmulas fijas (postes, metros de perfil, tiras de 6 m, mermas). Así el resultado se puede auditar, repetir y corregir, cosa que no pasa cuando el modelo hace las cuentas de memoria. La inteligencia está en las preguntas: un cierre con chapa eléctrica obliga a hablar de alimentación, respaldo, canalización y puesta a tierra antes de cotizar.</div>
+</section>
+
+<section>
+  <div><p class="eyebrow">1 · Cómo funciona hoy</p><h2>Proceso actual, resumido</h2>
+  <p class="sub">Detalle completo y 16 hallazgos en la auditoría anterior. Aquí solo lo que condiciona el diseño nuevo.</p></div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1100 170" role="img" aria-label="Flujo actual: usuario, endpoint, agente con 13 herramientas, escritura pendiente y confirmación.">
+      <defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <rect class="box" x="10" y="35" width="150" height="90" rx="4"/><text class="t-b" x="85" y="62" text-anchor="middle">Usuario</text><text class="t-m" x="85" y="82" text-anchor="middle">ChatPanel</text><text class="t-m" x="85" y="98" text-anchor="middle">últimos 4 mensajes</text>
+      <rect class="box" x="205" y="35" width="170" height="90" rx="4"/><text class="t-b" x="290" y="62" text-anchor="middle">POST /api/chatbot</text><text class="t-m" x="290" y="82" text-anchor="middle">5 msg/min · grafo de memoria</text><text class="t-m" x="290" y="98" text-anchor="middle">modo Clásico o Agente</text>
+      <rect class="box-a" x="420" y="35" width="210" height="90" rx="4"/><text class="t-b" x="525" y="62" text-anchor="middle">Agente ReAct (Gemini)</text><text class="t-m" x="525" y="82" text-anchor="middle">máx. 5 pasos · 40 s</text><text class="t-m" x="525" y="98" text-anchor="middle">13 herramientas, 10 de lectura</text>
+      <rect class="box-w" x="675" y="35" width="190" height="90" rx="4"/><text class="t-b" x="770" y="62" text-anchor="middle">Escritura pendiente</text><text class="t-m" x="770" y="82" text-anchor="middle">resumen de una línea</text><text class="t-m" x="770" y="98" text-anchor="middle">vence en 15 min</text>
+      <rect class="box" x="910" y="35" width="180" height="90" rx="4"/><text class="t-b" x="1000" y="62" text-anchor="middle">Confirmar</text><text class="t-m" x="1000" y="82" text-anchor="middle">ejecuta con contexto vacío</text><text class="t-m" x="1000" y="98" text-anchor="middle">escribe en la cotización</text>
+      <line class="ln" x1="160" y1="80" x2="205" y2="80" marker-end="url(#a1)"/><line class="ln" x1="375" y1="80" x2="420" y2="80" marker-end="url(#a1)"/><line class="ln" x1="630" y1="80" x2="675" y2="80" marker-end="url(#a1)"/><line class="ln" x1="865" y1="80" x2="910" y2="80" marker-end="url(#a1)"/>
+      <text class="t-m" x="550" y="155" text-anchor="middle">Limitaciones para este proyecto: precios web de a un material por vez · sin categoría «ins» · resumen sin detalle · sin cantidades calculadas</text>
+    </svg>
+    </div>
+    <figcaption>El agente ya sabe buscar en catálogo, consultar un precio web y proponer escrituras con confirmación. No sabe dimensionar una obra ni consultar varias tiendas en conjunto.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div><p class="eyebrow">2 · Flujo nuevo</p><h2>De la frase al listado aprobado</h2></div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1100 470" role="img" aria-label="Flujo nuevo: Gemini extrae la especificación, el calculador cuantifica, el resolutor de precios consulta catálogo y cuatro tiendas, se presenta el listado, el usuario ajusta o aprueba y se ingresa a la cotización por categoría.">
+      <defs>
+        <marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--new)"/></marker>
+        <marker id="b3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"/></marker>
+      </defs>
+      <!-- fila 1 -->
+      <rect class="box" x="10" y="30" width="170" height="96" rx="4"/><text class="t-b" x="95" y="55" text-anchor="middle">1 · Requerimiento</text><text class="t-m" x="95" y="75" text-anchor="middle">texto libre del usuario</text><text class="t-m" x="95" y="91" text-anchor="middle">+ cotización abierta</text><text class="t-m" x="95" y="107" text-anchor="middle">+ memoria del negocio</text>
+      <rect class="box-n" x="225" y="30" width="190" height="96" rx="4"/><text class="t-b" x="320" y="55" text-anchor="middle">2 · Gemini: especificación</text><text class="t-m" x="320" y="75" text-anchor="middle">tipo de obra, medidas, perfiles</text><text class="t-m" x="320" y="91" text-anchor="middle">puerta, cerradura, acabado</text><text class="t-m" x="320" y="107" text-anchor="middle">entrevista hasta «procede»</text>
+      <rect class="box-n" x="460" y="30" width="190" height="96" rx="4"/><text class="t-b" x="555" y="55" text-anchor="middle">3 · Calculador de cantidades</text><text class="t-m" x="555" y="75" text-anchor="middle">fórmulas fijas por tipo de obra</text><text class="t-m" x="555" y="91" text-anchor="middle">tiras de 6 m, mermas, peso</text><text class="t-m" x="555" y="107" text-anchor="middle">asigna categoría a cada ítem</text>
+      <rect class="box-n" x="695" y="30" width="190" height="96" rx="4"/><text class="t-b" x="790" y="55" text-anchor="middle">4 · Resolutor de precios</text><text class="t-m" x="790" y="75" text-anchor="middle">catálogo interno y caché</text><text class="t-m" x="790" y="91" text-anchor="middle">luego 4 tiendas en paralelo</text><text class="t-m" x="790" y="107" text-anchor="middle">precio con enlace o «sin precio»</text>
+      <rect class="box-a" x="930" y="30" width="160" height="96" rx="4"/><text class="t-b" x="1010" y="55" text-anchor="middle">5 · Propuesta</text><text class="t-m" x="1010" y="75" text-anchor="middle">tabla por categoría</text><text class="t-m" x="1010" y="91" text-anchor="middle">fuentes, supuestos</text><text class="t-m" x="1010" y="107" text-anchor="middle">total estimado</text>
+      <line class="ln" x1="180" y1="78" x2="225" y2="78" marker-end="url(#b1)"/><line class="ln" x1="415" y1="78" x2="460" y2="78" marker-end="url(#b1)"/><line class="ln" x1="650" y1="78" x2="695" y2="78" marker-end="url(#b1)"/><line class="ln" x1="885" y1="78" x2="930" y2="78" marker-end="url(#b1)"/>
+      <!-- pregunta de vuelta -->
+      <polyline class="ln-d" points="320,30 320,10 95,10 95,30" marker-end="url(#b1)"/><text class="t-m" x="208" y="22" text-anchor="middle">pregunta hasta «procede» o Cubicar</text>
+      <!-- fuentes -->
+      <rect class="box" x="695" y="190" width="190" height="130" rx="4"/><text class="t-b" x="790" y="212" text-anchor="middle">Fuentes de precio</text>
+      <text class="t-m" x="790" y="234" text-anchor="middle">① catálogo interno</text><text class="t-m" x="790" y="250" text-anchor="middle">② caché de precios (25 días)</text><text class="t-m" x="790" y="266" text-anchor="middle">③ Gemini + Google, 4 sitios</text><text class="t-m" x="790" y="282" text-anchor="middle">Sodimac · Easy · Imperial</text><text class="t-m" x="790" y="298" text-anchor="middle">Punto Maestro</text><text class="t-m" x="790" y="313" text-anchor="middle">④ scraping solo si falla ③</text>
+      <line class="ln-d" x1="790" y1="126" x2="790" y2="190" marker-end="url(#b1)"/>
+      <!-- aprobacion -->
+      <rect class="box-w" x="930" y="190" width="160" height="130" rx="4"/><text class="t-b" x="1010" y="212" text-anchor="middle">6 · Usuario decide</text><text class="t-m" x="1010" y="234" text-anchor="middle">«cambia a 50x50»</text><text class="t-m" x="1010" y="250" text-anchor="middle">«quita la chapa»</text><text class="t-m" x="1010" y="266" text-anchor="middle">«usa Easy para pintura»</text><text class="t-b" x="1010" y="298" text-anchor="middle" style="fill:var(--warn)">Aprobar / Cancelar</text>
+      <line class="ln-w" x1="1010" y1="126" x2="1010" y2="190" marker-end="url(#b3)"/>
+      <polyline class="ln-d" points="930,255 900,255 900,90 885,90" marker-end="url(#b1)"/><text class="t-m" x="910" y="175" text-anchor="start">ajusta</text>
+      <!-- ingreso -->
+      <rect class="box-w" x="930" y="365" width="160" height="80" rx="4"/><text class="t-b" x="1010" y="390" text-anchor="middle">7 · Ingreso a cotización</text><text class="t-m" x="1010" y="410" text-anchor="middle">una sola acción en lote</text><text class="t-m" x="1010" y="426" text-anchor="middle">con control de versión</text>
+      <line class="ln-w" x1="1010" y1="320" x2="1010" y2="365" marker-end="url(#b3)"/>
+      <!-- categorias -->
+      <rect class="box" x="480" y="365" width="400" height="80" rx="4"/><text class="t-b" x="680" y="388" text-anchor="middle">Categorías de destino (+ Materiales Eléctricos)</text>
+      <text class="t-m" x="680" y="408" text-anchor="middle">Materiales Mecánico (perfiles, planchas, bisagras, chapa)</text><text class="t-m" x="680" y="424" text-anchor="middle">Insumos Industriales y Gases (soldadura, discos, pintura)</text><text class="t-m" x="680" y="438" text-anchor="middle">Provisión de Materiales (hormigón, anclajes, varios)</text>
+      <line class="ln-w" x1="930" y1="405" x2="880" y2="405" marker-end="url(#b3)"/>
+      <!-- memoria -->
+      <rect class="box-a" x="10" y="365" width="420" height="80" rx="4"/><text class="t-b" x="220" y="388" text-anchor="middle">Aprendizaje</text><text class="t-m" x="220" y="408" text-anchor="middle">precios elegidos → caché del grafo</text><text class="t-m" x="220" y="424" text-anchor="middle">tus ajustes → reglas de cálculo propias (trazas)</text><text class="t-m" x="220" y="438" text-anchor="middle">tienda preferida por material</text>
+      <polyline class="ln-d" points="480,405 430,405" marker-end="url(#b1)"/>
+      <polyline class="ln-d" points="220,365 220,150 95,150 95,126" marker-end="url(#b1)"/><text class="t-m" x="160" y="165" text-anchor="middle">vuelve al contexto</text>
+    </svg>
+    </div>
+    <figcaption>Azul: piezas nuevas. Naranja: puntos que escriben o necesitan tu aprobación. La escritura sigue siendo una sola acción pendiente, ahora con el detalle completo (líneas, precios y fuentes) y no una frase.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div><p class="eyebrow">3 · Modo entrevista</p><h2>El bot pregunta como un maestro de terreno</h2>
+  <p class="sub">No cubica al recibir el primer mensaje. Conversa, completa una ficha de requerimiento y sigue preguntando hasta que escribas «procede» o pulses el botón Cubicar. Entonces trabaja con lo que le diste.</p></div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1100 250" role="img" aria-label="Estados de la conversación: entrevista en bucle, compuerta que solo abren las palabras procede o el botón Cubicar, cubicación, propuesta con ajustes e ingreso con aprobación.">
+      <defs>
+        <marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="c3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"/></marker>
+      </defs>
+      <rect class="box-n" x="10" y="80" width="180" height="100" rx="4"/><text class="t-b" x="100" y="106" text-anchor="middle">Entrevista</text><text class="t-m" x="100" y="126" text-anchor="middle">Gemini pregunta</text><text class="t-m" x="100" y="142" text-anchor="middle">tú respondes</text><text class="t-m" x="100" y="158" text-anchor="middle">la ficha se completa</text>
+      <rect class="box-w" x="235" y="80" width="180" height="100" rx="4"/><text class="t-b" x="325" y="106" text-anchor="middle">Compuerta</text><text class="t-m" x="325" y="126" text-anchor="middle">«procede» o «cubica»</text><text class="t-m" x="325" y="142" text-anchor="middle">o botón (mín. 3 respuestas)</text><text class="t-m" x="325" y="158" text-anchor="middle">decide el servidor</text>
+      <rect class="box-n" x="460" y="80" width="180" height="100" rx="4"/><text class="t-b" x="550" y="106" text-anchor="middle">Cubicación</text><text class="t-m" x="550" y="126" text-anchor="middle">calculador mecánico</text><text class="t-m" x="550" y="142" text-anchor="middle">calculador eléctrico</text><text class="t-m" x="550" y="158" text-anchor="middle">precios de tiendas</text>
+      <rect class="box-a" x="685" y="80" width="180" height="100" rx="4"/><text class="t-b" x="775" y="106" text-anchor="middle">Propuesta</text><text class="t-m" x="775" y="126" text-anchor="middle">tabla por categoría</text><text class="t-m" x="775" y="142" text-anchor="middle">supuestos resaltados</text><text class="t-m" x="775" y="158" text-anchor="middle">se ajusta por chat</text>
+      <rect class="box-w" x="910" y="80" width="180" height="100" rx="4"/><text class="t-b" x="1000" y="106" text-anchor="middle">Aprobación</text><text class="t-m" x="1000" y="126" text-anchor="middle">Aprobar / Cancelar</text><text class="t-m" x="1000" y="142" text-anchor="middle">ingreso en lote</text><text class="t-m" x="1000" y="158" text-anchor="middle">a la cotización</text>
+      <line class="ln" x1="190" y1="130" x2="235" y2="130" marker-end="url(#c1)"/>
+      <line class="ln-w" x1="415" y1="130" x2="460" y2="130" marker-end="url(#c3)"/>
+      <line class="ln" x1="640" y1="130" x2="685" y2="130" marker-end="url(#c1)"/>
+      <line class="ln-w" x1="865" y1="130" x2="910" y2="130" marker-end="url(#c3)"/>
+      <polyline class="ln-d" points="70,80 70,40 130,40 130,80" marker-end="url(#c1)"/><text class="t-m" x="100" y="32" text-anchor="middle">sigue preguntando</text>
+      <polyline class="ln-d" points="325,180 325,225 100,225 100,180" marker-end="url(#c1)"/><text class="t-m" x="212" y="217" text-anchor="middle">otra consulta: aún no es «procede»</text>
+      <polyline class="ln-d" points="775,180 775,225 550,225 550,180" marker-end="url(#c1)"/><text class="t-m" x="662" y="217" text-anchor="middle">cambias un dato y recalcula</text>
+    </svg>
+    </div>
+    <figcaption>La compuerta la controla el servidor, no el modelo. Gemini no puede decidir por su cuenta que ya sabe lo suficiente: así no cubica antes de tiempo ni se queda preguntando para siempre.</figcaption>
+  </figure>
+  <div class="cards">
+    <div class="card"><h3>Pregunta por impacto en costo</h3><p>Hasta 3 preguntas por mensaje, ordenadas por cuánto cambian el listado. Primero anclaje y tipo de cierre; el color de la pintura al final.</p></div>
+    <div class="card"><h3>Propone y recomienda</h3><p>Cada pregunta trae opciones y una sugerencia con su motivo: «empotrado sale más barato; con placa y pernos si hay pavimento».</p></div>
+    <div class="card"><h3>No repite</h3><p>La ficha completa viaja en cada turno. No depende de los últimos 4 mensajes, así que lo respondido no se pierde ni se vuelve a preguntar.</p></div>
+    <div class="card"><h3>Detecta contradicciones</h3><p>«Cierre sólido de 3 m en zona ventosa sin refuerzos» o «chapa eléctrica sin alimentación»: lo marca antes de cubicar.</p></div>
+    <div class="card"><h3>Obedece el «procede»</h3><p>Con datos pendientes cubica igual: usa el supuesto más conservador y lo marca como «supuesto crítico» en la propuesta.</p></div>
+    <div class="card"><h3>Muestra el avance</h3><p>Sobre el campo de texto, un botón Cubicar con el contador «9 de 14 datos · 3 supuestos». Se habilita al responder 3 preguntas; antes aparece deshabilitado con «0 de 3 respuestas».</p></div>
+  </div>
+  <div class="callout"><strong>Tres niveles de datos.</strong>
+    <span class="lvl l-c">crítico</span> cambia mucho el costo y siempre se pregunta (medidas, tipo de cierre, anclaje, comuna, alimentación si hay chapa eléctrica o motor).
+    <span class="lvl l-i">importante</span> se pregunta, pero tiene un valor razonable por defecto.
+    <span class="lvl l-d">por defecto</span> se asume sin preguntar y se muestra como supuesto (merma de 10 %, separación de postes, pintura).</div>
+</section>
+
+<section>
+  <div><p class="eyebrow">4 · Condiciones de borde</p><h2>Lo que se suele olvidar, empezando por lo eléctrico</h2>
+  <p class="sub">Cada fila es una pregunta que el bot hace cuando el pedido toca ese tema. Las eléctricas se activan al aparecer «chapa eléctrica», citófono, motor, portón automático o cerco energizado. Los ítems van a «Materiales Eléctricos».</p></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Condición eléctrica</th><th>Por qué importa</th><th>Pregunta del bot</th><th>Efecto en el listado</th></tr></thead>
+    <tbody>
+      <tr><td>Qué pasa sin energía</td><td>Una puerta que queda trabada puede impedir una evacuación; una que queda abierta deja el recinto sin cierre.</td><td class="q">«Si se corta la luz, ¿queda abierta o cerrada?»</td><td>Define chapa o electroimán con o sin corriente de mantención.</td></tr>
+      <tr><td>Respaldo de energía</td><td>Un corte o una batería agotada deja el acceso sin funcionar.</td><td class="q">«¿Debe funcionar sin red? ¿Cuántas horas?»</td><td>Batería, cargador y fuente dimensionada.</td></tr>
+      <tr><td>Punto de alimentación</td><td>La distancia y la reserva del tablero fijan el cable y las protecciones.</td><td class="q">«¿A cuántos metros está el tablero? ¿220 V o 380 V? ¿Tiene espacio y reserva?»</td><td>Largo y sección del conductor por caída de tensión; automático y diferencial dedicados.</td></tr>
+      <tr><td>Canalización</td><td>Enterrada, por muro o aérea cambia la obra civil completa.</td><td class="q">«¿El cable va enterrado, sobrepuesto o aéreo? ¿Cruza una calzada?»</td><td>Cañería, cámaras de registro, excavación y relleno, hormigón de protección.</td></tr>
+      <tr><td>Cable en la puerta móvil</td><td>El cable de la chapa cruza una bisagra y se corta con el uso.</td><td class="q">«¿Pasa por bisagra pasacable o por el poste?»</td><td>Pasacable flexible, perforaciones y ductos dentro del perfil.</td></tr>
+      <tr><td>Control de acceso</td><td>Define qué abre, desde dónde y con qué señal.</td><td class="q">«¿Qué abre por dentro y por fuera: botón, citófono, teclado, tarjeta o control remoto?»</td><td>Lector, botón de salida, citófono, cable de señal.</td></tr>
+      <tr><td>Portón motorizado</td><td>El motor depende del peso y ancho de la hoja y de los ciclos diarios.</td><td class="q">«¿Corredera o batiente? ¿Peso, ancho y ciclos al día?»</td><td>Motor, riel o cremallera, receptor, lámpara, finales de carrera.</td></tr>
+      <tr><td>Seguridad de movimiento</td><td>Riesgo de atrapar personas o vehículos.</td><td class="q">«¿Hay tránsito de personas o vehículos por la puerta?»</td><td>Fotoceldas, canto sensible, parada de emergencia.</td></tr>
+      <tr><td>Cerco energizado</td><td>Exige energizador certificado, aisladores, tierra propia y letreros.</td><td class="q">«¿Es cerco energizado o solo cierre con chapa eléctrica?»</td><td>Energizador, aisladores, alambre, puesta a tierra, cartelería.</td></tr>
+      <tr><td>Puesta a tierra</td><td>Una reja metálica puede quedar energizada por una falla.</td><td class="q">«¿Existe malla de tierra? ¿Hay medición reciente?»</td><td>Jabalina, conductor y unión equipotencial a los postes.</td></tr>
+      <tr><td>Intemperie y ambiente</td><td>Humedad, polvo o salinidad degradan cajas y conexiones.</td><td class="q">«¿Es exterior, costa o zona industrial?»</td><td>Cajas estancas, prensaestopas, conductor para intemperie.</td></tr>
+      <tr><td>Normativa e instalador</td><td>La instalación puede requerir instalador autorizado y declaración ante la SEC; la norma de referencia es la NCh Elec 4/2003. Conviene confirmarlo con tu instalador.</td><td class="q">«¿Quién ejecuta y declara la parte eléctrica?»</td><td>Materiales con sello SEC y aviso si falta definir quién declara. La tramitación queda fuera del alcance del bot.</td></tr>
+      <tr><td>Secuencia de obra</td><td>Soldar con el cable ya tendido quema la aislación.</td><td class="q">No pregunta: lo aplica el calculador.</td><td>El alcance sugerido deja el cableado después de soldar y pintar.</td></tr>
+      <tr><td>Interferencias bajo tierra</td><td>Cañerías o cables existentes en la línea de excavación.</td><td class="q">«¿Tienes catastro de interferencias? ¿Quién lo verifica?»</td><td>Revisión previa y, si corresponde, detector de servicios.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Condición mecánica</th><th>Por qué importa</th><th>Pregunta del bot</th><th>Efecto en el listado</th></tr></thead>
+    <tbody>
+      <tr><td>Anclaje</td><td>Empotrado, placa con pernos o sobre muro cambian fundación y fijaciones.</td><td class="q">«¿Cómo se ancla?»</td><td>Hormigón, placas, pernos de anclaje químico o expansivos.</td></tr>
+      <tr><td>Reja o cierre sólido</td><td>La plancha recibe mucho más viento que los barrotes.</td><td class="q">«¿Sólido o reja? ¿Con qué características?»</td><td>Plancha, rigidizadores y perfil de refuerzo.</td></tr>
+      <tr><td>Suelo y pendiente</td><td>Un desnivel obliga a tramos escalonados; el suelo duro encarece la excavación.</td><td class="q">«¿El terreno es plano? ¿Hay roca o pavimento?»</td><td>Postes de largo variable, perforación, corte de pavimento.</td></tr>
+      <tr><td>Acabado</td><td>Galvanizado en caliente, pintado o ambos: costo y duración muy distintos.</td><td class="q">«¿Galvanizado o pintado? ¿Qué ambiente?»</td><td>Pintura y preparación, o servicio de galvanizado.</td></tr>
+      <tr><td>Anti-escalamiento</td><td>Muchos cierres de seguridad lo piden.</td><td class="q">«¿Lleva puntas o remate superior?»</td><td>Perfil extra o accesorios de remate.</td></tr>
+      <tr><td>Altura y deslindes</td><td>La altura máxima puede estar limitada por la municipalidad o el vecino.</td><td class="q">«¿Es deslinde? ¿Hay límite de altura?»</td><td>Alerta en la propuesta; no cambia cantidades.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div><p class="eyebrow">5 · Cómo se vería</p><h2>Conversación de ejemplo con tu reja</h2></div>
+  <div class="chat" role="img" aria-label="Conversación de ejemplo con entrevista y chapa eléctrica">
+    <div class="msg u">Materiales para una reja de 8 m de largo por 3 de alto, postes 40x40x2 mm, puerta de 0,9 x 2,2 con chapa</div>
+    <div class="msg b">Pregunto como en terreno antes de calcular nada. 1) ¿Cierre sólido de plancha o reja con barrotes? 2) ¿Cómo se ancla: empotrado en hormigón, placa con pernos sobre sardinel o sobre un muro existente? 3) ¿La chapa es mecánica o eléctrica? Si es eléctrica, ¿qué debe pasar si se corta la luz: queda abierta o cerrada?<small>ficha: 4 de 14 datos · 0 supuestos</small></div>
+    <div class="msg u">Reja con barrotes 20x20 cada 12 cm, empotrado, chapa eléctrica y que quede cerrada sin luz</div>
+    <div class="msg b">Con chapa eléctrica me falta la parte de energía. ¿A cuántos metros está el tablero y tiene reserva? ¿Qué abre por dentro y por fuera: botón, citófono o tarjeta? ¿El cable cruza por bisagra pasacable o va por el poste?<small>ficha: 8 de 14 datos · preguntas ordenadas por impacto en costo</small></div>
+    <div class="msg u">Tablero a 25 m enterrado, botón adentro y citófono afuera, cable por el poste. Procede</div>
+    <div class="msg b">Cubico con 3 supuestos marcados: postes cada 2 m, pintura anticorrosiva más esmalte y respaldo de batería de 4 h. Listado: 28 ítems en 4 categorías, 22 con precio de tienda.<small>tabla por categoría; los supuestos aparecen resaltados para que los corrijas</small></div>
+    <div class="msg u">El respaldo no, quítalo, y la pintura en Easy</div>
+    <div class="msg b">Hecho. ¿Lo ingreso a la cotización COT-0123 en Materiales Mecánico, Materiales Eléctricos, Insumos Industriales y Gases y Provisión de Materiales?<small>botones Aprobar / Cancelar con el detalle completo</small></div>
+    <p class="sub">Conversación ilustrativa: las cifras son de ejemplo.</p>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">6 · Ejemplo de cálculo</p><h2>Qué produciría el calculador para tu reja</h2>
+  <p class="sub">Cantidades ilustrativas con los supuestos del bot (editables en el chat). No son precios: esos los resuelve el paso 4. Los números son lo que el calculador debería entregar; hay que validarlos con tu criterio de taller antes de fijarlos.</p></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Ítem</th><th>Cálculo</th><th style="text-align:right">Cantidad</th><th>Precio</th></tr></thead>
+    <tbody>
+      <tr class="cat"><td colspan="4">Materiales Mecánico</td></tr>
+      <tr><td>Perfil cuadrado 40x40x2 (postes, travesaños y marco de puerta)</td><td>Postes 5 × 3,6 m + travesaños 3 × 7,1 m + marco puerta 7,1 m = 46,4 m, +10 % merma = 51 m</td><td class="num">9 tiras de 6 m</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Barrotes 20x20 (relleno)</td><td>7,1 m ÷ 0,12 m ≈ 60 barrotes × 2,4 m, +10 % merma</td><td class="num">≈ 160 m</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Bisagras de puerta</td><td>3 por hoja</td><td class="num">3 un</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Chapa para puerta</td><td>1 por hoja (opcional)</td><td class="num">1 un</td><td class="pend">pendiente de consulta</td></tr>
+      <tr class="cat"><td colspan="4">Insumos Industriales y Gases</td></tr>
+      <tr><td>Electrodos para soldadura</td><td>según metros de cordón estimados</td><td class="num">≈ 2 kg</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Discos de corte y desbaste</td><td>por número de cortes y uniones</td><td class="num">≈ 6 un</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Anticorrosivo y esmalte</td><td>área pintada ÷ rendimiento por galón</td><td class="num">≈ 2 gal c/u</td><td class="pend">pendiente de consulta</td></tr>
+      <tr class="cat"><td colspan="4">Provisión de Materiales</td></tr>
+      <tr><td>Hormigón para fundaciones</td><td>5 hoyos de 0,3 × 0,3 × 0,6 m</td><td class="num">≈ 0,3 m³</td><td class="pend">pendiente de consulta</td></tr>
+      <tr class="cat"><td colspan="4">Materiales Eléctricos (según las respuestas de la entrevista)</td></tr>
+      <tr><td>Chapa eléctrica que queda cerrada sin energía</td><td>1 por hoja de puerta</td><td class="num">1 un</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Fuente de poder con batería de respaldo</td><td>según consumo de chapa y citófono</td><td class="num">1 un</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Cable de alimentación</td><td>25 m al tablero + recorrido por el poste, +10 % merma</td><td class="num">≈ 36 m</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Cañería y cámaras para tramo enterrado</td><td>25 m enterrados, una cámara cada 12 m</td><td class="num">25 m + 2 cámaras</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Citófono, botón de salida y cable de señal</td><td>1 equipo exterior y 1 pulsador interior</td><td class="num">1 + 1</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Automático y diferencial dedicados</td><td>un circuito para el acceso</td><td class="num">1 + 1</td><td class="pend">pendiente de consulta</td></tr>
+      <tr class="cat"><td colspan="4">Mano de obra y viáticos (dotación sugerida por el bot, tú la ajustas)</td></tr>
+      <tr><td>Soldador / armador</td><td>según metros de perfil y uniones de la reja</td><td class="num">sugerida</td><td class="pend">la define el motor de mano de obra</td></tr>
+      <tr><td>Electricista y ayudante</td><td>según metros de zanja, puntos a conectar y pruebas</td><td class="num">sugerida</td><td class="pend">la define el motor de mano de obra</td></tr>
+      <tr><td>Viáticos y colación</td><td>comuna, días y dotación sugerida</td><td class="num">calculado</td><td class="pend">reglas de colación y desplazamiento vigentes</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn">Lo importante es el método: cada fila trae su fórmula, y si cambias un supuesto («postes cada 1,5 m») se recalcula todo sin volver a preguntarle a Gemini. Las cifras de arriba son un borrador del tipo de salida, no un cálculo estructural.</div>
+</section>
+
+<section>
+  <div><p class="eyebrow">7 · Piezas nuevas</p><h2>Herramientas y módulos</h2></div>
+  <div class="cards">
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-read">lectura</span>entrevistar_obra</h3><p>Gemini mantiene la ficha viva y formula la siguiente pregunta de terreno. No puede pasar a cubicar por su cuenta.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-read">lectura</span>cubicar_instalacion_electrica</h3><p>Calculador de chapa eléctrica, alimentación, canalización, protecciones y control de acceso. Los ítems van a «Materiales Eléctricos».</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-read">lectura</span>sugerir_dotacion</h3><p>Propone cuántas personas y cuántos días por oficio según las cantidades calculadas, y entrega el resultado al motor de mano de obra y viáticos que ya usa la cotización. La tramitación no se cubre.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-read">lectura</span>cubicar_estructura_metalica</h3><p>Calculador con fórmulas fijas: rejas, cierres, portones, estructuras livianas. Asigna categoría y merma por ítem.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-read">lectura</span>cotizar_listado_en_tiendas</h3><p>Resuelve precios por etapas: catálogo, caché, Gemini + Google en 4 sitios, y scraping solo si hace falta. Corre en lotes para respetar el límite de 60 s.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-read">lectura</span>ajustar_listado</h3><p>Aplica tus cambios al borrador (cambiar perfil, tienda o supuesto, quitar ítems) y recalcula.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-write">escritura</span>ingresar_listado_a_cotizacion</h3><p>Una sola acción pendiente con todas las líneas. Al confirmar, las agrega a la cotización o crea una nueva, con control de versión.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span>Borrador de listado</h3><p>Tabla nueva para guardar la ficha de requerimiento y el listado en edición: respuestas, supuestos, precios por tienda y estado. Permite retomar la conversación tras un corte.</p></div>
+    <div class="card"><h3>Se reutiliza</h3><p>Catálogo interno, memoria de precios del grafo, acciones pendientes con confirmación atómica, auditoría por paso y filtro de datos personales.</p></div>
+    <div class="card"><h3>Se corrige antes</h3><p>Pasar el id de la cotización abierta, mostrar detalle en la confirmación, validar al proponer, quitar el RUT del historial y agregar la categoría «ins».</p></div>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">8 · Alternativas</p><h2>Tres maneras de hacerlo</h2></div>
+  <div class="grid2">
+    <div class="opt"><h3>A · Gemini hace todo</h3><ul><li>Rápido de construir: un prompt largo, como en el chat de Gemini.</li><li>Las cantidades salen de memoria del modelo y cambian entre corridas.</li><li>Difícil de auditar y de corregir sin repetir todo.</li></ul></div>
+    <div class="opt rec"><span class="badge">Recomendada</span><h3>B · Gemini entiende, código calcula</h3><ul><li>Cantidades reproducibles y explicables, con la fórmula visible.</li><li>Gemini hace lo que mejor sabe: interpretar, preguntar y completar lo no previsto.</li><li>Cada tipo de obra nuevo es una calculadora más.</li></ul></div>
+    <div class="opt"><h3>C · Solo plantillas</h3><ul><li>Totalmente predecible y gratis de operar.</li><li>No entiende pedidos fuera de la plantilla.</li><li>Pierde la inteligencia que buscas.</li></ul></div>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">9 · Precios por etapas</p><h2>Cómo consulta Sodimac, Easy, Imperial y Punto Maestro</h2></div>
+  <div class="grid2">
+    <div class="opt"><h3>Etapa 1 · Gemini + Google</h3><ul><li>Una consulta por ítem pide las cuatro tiendas, limitada a esos dominios.</li><li>Hasta 3 ítems en paralelo y resultados en caché de 25 días.</li><li>Enlaces validados a http(s) y solo de esos sitios.</li><li>Sin dato confiable: el ítem queda «sin precio», nunca inventado.</li></ul></div>
+    <div class="opt"><h3>Etapa 2 · Scraping selectivo</h3><ul><li>Se agrega solo a la tienda donde Google falle (probablemente Sodimac).</li><li>Precio y SKU exactos, con costo por consulta.</li><li>Se activa por ítem, no para todo el listado.</li><li>Medimos cuántos precios fallan antes de decidir.</li></ul></div>
+  </div>
+  <div class="callout warn"><strong>Límite técnico.</strong> La función vive 60 s en Vercel y un precio web puede tardar 15 a 30 s. Por eso la cubicación se entrega en dos tiempos: primero cantidades y precios de catálogo o caché, enseguida los precios de tienda que van llegando al mismo listado.</div>
+</section>
+
+<section>
+  <div><p class="eyebrow">10 · Fases</p><h2>Orden de construcción</h2></div>
+  <div class="phases">
+    <div class="phase"><h3>Fase 0 · Base segura</h3><ul><li>Corregir los 4 errores altos de la auditoría</li><li>Categoría «ins» en herramientas</li><li>Confirmación con detalle completo</li></ul></div>
+    <div class="phase"><h3>Fase 1 · Cubicar</h3><ul><li>Entrevista de terreno, ficha viva y botón Cubicar</li><li>Calculador de reja y cierre metálico</li><li>Calculador eléctrico: chapa, alimentación, citófono</li><li>Dotación y días sugeridos para la mano de obra</li><li>Borrador de listado y ajustes por chat</li></ul></div>
+    <div class="phase"><h3>Fase 2 · Precios</h3><ul><li>Gemini + Google en 4 tiendas</li><li>Caché y entrega en dos tiempos</li><li>Ingreso en lote a la cotización</li></ul></div>
+    <div class="phase"><h3>Fase 3 · Afinar</h3><ul><li>Scraping donde haga falta</li><li>Más calculadoras (portón motorizado, cerco energizado, estructuras)</li><li>Evaluación con casos reales tuyos</li></ul></div>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">11 · Decisiones pendientes</p><h2>Lo que necesito de ti para cerrar el diseño</h2></div>
+  <ol class="q">
+    <li><strong>Precio en la cotización.</strong> El precio de tienda es costo. ¿Entra como precio unitario y la cotización aplica su margen por categoría, o el bot debe sumar un margen propio?</li>
+    <li><strong>Tienda por defecto.</strong> ¿Se recomienda la más barata de las cuatro, o hay una que prefieras por disponibilidad y despacho?</li>
+    <li><strong>Obras a cubrir primero.</strong> ¿Solo rejas y cierres, o también portones, estructuras con cercha y escaleras?</li>
+    <li><strong>Dónde ingresar.</strong> ¿Siempre a la cotización abierta, o también crear una nueva si no hay ninguna?</li>
+  </ol>
+  <div class="callout"><strong>Decididas.</strong> El bot cubica materiales eléctricos y también mano de obra: sugiere dotación y días que alimentan el motor de mano de obra y viáticos de la cotización. La tramitación no aplica y queda fuera. El botón Cubicar (y el «procede» escrito) se habilita al responder un mínimo de 3 preguntas.</div>
+</section>
+
+<footer>Este documento es diseño, no implementación: no se ha modificado código del proyecto. Si lo apruebas y respondes las decisiones, el siguiente paso es escribir la especificación formal y luego el plan de implementación.</footer>
+</main>

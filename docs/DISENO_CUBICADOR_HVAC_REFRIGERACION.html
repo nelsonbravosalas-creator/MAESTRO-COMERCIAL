@@ -1,0 +1,404 @@
+<title>Cubicador HVAC y Refrigeración</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: documento de diseño de una columna; diagramas y tablas con scroll propio. */
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#16212b; --muted:#566574; --line:#d5dde4;
+  --accent:#0b6e6e; --accent-soft:#dff1f0; --warn:#b45309; --warn-soft:#fdeed9; --new:#1d4ed8; --new-soft:#e2eafd;
+  --ok:#1b7a43; --ok-soft:#dcf1e4; --crit:#b3261e;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e151b; --surface:#16202a; --ink:#e4ebf0; --muted:#9aabb8; --line:#2b3a47;
+  --accent:#4fc3c0; --accent-soft:#12302f; --warn:#f5b25c; --warn-soft:#3a2a12; --new:#8fb0ff; --new-soft:#18274a;
+  --ok:#6fd49a; --ok-soft:#14301f; --crit:#ff8a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e151b; --surface:#16202a; --ink:#e4ebf0; --muted:#9aabb8; --line:#2b3a47;
+  --accent:#4fc3c0; --accent-soft:#12302f; --warn:#f5b25c; --warn-soft:#3a2a12; --new:#8fb0ff; --new-soft:#18274a;
+  --ok:#6fd49a; --ok-soft:#14301f; --crit:#ff8a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;
+  padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:42px}
+h1{font-size:clamp(26px,4vw,38px);line-height:1.15;margin:0 0 8px;font-weight:600;text-wrap:balance}
+h2{font-size:21px;margin:0 0 4px;font-weight:600;text-wrap:balance}
+h3{font-size:15px;margin:0 0 6px;font-weight:600}
+p{margin:0}
+.lead{color:var(--muted);max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);padding:1px 5px;border-radius:3px}
+section{display:flex;flex-direction:column;gap:14px;min-width:0}
+.sub{color:var(--muted);max-width:72ch}
+.callout{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);padding:14px 18px;border-radius:4px;max-width:82ch}
+.callout.warn{border-left-color:var(--warn)}
+.scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+figure{margin:0;display:flex;flex-direction:column;gap:8px}
+figcaption{color:var(--muted);font-size:13px;max-width:82ch}
+svg{display:block;min-width:960px;width:100%;height:auto;color:var(--ink)}
+svg text{font-family:var(--sans);font-size:12.5px;fill:currentColor}
+svg .t-b{font-weight:600;font-size:13px} svg .t-m{fill:var(--muted);font-size:11.5px}
+svg .box{fill:var(--surface);stroke:var(--line);stroke-width:1.4}
+svg .box-a{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.4}
+svg .box-n{fill:var(--new-soft);stroke:var(--new);stroke-width:1.6}
+svg .box-w{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.6}
+svg .ln{stroke:currentColor;stroke-width:1.4;fill:none}
+svg .ln-d{stroke:var(--muted);stroke-width:1.2;fill:none;stroke-dasharray:5 4}
+svg .ln-n{stroke:var(--new);stroke-width:1.6;fill:none}
+svg .ln-w{stroke:var(--warn);stroke-width:1.6;fill:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0}
+.card p{color:var(--muted);font-size:13.5px}
+.tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:3px;margin-right:6px;vertical-align:1px}
+.t-read{background:var(--accent-soft);color:var(--accent)} .t-write{background:var(--warn-soft);color:var(--warn)} .t-new{background:var(--new-soft);color:var(--new)}
+table{border-collapse:collapse;width:100%;min-width:860px;font-size:13.5px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--bg)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.pend{color:var(--muted);font-style:italic}
+tr.cat td{background:var(--accent-soft);font-weight:600;color:var(--accent)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.opt{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.opt.rec{border:2px solid var(--accent)}
+.opt ul{margin:0;padding-left:18px;color:var(--muted);font-size:14px}
+.badge{font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.chat{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;max-width:760px}
+.msg{padding:9px 13px;border-radius:8px;max-width:92%;font-size:14px}
+.msg.u{align-self:flex-end;background:var(--accent-soft)} .msg.b{align-self:flex-start;background:var(--bg);border:1px solid var(--line)}
+.msg small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.phase{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:4px;padding:14px 16px}
+.phase ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+ol.q{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;max-width:80ch}
+.lvl{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:3px;white-space:nowrap;margin:0 2px}
+.l-c{background:var(--warn-soft);color:var(--warn)} .l-i{background:var(--new-soft);color:var(--new)} .l-d{background:var(--accent-soft);color:var(--accent)}
+td.q{font-style:italic;color:var(--muted)}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+</style>
+
+
+<main>
+<header>
+  <p class="eyebrow">Diseño · Maestro Comercial · familia de cubicadores · propuesta para tu aprobación</p>
+  <h1>Cubicador HVAC y refrigeración</h1>
+  <p class="lead">Mantenimiento, reparación e instalación de sistemas de aire acondicionado y refrigeración. El bot hace 3 preguntas de contexto antes de habilitar el botón Cubicar. Después calcula tres magnitudes: kilos de refrigerante, metros cúbicos de nitrógeno y horas-hombre. Con esas horas sugiere dotación y días, y te presenta el listado para aprobarlo en el chat. Este documento deja escritos los criterios de reparación que el bot va a aplicar.</p>
+</header>
+
+<section>
+  <div class="callout"><strong>Mismo motor que el cubicador de reja y cierre.</strong> Gemini conversa, entiende el sistema y completa la ficha; el código calcula con fórmulas fijas; el servidor decide cuándo se habilita Cubicar; nada entra a la cotización sin tu aprobación. Lo que cambia es el dominio: calculadoras de refrigerante, nitrógeno y horas-hombre, y una entrevista con tres preguntas obligatorias de contexto.</div>
+  <div class="callout warn"><strong>Qué no está verificado.</strong> Las cifras de este documento son de referencia y los ejemplos son ilustrativos. Antes de implementar hay que validar contra el manual del fabricante, la normativa chilena vigente sobre manejo de refrigerantes y tus cotizaciones históricas. Donde el fabricante publica una tabla, esa tabla manda sobre el cálculo del bot.</div>
+</section>
+
+<section>
+  <div><p class="eyebrow">0 · Lo que entendí</p><h2>Pedido y supuestos</h2></div>
+  <div class="grid2">
+    <div class="opt"><h3>Lo que dijiste</h3>
+      <ul>
+        <li>Un cubicador para mantenimiento, reparación e instalación de aire acondicionado y refrigeración.</li>
+        <li>Debe cubicar cantidad de refrigerante, horas-hombre (HH) y nitrógeno.</li>
+        <li>Hace 3 preguntas para tomar contexto antes de habilitar el botón Cubicar.</li>
+        <li>Debe quedar documentado, porque los criterios se aplicarán a reparaciones de refrigeración.</li>
+        <li>Mismo flujo de trabajo y proceso que el cubicador anterior.</li>
+      </ul></div>
+    <div class="opt"><h3>Lo que supuse (corrígeme)</h3>
+      <ul>
+        <li>Las 3 preguntas son tres datos obligatorios, no tres mensajes cualquiera, y se eligen según el tipo de trabajo.</li>
+        <li>Las HH se convierten en dotación y días con el motor de mano de obra y viáticos que ya usa la cotización.</li>
+        <li>El gas y el nitrógeno van a la categoría de insumos, las HH a mano de obra, el cobre y la aislación a materiales.</li>
+        <li>Los precios del gas y del nitrógeno salen del catálogo interno o de proveedores HVAC; las tiendas retail solo sirven para consumibles.</li>
+        <li>Las plantillas HVAC actuales se mantienen como respaldo mientras el cubicador nuevo se calibra.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">1 · Punto de partida</p><h2>Qué hay hoy y qué falta</h2>
+  <p class="sub">Hoy existe <code>cubicar_especificacion_hvac</code> con 5 plantillas: fuga en VRF, flushing de precisión, instalación de equipos, eléctrico y mantenimiento preventivo. Sirven, pero las cantidades vienen fijas en la plantilla.</p></div>
+  <div class="cards">
+    <div class="card"><h3><span class="tag t-read">existe</span>Plantillas por actividad</h3><p>Cada plantilla trae técnico, ayudante, nitrógeno, refrigerante y repuestos con cantidades predefinidas, más los pasos del procedimiento y los márgenes por categoría.</p></div>
+    <div class="card"><h3><span class="tag t-read">existe</span>Logística por tramos</h3><p>La distancia a la faena ya se convierte en viáticos y colación con reglas vigentes.</p></div>
+    <div class="card"><h3><span class="tag t-write">falta</span>Cantidad según el sistema</h3><p>Hoy el nitrógeno y el gas no dependen de la carga de placa, del largo ni del diámetro de las líneas, ni del volumen a presurizar. Una fuga en 20 m de cañería se cubica igual que una en 80 m.</p></div>
+    <div class="card"><h3><span class="tag t-write">falta</span>Entrevista de contexto</h3><p>La herramienta recibe un texto y adivina la plantilla. No pregunta refrigerante, carga, largos ni estado del sistema.</p></div>
+    <div class="card"><h3><span class="tag t-write">falta</span>HH calculadas</h3><p>Las horas se fijan por plantilla. No se desglosan por tarea ni se convierten en dotación y días propios de cada obra.</p></div>
+    <div class="card"><h3><span class="tag t-write">falta</span>Criterios escritos</h3><p>Los criterios de reparación (recuperar, vacío, filtro, flushing) viven dentro de textos de plantilla. Aquí quedan explícitos y cada uno con su efecto en las cantidades.</p></div>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">2 · Flujo</p><h2>De la frase al listado aprobado</h2></div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1100 450" role="img" aria-label="Flujo del cubicador HVAC: requerimiento, tres preguntas de contexto que bloquean el botón Cubicar, ficha HVAC, tres calculadoras de refrigerante, nitrógeno y horas-hombre, precios, aprobación e ingreso por categoría.">
+      <defs>
+        <marker id="h1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="h2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--new)"/></marker>
+        <marker id="h3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"/></marker>
+      </defs>
+      <rect class="box" x="10" y="40" width="170" height="100" rx="4"/><text class="t-b" x="95" y="66" text-anchor="middle">1 · Requerimiento</text><text class="t-m" x="95" y="86" text-anchor="middle">texto libre del usuario</text><text class="t-m" x="95" y="102" text-anchor="middle">+ cotización abierta</text><text class="t-m" x="95" y="118" text-anchor="middle">+ memoria de equipos</text>
+      <rect class="box-w" x="225" y="40" width="210" height="100" rx="4"/><text class="t-b" x="330" y="66" text-anchor="middle">2 · Tres preguntas de contexto</text><text class="t-m" x="330" y="86" text-anchor="middle">equipo y trabajo · refrigerante</text><text class="t-m" x="330" y="102" text-anchor="middle">y líneas · estado del sistema</text><text class="t-b" x="330" y="124" text-anchor="middle" style="fill:var(--warn)">Cubicar bloqueado hasta 3 de 3</text>
+      <rect class="box-n" x="480" y="40" width="190" height="100" rx="4"/><text class="t-b" x="575" y="66" text-anchor="middle">3 · Ficha HVAC viva</text><text class="t-m" x="575" y="86" text-anchor="middle">Gemini completa y valida</text><text class="t-m" x="575" y="102" text-anchor="middle">supuestos críticos marcados</text><text class="t-m" x="575" y="118" text-anchor="middle">sigue hasta «procede»</text>
+      <rect class="box-n" x="715" y="40" width="190" height="100" rx="4"/><text class="t-b" x="810" y="66" text-anchor="middle">4 · Tipo de trabajo</text><text class="t-m" x="810" y="86" text-anchor="middle">instalación · mantenimiento</text><text class="t-m" x="810" y="102" text-anchor="middle">reparación (con criterios)</text><text class="t-m" x="810" y="118" text-anchor="middle">elige las fórmulas</text>
+      <rect class="box-a" x="950" y="40" width="140" height="100" rx="4"/><text class="t-b" x="1020" y="66" text-anchor="middle">5 · Propuesta</text><text class="t-m" x="1020" y="86" text-anchor="middle">tabla por categoría</text><text class="t-m" x="1020" y="102" text-anchor="middle">supuestos a la vista</text>
+      <line class="ln" x1="180" y1="90" x2="225" y2="90" marker-end="url(#h1)"/><line class="ln" x1="435" y1="90" x2="480" y2="90" marker-end="url(#h1)"/><line class="ln" x1="670" y1="90" x2="715" y2="90" marker-end="url(#h1)"/><line class="ln" x1="905" y1="90" x2="950" y2="90" marker-end="url(#h1)"/>
+      <polyline class="ln-d" points="575,40 575,16 330,16 330,40" marker-end="url(#h1)"/><text class="t-m" x="452" y="11" text-anchor="middle">pregunta más hasta «procede» o Cubicar</text>
+
+      <rect class="box-n" x="225" y="195" width="250" height="110" rx="4"/><text class="t-b" x="350" y="220" text-anchor="middle">Calculadora de refrigerante</text><text class="t-m" x="350" y="242" text-anchor="middle">carga de placa + adicional por línea</text><text class="t-m" x="350" y="258" text-anchor="middle">− recuperado reutilizable + merma</text><text class="t-m" x="350" y="274" text-anchor="middle">por peso · cilindros enteros</text><text class="t-m" x="350" y="290" text-anchor="middle">resultado en kg</text>
+      <rect class="box-n" x="500" y="195" width="250" height="110" rx="4"/><text class="t-b" x="625" y="220" text-anchor="middle">Calculadora de nitrógeno</text><text class="t-m" x="625" y="242" text-anchor="middle">volumen × presión de prueba</text><text class="t-m" x="625" y="258" text-anchor="middle">+ purga de soldadura + holgura</text><text class="t-m" x="625" y="274" text-anchor="middle">balones enteros de 6 m³</text><text class="t-m" x="625" y="290" text-anchor="middle">resultado en m³</text>
+      <rect class="box-n" x="775" y="195" width="315" height="110" rx="4"/><text class="t-b" x="932" y="220" text-anchor="middle">Calculadora de horas-hombre</text><text class="t-m" x="932" y="242" text-anchor="middle">tareas × cantidad × rendimiento</text><text class="t-m" x="932" y="258" text-anchor="middle">→ HH → dotación y días sugeridos</text><text class="t-m" x="932" y="274" text-anchor="middle">→ motor de mano de obra y viáticos</text><text class="t-m" x="932" y="290" text-anchor="middle">resultado en HH</text>
+      <polyline class="ln-n" points="810,140 810,165 350,165 350,195" marker-end="url(#h2)"/><line class="ln-n" x1="625" y1="165" x2="625" y2="195" marker-end="url(#h2)"/><line class="ln-n" x1="810" y1="165" x2="932" y2="165"/><line class="ln-n" x1="932" y1="165" x2="932" y2="195" marker-end="url(#h2)"/>
+
+      <rect class="box" x="225" y="355" width="400" height="80" rx="4"/><text class="t-b" x="425" y="380" text-anchor="middle">Precios con fuente</text><text class="t-m" x="425" y="400" text-anchor="middle">① catálogo interno · ② caché de 25 días · ③ proveedor HVAC con enlace</text><text class="t-m" x="425" y="418" text-anchor="middle">consumibles en tiendas retail · sin fuente = «sin precio»</text>
+      <rect class="box-w" x="680" y="355" width="410" height="80" rx="4"/><text class="t-b" x="885" y="378" text-anchor="middle">6 · Aprobar en el chat · 7 · Ingreso en lote</text><text class="t-m" x="885" y="398" text-anchor="middle">gas y nitrógeno → Insumos · HH → Mano de obra</text><text class="t-m" x="885" y="416" text-anchor="middle">cobre y aislación → Materiales · viáticos → Logística</text>
+      <polyline class="ln" points="350,305 350,330 625,330 625,305"/><line class="ln" x1="932" y1="305" x2="932" y2="330"/><line class="ln" x1="625" y1="330" x2="932" y2="330"/>
+      <line class="ln" x1="425" y1="330" x2="425" y2="355" marker-end="url(#h1)"/><line class="ln-w" x1="885" y1="330" x2="885" y2="355" marker-end="url(#h3)"/>
+      <line class="ln-w" x1="625" y1="395" x2="680" y2="395" marker-end="url(#h3)"/>
+    </svg>
+    </div>
+    <figcaption>El bloqueo está en el paso 2: hasta que las tres preguntas de contexto tengan respuesta, el servidor no deja entrar a las calculadoras. Las tres magnitudes se calculan en paralelo desde la misma ficha.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div><p class="eyebrow">3 · Tres preguntas de contexto</p><h2>Lo mínimo para habilitar Cubicar</h2>
+  <p class="sub">Son tres datos obligatorios que se piden en el primer mensaje del bot, ordenados por cuánto mueven el costo. Cada uno se considera respondido con un dato o con «no sé», pero un «no sé» deja un supuesto crítico marcado en la ficha. El «procede» escrito sigue el mismo mínimo que el botón.</p></div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>#</th><th>Pregunta</th><th>Qué fija en la ficha</th><th>Magnitud que mueve</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td><strong>¿Qué trabajo es y sobre qué equipo?</strong> Instalación, mantenimiento o reparación; tipo de sistema (split, multi-split, VRF, precisión, cámara, central); marca, modelo y capacidad.</td><td>Tipo de trabajo, familia de plantilla, cantidad de unidades, capacidad.</td><td>Todas. Elige las fórmulas y la lista de tareas.</td></tr>
+      <tr><td class="num">2</td><td><strong>¿Qué refrigerante usa, cuál es la carga de placa y cuántos metros de línea hay de qué diámetro?</strong> Si no hay placa legible, la foto de la placa.</td><td>Refrigerante, carga de placa, largo y diámetro de líquido y de succión, desnivel.</td><td>Refrigerante y nitrógeno (volumen a presurizar).</td></tr>
+      <tr><td class="num">3</td><td><strong>¿En qué estado está el sistema o el sitio?</strong> En reparación: síntoma, fuga conocida, presión residual, aceite oscuro o compresor quemado. En instalación: acceso, altura, ducto o canalización. En mantenimiento: cantidad de equipos y frecuencia.</td><td>Condición del sistema, factores de dificultad, riesgo de contaminación.</td><td>Horas-hombre, flushing y cantidad de nitrógeno.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout"><strong>Después de las tres, el bot sigue preguntando si hace falta.</strong> Cuando están las tres respuestas aparece el botón Cubicar, pero el bot puede seguir con preguntas de segundo nivel (acceso, altura, tableros, ventana de trabajo, certificaciones del cliente) hasta que escribas «procede» o pulses el botón. Si ves que el costo depende de algo que nadie respondió, lo marca como supuesto y no lo calla.</div>
+</section>
+
+<section>
+  <div><p class="eyebrow">4 · Cómo calcula</p><h2>Refrigerante, nitrógeno y horas-hombre</h2>
+  <p class="sub">Cada magnitud tiene una fórmula por tipo de trabajo. Los parámetros (densidades, rendimientos, presentación de cilindros) viven en tablas editables, no dentro del código.</p></div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Magnitud</th><th>Instalación</th><th>Mantenimiento</th><th>Reparación</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Refrigerante (kg)</strong></td>
+        <td>Adicional por línea: (largo de líquido − largo incluido en placa) × g/m según diámetro, más adicional por unidad interior si el fabricante lo pide. Merma de mangueras.</td>
+        <td>Normalmente 0. Si el diagnóstico encuentra una fuga, el bot lo dice y propone pasar a reparación; no repone gas a ciegas.</td>
+        <td>Carga total del sistema (placa + adicional de línea) − kilos recuperados que se puedan reutilizar + merma. Por peso, nunca por presión.</td></tr>
+      <tr><td><strong>Nitrógeno (m³)</strong></td>
+        <td>Presurización de prueba de las líneas nuevas (volumen × presión) + purga durante soldadura de cada unión + holgura.</td>
+        <td>Solo contingencia: purga si hay una soldadura menor. Barrido de serpentines no se calcula con nitrógeno.</td>
+        <td>Presurización escalonada hasta la presión de prueba + búsqueda de fuga + purga de soldadura + holgura. En flushing por quemado de compresor se suman barridos.</td></tr>
+      <tr><td><strong>Horas-hombre (HH)</strong></td>
+        <td>Montaje de unidad interior y exterior, tendido y soldadura de línea, aislación, drenaje, vacío, conexión eléctrica menor, puesta en marcha.</td>
+        <td>Tareas de la rutina por tipo de equipo × cantidad de equipos × visitas del contrato.</td>
+        <td>Diagnóstico, recuperación, presurización y detección, soldadura, filtro secador, vacío, prueba de estanqueidad, recarga por peso, puesta en marcha, informe.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Parámetros de las líneas (referencia geométrica)</h3>
+  <p class="sub">Para el volumen de nitrógeno se necesita el volumen interno de cada diámetro de cobre. Para el gas de línea de líquido, ese volumen por la densidad del líquido da un mínimo. Está calculado con pared de 0,8 mm; en diámetros mayores la pared suele ser más gruesa, así que revisa el valor real. La tabla del fabricante, cuando existe, reemplaza a esta.</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Diámetro exterior</th><th>Diámetro interior</th><th>Volumen por metro</th><th>Gas en línea de líquido, R-410A</th></tr></thead>
+    <tbody>
+      <tr><td>1/4 in (6,35 mm)</td><td class="num">4,75 mm</td><td class="num">0,018 L/m</td><td class="num">≈ 19 g/m</td></tr>
+      <tr><td>3/8 in (9,52 mm)</td><td class="num">7,92 mm</td><td class="num">0,049 L/m</td><td class="num">≈ 52 g/m</td></tr>
+      <tr><td>1/2 in (12,7 mm)</td><td class="num">11,1 mm</td><td class="num">0,097 L/m</td><td class="num">≈ 103 g/m</td></tr>
+      <tr><td>5/8 in (15,88 mm)</td><td class="num">14,28 mm</td><td class="num">0,160 L/m</td><td class="num">≈ 170 g/m</td></tr>
+      <tr><td>3/4 in (19,05 mm)</td><td class="num">17,45 mm</td><td class="num">0,239 L/m</td><td class="pend">solo línea de gas</td></tr>
+      <tr><td>7/8 in (22,2 mm)</td><td class="num">20,6 mm</td><td class="num">0,333 L/m</td><td class="pend">solo línea de gas</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub">Densidad del líquido usada: ≈ 1.060 kg/m³ para R-410A a 25 °C. Cada refrigerante lleva su propia densidad en la tabla de parámetros.</p>
+
+  <h3>Fórmulas</h3>
+  <div class="cards">
+    <div class="card"><h3>Refrigerante</h3><p><code>kg = (placa + adicional_línea − reutilizable) × (1 + merma)</code>. El adicional es largo × g/m, o el valor del fabricante. El resultado se redondea a cilindros enteros de la presentación del proveedor.</p></div>
+    <div class="card"><h3>Nitrógeno</h3><p><code>m³ = (V × (P_abs − 1) + purga) × holgura</code>, con V en litros y P_abs en bar absolutos; la purga es caudal × minutos de soldadura. Se pide en balones enteros, con arriendo y retorno del envase.</p></div>
+    <div class="card"><h3>Horas-hombre</h3><p><code>HH = Σ (tarea × cantidad × rendimiento × factor de dificultad)</code>. Después <code>días = HH / (personas × 8 h × eficiencia)</code> alimenta el motor de mano de obra y viáticos.</p></div>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">5 · Criterios de reparación</p><h2>Reglas que el bot aplica, documentadas</h2>
+  <p class="sub">Esta es la parte pensada para tus reparaciones de refrigeración. Cada criterio dice qué hace el bot y cómo cambia la cubicación, de modo que se puedan revisar y ajustar con tu experiencia.</p></div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Situación</th><th>Criterio</th><th>Efecto en la cubicación</th></tr></thead>
+    <tbody>
+      <tr><td>Siempre, antes de abrir el circuito</td><td>Se recupera el refrigerante; no se ventea. Se pesa lo recuperado.</td><td>HH de recuperación y cilindro de recuperación. El gas recuperado no se reutiliza salvo que lo marques.</td></tr>
+      <tr><td>Búsqueda de fuga</td><td>Con nitrógeno seco y detector, nunca con refrigerante. La presión de prueba no supera la de diseño de la placa.</td><td>Nitrógeno de presurización escalonada. Si la placa limita la presión, la fórmula usa ese tope.</td></tr>
+      <tr><td>Fuga localizada en una soldadura o tramo accesible</td><td>Se repara con soldadura de plata bajo atmósfera de nitrógeno y se cambia el filtro secador.</td><td>Purga de nitrógeno, soldadura, filtro secador como repuesto.</td></tr>
+      <tr><td>Fuga en serpentín, corrosión o varios puntos</td><td>El bot propone reemplazar el componente o el tramo y lo advierte; no recomienda parchar.</td><td>El ítem pasa a repuesto con precio pendiente, y las HH suben.</td></tr>
+      <tr><td>Aceite oscuro, olor ácido o compresor quemado</td><td>Flushing del circuito, cambio de aceite y filtros de limpieza. Se asume refrigerante nuevo.</td><td>Más nitrógeno por barridos, más HH, aceite y filtros, carga completa sin reutilización.</td></tr>
+      <tr><td>Evacuación</td><td>Vacío profundo hasta 500 micrones y mantenimiento sin subir. Con bomba y vacuómetro.</td><td>HH de vacío. La bomba es equipo, no material.</td></tr>
+      <tr><td>Prueba de estanqueidad</td><td>Se mantiene la presión el tiempo que fije la plantilla (hoy, 24 horas como mínimo).</td><td>Visita de control con HH. Un fallo de la prueba es un riesgo anotado, no está cubicado.</td></tr>
+      <tr><td>Recarga</td><td>Por peso. Las mezclas zeotrópicas (por ejemplo R-407C y R-404A) se cargan en fase líquida y no se completan con recargas parciales sin analizar.</td><td>Kilos por peso, cilindro entero, merma de mangueras.</td></tr>
+      <tr><td>Refrigerante inflamable (A2L, como R-32)</td><td>Se verifica la carga máxima permitida según el tamaño del local y se eliminan fuentes de ignición. El bot pregunta y advierte.</td><td>Puede agregar herramientas, detector y HH; si no cumple, el bot no cubica y lo explica.</td></tr>
+      <tr><td>Cambio de refrigerante (retrofit)</td><td>No es automático. Requiere compatibilidad de aceite y componentes.</td><td>Queda como supuesto crítico y pregunta explícita antes de cubicar.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">6 · Condiciones de borde</p><h2>Lo que un técnico de terreno preguntaría</h2>
+  <p class="sub">Son los casos que cambian cantidades y que no estaban en las plantillas actuales. El bot los pregunta cuando la ficha lo hace relevante.</p></div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Condición</th><th>Qué hace el bot</th><th>Efecto</th></tr></thead>
+    <tbody>
+      <tr><td>Largo de línea mayor al incluido en placa, o diámetros distintos por tramo</td><td>Calcula por tramo y pregunta cuánto trae precargado el equipo.</td><td>Refrigerante adicional por tramo. Si se desconoce, queda supuesto crítico.</td></tr>
+      <tr><td>Desnivel entre unidad interior y exterior</td><td>Pregunta cuál queda arriba y cuántos metros.</td><td>Trampas de aceite y aceite adicional si el fabricante lo exige; advierte si se pasa del máximo.</td></tr>
+      <tr><td>Equipo sin placa legible o sin datos</td><td>Pide foto de la placa. Si no hay, estima por capacidad y lo marca.</td><td>Refrigerante con incertidumbre alta; no se ingresa sin tu visto bueno.</td></tr>
+      <tr><td>VRF o multi-split con varias unidades interiores</td><td>Pregunta cuántas y qué capacidad.</td><td>Adicional por unidad interior y nitrógeno por circuito.</td></tr>
+      <tr><td>Refrigerante descontinuado o escaso (por ejemplo R-22)</td><td>Advierte disponibilidad y propone evaluar retrofit.</td><td>Precio sin fuente aparece como «sin precio»; no se inventa.</td></tr>
+      <tr><td>Trabajo en altura, azotea o espacio confinado</td><td>Pregunta acceso y si hay andamio o grúa.</td><td>Factor de dificultad en HH. El equipo de elevación se ofrece como línea de equipos o subcontrato.</td></tr>
+      <tr><td>Tamaño de cilindros y arriendo</td><td>Cotiza envases enteros de la presentación disponible.</td><td>Kilos y metros cúbicos se redondean hacia arriba; se muestra el sobrante.</td></tr>
+      <tr><td>El vacío no baja de 500 micrones</td><td>Lo anota como riesgo de humedad o fuga residual.</td><td>Contingencia de HH marcada, fuera del total base.</td></tr>
+      <tr><td>La prueba de estanqueidad falla</td><td>Lo anota como riesgo.</td><td>No cubicado; aparece en las exclusiones.</td></tr>
+      <tr><td>Sitio crítico o en operación (hospital, sala técnica, cámara con producto)</td><td>Pregunta ventana de trabajo y si hay producto que trasladar.</td><td>Turnos o recargo nocturno en HH; traslado de producto como subcontrato.</td></tr>
+      <tr><td>Aceite POE o PVE</td><td>Recuerda que absorbe humedad y no se deja el circuito abierto.</td><td>Aceite a reponer según el criterio del fabricante.</td></tr>
+      <tr><td>Faena lejana</td><td>Usa la distancia declarada.</td><td>Viáticos y colación con las reglas de logística vigentes.</td></tr>
+      <tr><td>Requisitos de acreditación o permisos del cliente</td><td>Avisa que existen; no los cubica.</td><td>Queda en exclusiones y en la lista de pendientes.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">7 · Ejemplo de cálculo</p><h2>Reparación de fuga en un VRF (cifras ilustrativas)</h2>
+  <p class="sub">Entradas supuestas: VRF con R-410A, carga de placa 8,5 kg, línea de líquido de 3/8 in por 40 m, línea de gas de 3/4 in por 40 m, volumen de equipos 13,5 L, fuga en una soldadura, sin quemado de compresor. Los rendimientos de las HH son valores de ejemplo hasta calibrarlos con tus cotizaciones. Ningún precio está consultado.</p></div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Ítem</th><th>Cómo se calcula</th><th>Cantidad</th><th>Precio unitario</th></tr></thead>
+    <tbody>
+      <tr class="cat"><td colspan="4">Insumos industriales y gases</td></tr>
+      <tr><td>Refrigerante R-410A</td><td>Placa 8,5 kg + adicional de 40 m × 52 g/m (2,08 kg) = 10,58 kg; más 5 % de merma = 11,1 kg. Sin gas reutilizable (supuesto).</td><td class="num">11,1 kg → 1 cilindro de 11,3 kg</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Nitrógeno seco</td><td>Volumen: líquido 1,96 L + gas 9,56 L + equipos 13,5 L = 25 L. A 550 psig (38,9 bar abs): 25 × 37,9 = 947 L. Purga de soldadura: 3 L/min × 40 min = 120 L. Suma 1.067 L × 1,3 de holgura = 1.387 L.</td><td class="num">1,4 m³ → 1 balón de 6 m³</td><td class="pend">pendiente de consulta</td></tr>
+      <tr class="cat"><td colspan="4">Materiales y repuestos</td></tr>
+      <tr><td>Filtro secador y soldadura de plata</td><td>1 filtro por circuito reparado; soldadura según uniones (2 de cierre más 2 de reserva).</td><td class="num">1 + 4 uniones</td><td class="pend">pendiente de consulta</td></tr>
+      <tr class="cat"><td colspan="4">Mano de obra (horas-hombre)</td></tr>
+      <tr><td>Diagnóstico y búsqueda de fuga</td><td>Tarea de plantilla</td><td class="num">6 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Recuperación de refrigerante</td><td>Tarea de plantilla</td><td class="num">3 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Presurización escalonada y detección</td><td>150 / 300 / 550 psi</td><td class="num">8 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Soldadura de reparación y filtro secador</td><td>Tarea de plantilla</td><td class="num">8 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Vacío profundo a 500 micrones</td><td>Tarea de plantilla</td><td class="num">4 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Visitas de control de la prueba de estanqueidad</td><td>Dos visitas a 24 h</td><td class="num">2 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Recarga por peso y puesta en marcha</td><td>Con protocolo de parámetros</td><td class="num">4 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Informe y cierre</td><td>Registro de parámetros</td><td class="num">2 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr class="cat"><td colspan="4">Resultado: 37 HH · dotación sugerida 2 personas · 3 días</td></tr>
+      <tr><td>Dotación y días</td><td>37 / (2 personas × 8 h × 0,85 de eficiencia) = 2,7 días → 3 días</td><td class="num">sugerida</td><td class="pend">la define el motor de mano de obra</td></tr>
+      <tr><td>Viáticos y colación</td><td>Distancia a la faena y días</td><td class="num">calculado</td><td class="pend">reglas de logística vigentes</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">7 bis · Caso tuyo</p><h2>Puesta a punto de cámara con R-404A (cifras ilustrativas)</h2>
+  <p class="sub">Datos que entregaste: cámara de mantención con R-404A, 20 metros de distancia, evaporador HEA 3003 35 AD de Hispania con 7.190 W y 3 ventiladores axiales EBM de 186 W, condensador HUC-O-3502Z420MT con compresor TFH4540Z, térmico a −8 °C. Tareas: cambio de filtro deshidratador de 3/8 con soldadura, vacío, carga de refrigerante (calcular los kg) y ajuste de la válvula de expansión. Duración de 2 jornadas con 1 técnico HVAC y 1 ayudante.</p></div>
+
+  <h3>Cómo lo recibe el bot</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Dato</th><th>Qué hace con él</th><th>Estado</th></tr></thead>
+    <tbody>
+      <tr><td>Reparación, cámara, equipos con modelo</td><td>Fija el tipo de trabajo y la familia de plantilla. Pregunta 1 respondida.</td><td class="num">respondida</td></tr>
+      <tr><td>R-404A, 20 m, filtro de 3/8</td><td>Fija el refrigerante y el diámetro de la línea de líquido. Faltan carga de placa y diámetro de la línea de succión. Pregunta 2 a medias.</td><td class="pend">incompleta</td></tr>
+      <tr><td>Estado del sistema</td><td>No dice síntoma, presiones ni si hay fuga. Pregunta 3 sin responder.</td><td class="pend">sin responder</td></tr>
+      <tr><td>7.190 W y 3 × 186 W</td><td>Suma 558 W de calor de ventiladores a la carga térmica y sirve para revisar que la válvula y el condensador sean coherentes con el evaporador. No cambia la cantidad de gas.</td><td class="num">usado como control</td></tr>
+      <tr><td>«Distancia 20 metros»</td><td>Pregunta si son 20 m de línea entre condensador y evaporador o 20 km a la faena. Hoy lo interpreta como largo de línea, y marca el supuesto.</td><td class="pend">aclarar</td></tr>
+      <tr><td>«Térmico a −8 °C»</td><td>Pregunta si es la temperatura de la cámara o la de evaporación, porque cambia el recalentamiento objetivo de la válvula.</td><td class="pend">aclarar</td></tr>
+      <tr><td>2 jornadas, 1 técnico y 1 ayudante</td><td>La duración que fijas tú manda. El bot calcula sus propias HH y te muestra la diferencia.</td><td class="num">fijada por ti</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub">Con este mensaje Cubicar sigue bloqueado: hay 1 de 3 respuestas completas. Si contestas «no tengo la placa, supón lo normal; funciona sin síntomas», las preguntas 2 y 3 cuentan, quedan como supuestos críticos y el botón se habilita.</p>
+
+  <h3>Cálculo</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Ítem</th><th>Cómo se calcula</th><th>Cantidad</th><th>Precio unitario</th></tr></thead>
+    <tbody>
+      <tr class="cat"><td colspan="4">Insumos industriales y gases</td></tr>
+      <tr><td>Refrigerante R-404A, recuperando todo y recargando (método decidido)</td><td>Línea de líquido: 20 m × 0,049 L/m = 0,99 L × 1,045 kg/L ≈ 1,03 kg. Gas en la succión (7/8 in supuesto, 6,7 L a baja presión) ≈ 0,13 kg. Carga de placa del condensador: <strong>dato faltante</strong>. Fórmula: (placa + 1,03 + 0,13) × 1,05 de merma. Placa supuesta por ti: 4,0 kg (supuesto crítico, se lee en terreno). Resultado: 5,4 kg. Cada kilo más o menos de placa mueve el total en 1,05 kg, y el cilindro de 10,9 kg alcanza hasta una placa cercana a 9 kg.</td><td class="num">≈ 5,4 kg → 1 cilindro</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Alternativa descartada: bombeo al recibidor (solo se abre el tramo del filtro)</td><td>Tramo abierto: filtro y cerca de 1 m de línea, unos 0,2 kg; merma de mangueras 0,3 kg; holgura para ajustar el subenfriamiento 0,5 kg. Es un parámetro por calibrar.</td><td class="num">≈ 1,0 kg → 1 cilindro</td><td class="pend">pendiente de consulta</td></tr>
+      <tr><td>Nitrógeno seco</td><td>Prueba de las uniones nuevas a 10 bar (supuesto) sobre 1 L del tramo: 1 × 9 = 9 L. Purga de soldadura: 2 uniones × 15 min × 3 L/min = 90 L. Suma 99 L × 1,3 de holgura = 129 L. Si exiges prueba de todo el circuito, se suma el volumen total, que hoy falta.</td><td class="num">0,13 m³ → 1 balón de 6 m³</td><td class="pend">pendiente de consulta</td></tr>
+      <tr class="cat"><td colspan="4">Materiales y repuestos</td></tr>
+      <tr><td>Filtro deshidratador de 3/8 soldable</td><td>1 por circuito. Soldadura de plata para 2 uniones más 2 de reserva.</td><td class="num">1 + 4 uniones</td><td class="pend">pendiente de consulta</td></tr>
+      <tr class="cat"><td colspan="4">Mano de obra (horas-hombre)</td></tr>
+      <tr><td>Revisión inicial y mediciones</td><td>Presiones, recalentamiento, subenfriamiento, amperajes</td><td class="num">3 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Bombeo o recuperación de refrigerante</td><td>Según el método elegido</td><td class="num">2 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Cambio del filtro deshidratador</td><td>Corte, soldadura bajo nitrógeno y limpieza</td><td class="num">3 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Prueba de estanqueidad de las uniones</td><td>Con nitrógeno y detector</td><td class="num">1,5 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Vacío a 500 micrones</td><td>Con bomba y vacuómetro, incluye espera</td><td class="num">3 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Carga por peso</td><td>En fase líquida, con balanza</td><td class="num">2 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Ajuste de la válvula de expansión</td><td>Recalentamiento objetivo según el fabricante de la válvula (referencia típica en baja temperatura: 6 a 8 K), con espera de estabilización</td><td class="num">4 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr><td>Puesta en marcha, verificación de −8 °C e informe</td><td>Registro de parámetros</td><td class="num">3 HH</td><td class="pend">según tarifa de mano de obra</td></tr>
+      <tr class="cat"><td colspan="4">Resultado de horas y dotación</td></tr>
+      <tr><td>HH calculadas por el bot</td><td>3 + 2 + 3 + 1,5 + 3 + 2 + 4 + 3 = 21,5 HH. Con 2 personas, 8 h y 0,85 de eficiencia: 21,5 / 13,6 = 1,6 días → 2 días.</td><td class="num">21,5 HH</td><td class="pend">coincide con tu estimación</td></tr>
+      <tr><td>HH que se cotizan</td><td>Mandan tus 2 jornadas: 2 personas × 2 jornadas × 8 h. Las 10,5 HH de diferencia quedan como holgura de estabilización y se muestran.</td><td class="num">32 HH</td><td class="pend">la define el motor de mano de obra</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout warn"><strong>Método decidido: recuperación total.</strong> El gas a cotizar es la carga completa, así que falta la placa del condensador (y el volumen del evaporador si la placa no lo incluye). Dijiste que no tienes la placa, así que se cotiza con 4,0 kg supuestos, marcados como supuesto crítico. El técnico la lee al llegar y el consumo real se ajusta contra lo cotizado; el valor de 4,0 kg no sale de la ficha del equipo. Además, que el R-404A es un refrigerante de alto potencial de calentamiento y su disponibilidad y precio pueden ser un problema; si no hay fuente de precio, el ítem queda «sin precio» y se advierte la opción de retrofit.</div>
+  <div class="callout"><strong>Qué no verifiqué.</strong> No consulté fichas del evaporador, del condensador ni del compresor. La compatibilidad de capacidad entre el evaporador de 7,19 kW y el condensador queda pendiente de la curva del fabricante, y la densidad del R-404A, la presentación del cilindro y los tiempos de cada tarea son valores de referencia.</div>
+</section>
+
+<section>
+  <div><p class="eyebrow">8 · Cómo se vería</p><h2>Conversación de ejemplo</h2></div>
+  <div class="chat" role="img" aria-label="Conversación de ejemplo del cubicador HVAC con tres preguntas de contexto">
+    <div class="msg u">Hay una fuga en un VRF, hay que repararla</div>
+    <div class="msg b">Antes de calcular necesito tres datos. 1) ¿Dónde es la fuga si se sabe, y qué equipo es: marca, modelo y capacidad? 2) ¿Qué refrigerante usa, cuál es la carga de placa y cuántos metros de línea hay de líquido y de gas, con sus diámetros? 3) ¿Cómo está el sistema: queda presión, el aceite está oscuro, hay compresor quemado?<small>Cubicar bloqueado: 0 de 3 respuestas de contexto</small></div>
+    <div class="msg u">R-410A, placa 8,5 kg. Líquido 3/8 de 40 m y gas 3/4 de 40 m. La fuga está en una soldadura de la línea, queda presión y el aceite está limpio</div>
+    <div class="msg b">Con eso tengo las tres. Dos cosas más que cambian el costo: ¿el equipo está en altura o es de fácil acceso, y hay ventana de trabajo o puedo detener el sistema el día que sea? Si no te importa, también dime si quieres reutilizar el gas recuperado.<small>Cubicar habilitado · 3 de 3 respuestas · ficha: 9 de 14 datos · 1 supuesto crítico</small></div>
+    <div class="msg u">Fácil acceso, sin ventana, no reutilices el gas. Procede</div>
+    <div class="msg b">Cubico con 2 supuestos marcados: volumen de equipos de 13,5 L (dato de fabricante pendiente) y largo de placa que cubre 0 m de línea. Resultado: 11,1 kg de R-410A (1 cilindro), 1,4 m³ de nitrógeno (1 balón), 37 HH, 2 personas por 3 días.<small>tabla por categoría con supuestos resaltados; botones Aprobar / Cancelar</small></div>
+    <p class="sub">Conversación ilustrativa: las cifras son de ejemplo.</p>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">9 · Piezas nuevas</p><h2>Qué hay que construir</h2>
+  <p class="sub">Parte de la base común del cubicador de reja y cierre: la entrevista, la ficha viva, la compuerta del servidor, el resolutor de precios y el ingreso en lote. Lo propio de HVAC se enchufa como perfil.</p></div>
+  <div class="cards">
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-read">lectura</span>perfil HVAC de entrevista</h3><p>Reutiliza <code>entrevistar_obra</code> con tres preguntas obligatorias y la lista de preguntas de segundo nivel por tipo de trabajo.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-read">lectura</span>cubicar_refrigerante</h3><p>Carga de placa, adicional por línea, reutilizable, merma y redondeo a cilindros. Devuelve kilos, cilindros y sobrante.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-read">lectura</span>cubicar_nitrogeno</h3><p>Volumen del circuito, presión de prueba con tope de placa, purga de soldadura y holgura. Devuelve m³ y balones.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span><span class="tag t-read">lectura</span>cubicar_hh_hvac</h3><p>Catálogo de tareas por tipo de trabajo y de equipo con rendimientos editables. Devuelve HH y entrega al motor de dotación.</p></div>
+    <div class="card"><h3><span class="tag t-new">reutiliza</span><span class="tag t-read">lectura</span>sugerir_dotacion</h3><p>Convierte HH en personas y días y alimenta el motor de mano de obra y viáticos que ya existe.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span>Tablas de parámetros</h3><p>Refrigerantes (densidad, tipo, presentación del cilindro), diámetros de cobre, rendimientos de tareas y factores de dificultad. Editables sin tocar código.</p></div>
+    <div class="card"><h3><span class="tag t-new">cambia</span>Plantillas actuales</h3><p>Se mantienen como respaldo y como fuente de la lista de tareas. Las cantidades fijas pasan a ser el valor por defecto de la calculadora.</p></div>
+    <div class="card"><h3><span class="tag t-new">nuevo</span>Aprendizaje real contra cubicado</h3><p>Al cerrar la obra se compara lo cubicado con lo gastado (kilos, balones, HH) para calibrar rendimientos, usando la infraestructura de trazas que hoy está sin conectar.</p></div>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">10 · Fases</p><h2>Cómo entregarlo por etapas</h2></div>
+  <div class="phases">
+    <div class="phase"><h3>Fase 0 · Base compartida</h3><ul><li>Pasar la cotización abierta al agente</li><li>Confirmación con el detalle completo</li><li>Ingreso en lote y categoría de insumos en la herramienta</li><li>Compuerta de Cubicar en el servidor</li></ul></div>
+    <div class="phase"><h3>Fase 1 · Reparación de fuga e instalación</h3><ul><li>Perfil HVAC con las 3 preguntas</li><li>Calculadoras de refrigerante, nitrógeno y HH</li><li>Tablas de parámetros iniciales</li><li>Criterios de reparación aplicados</li></ul></div>
+    <div class="phase"><h3>Fase 2 · Mantenimiento y comercial</h3><ul><li>Rutinas por tipo de equipo y contrato</li><li>Cámaras, vitrinas y centrales de refrigeración</li><li>Real contra cubicado</li></ul></div>
+    <div class="phase"><h3>Fase 3 · Casos avanzados</h3><ul><li>Retrofit de refrigerante</li><li>Refrigerantes inflamables con verificación de carga máxima</li><li>Chillers y equipos de precisión</li></ul></div>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">11 · Decisiones pendientes</p><h2>Cuatro cosas que necesito de ti</h2></div>
+  <ol class="q">
+    <li><strong>Origen de los rendimientos de HH.</strong> Propongo partir de las horas de las plantillas actuales y calibrar con tus cotizaciones ganadas y lo real de cada obra. La alternativa es que me entregues tu propia tabla de tiempos por tarea.</li>
+    <li><strong>Gas recuperado.</strong> Propongo cotizar siempre sin reutilización, que es lo conservador, y reutilizar solo cuando lo marques. ¿Te sirve ese criterio?</li>
+    <li><strong>Prueba de estanqueidad de 24 horas.</strong> Propongo incluirla como dos visitas de control con sus HH. La alternativa es una línea separada que decidas por cotización.</li>
+    <li><strong>Qué cubrir primero.</strong> Propongo reparación de fuga e instalación de split, multi-split y VRF, y dejar mantenimiento, refrigeración comercial y chillers para la fase siguiente.</li>
+  </ol>
+  <div class="callout"><strong>Decidido.</strong> Cubica refrigerante, nitrógeno y HH. La entrevista pide tres datos de contexto antes de habilitar Cubicar; un «no sé» cuenta, pero queda como supuesto crítico. Es el mismo motor y el mismo proceso del cubicador de reja y cierre.</div>
+  <div class="callout warn"><strong>Pendiente de verificar fuera de este documento.</strong> Presiones de prueba y cargas por metro contra el manual del fabricante; normativa chilena vigente sobre manejo de refrigerantes y certificación de quien los manipula; presentaciones reales de cilindros y balones de tus proveedores.</div>
+</section>
+
+<footer>Documento de diseño. No se modificó código del producto. Cifras de referencia y ejemplo ilustrativos; ningún precio fue consultado.</footer>
+</main>

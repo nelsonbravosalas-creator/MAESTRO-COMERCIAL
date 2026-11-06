@@ -1,0 +1,343 @@
+<title>QA Bot Maestro Comercial</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: informe técnico de una columna ancha; diagrama y tablas con scroll propio. */
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#16212b; --muted:#566574; --line:#d5dde4;
+  --accent:#0b6e6e; --accent-soft:#dff1f0;
+  --crit:#b3261e; --crit-soft:#fbe4e2; --high:#b45309; --high-soft:#fdeed9;
+  --med:#7a6a00; --med-soft:#f6f0c8; --low:#3d5a80; --low-soft:#e3ebf5; --ok:#1b7a43; --ok-soft:#dcf1e4;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e151b; --surface:#16202a; --ink:#e4ebf0; --muted:#9aabb8; --line:#2b3a47;
+  --accent:#4fc3c0; --accent-soft:#12302f;
+  --crit:#ff8a80; --crit-soft:#3a1c1a; --high:#f5b25c; --high-soft:#3a2a12;
+  --med:#e3d46b; --med-soft:#322e10; --low:#8fb3e0; --low-soft:#1a2a3d; --ok:#6fd49a; --ok-soft:#14301f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e151b; --surface:#16202a; --ink:#e4ebf0; --muted:#9aabb8; --line:#2b3a47;
+  --accent:#4fc3c0; --accent-soft:#12302f;
+  --crit:#ff8a80; --crit-soft:#3a1c1a; --high:#f5b25c; --high-soft:#3a2a12;
+  --med:#e3d46b; --med-soft:#322e10; --low:#8fb3e0; --low-soft:#1a2a3d; --ok:#6fd49a; --ok-soft:#14301f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;
+  padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1{font-size:clamp(26px,4vw,38px);line-height:1.15;margin:0 0 8px;font-weight:600;text-wrap:balance}
+h2{font-size:21px;margin:0 0 4px;font-weight:600;text-wrap:balance}
+h3{font-size:15px;margin:0 0 6px;font-weight:600}
+p{margin:0}
+.lead{color:var(--muted);max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+code{font-family:var(--mono);font-size:12.5px;background:var(--accent-soft);padding:1px 5px;border-radius:3px}
+section{display:flex;flex-direction:column;gap:14px;min-width:0}
+.sub{color:var(--muted);max-width:70ch}
+.verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--line);padding:14px 16px;border-radius:6px}
+.stat b{display:block;font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:13px}
+.callout{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);padding:14px 18px;border-radius:4px;max-width:80ch}
+.scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+figure{margin:0;display:flex;flex-direction:column;gap:8px}
+figcaption{color:var(--muted);font-size:13px;max-width:80ch}
+svg{display:block;min-width:900px;width:100%;height:auto;color:var(--ink)}
+svg text{font-family:var(--sans);font-size:12.5px;fill:currentColor}
+svg .t-b{font-weight:600;font-size:13px}
+svg .t-m{fill:var(--muted);font-size:11.5px}
+svg .box{fill:var(--surface);stroke:var(--line);stroke-width:1.4}
+svg .box-a{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.4}
+svg .box-w{fill:var(--high-soft);stroke:var(--high);stroke-width:1.6}
+svg .box-c{fill:var(--crit-soft);stroke:var(--crit);stroke-width:1.6}
+svg .ln{stroke:currentColor;stroke-width:1.4;fill:none}
+svg .ln-d{stroke:var(--muted);stroke-width:1.2;fill:none;stroke-dasharray:5 4}
+svg .ln-w{stroke:var(--high);stroke-width:1.6;fill:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+.card p{color:var(--muted);font-size:14px}
+.tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:3px;margin-right:6px;vertical-align:1px}
+.t-read{background:var(--low-soft);color:var(--low)} .t-write{background:var(--high-soft);color:var(--high)}
+.sev{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:500;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.s-crit{background:var(--crit-soft);color:var(--crit)} .s-high{background:var(--high-soft);color:var(--high)}
+.s-med{background:var(--med-soft);color:var(--med)} .s-low{background:var(--low-soft);color:var(--low)}
+.finds{display:flex;flex-direction:column;gap:10px}
+.find{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;min-width:0}
+.find .id{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:3px}
+.find .body{min-width:0;display:flex;flex-direction:column;gap:5px}
+.find .head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.find .head strong{font-weight:600}
+.find .fix{color:var(--ok);font-size:14px}
+.find .where{font-family:var(--mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+table{border-collapse:collapse;width:100%;min-width:980px;font-size:13.5px}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--bg);position:sticky;top:0}
+td:first-child{font-weight:600;white-space:nowrap}
+td.bad{color:var(--high)} td.good{color:var(--ok)}
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.phase{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:4px;padding:14px 16px}
+.phase ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+.phase li{margin-bottom:3px}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (max-width:560px){.find{grid-template-columns:1fr}}
+</style>
+
+<main>
+<header>
+  <p class="eyebrow">QA · Maestro Comercial · rama claude/qa-bot-maestro-comercial-36b347</p>
+  <h1>Auditoría del Bot Comercial</h1>
+  <p class="lead">Revisión del código del chatbot (backend <code>api/chatbot.ts</code>, <code>agent/*</code>, <code>services/chatbot*</code>, <code>services/llm.ts</code>; frontend <code>ChatPanel</code> y <code>chatStore</code>) contra el objetivo: un chatbot con criterio propio que ejecute acciones dentro del Maestro Comercial.</p>
+</header>
+
+<section>
+  <div class="verdict">
+    <div class="stat"><b>93 / 93</b><span>tests del bot pasan (8 archivos). Ninguno cubre los errores de abajo.</span></div>
+    <div class="stat"><b>13</b><span>herramientas del agente: 10 de lectura y cálculo, 3 de escritura con confirmación</span></div>
+    <div class="stat"><b>4 altos</b><span>hallazgos que rompen una promesa del bot o la regla de datos personales A-21</span></div>
+    <div class="stat"><b>2 modos</b><span>Clásico (1 intención por mensaje) y Agente (ReAct). Hoy son dos caminos de código distintos.</span></div>
+  </div>
+  <div class="callout"><strong>Veredicto.</strong> El agente ya tiene una base sólida: control de escrituras con confirmación atómica, filtro de herramientas por rol, auditoría por paso y memoria en grafo. Le faltan tres cosas para ser el chatbot que buscas: que la confirmación muestre el detalle real de lo que se ejecuta, que conozca la cotización abierta, y que pueda encadenar cubicación, cotización y seguimiento sin que el modelo retranscriba datos. Los errores E1 a E4 conviene cerrarlos antes de ampliar capacidades.</div>
+</section>
+
+<section>
+  <div><p class="eyebrow">1 · Proceso</p><h2>Diagrama de proceso actual</h2></div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1110 520" role="img" aria-label="Flujo del bot: el usuario envía una instrucción, el backend decide entre modo clásico, que ejecuta directo, y modo agente, que propone escrituras pendientes hasta que el usuario las confirma.">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+      <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--high)"/></marker></defs>
+
+      <rect class="box" x="16" y="205" width="130" height="70" rx="4"/>
+      <text class="t-b" x="81" y="233" text-anchor="middle">Usuario</text>
+      <text class="t-m" x="81" y="251" text-anchor="middle">ChatPanel · chatStore</text>
+      <text class="t-m" x="81" y="265" text-anchor="middle">últimos 4 mensajes</text>
+
+      <rect class="box" x="186" y="180" width="180" height="120" rx="4"/>
+      <text class="t-b" x="276" y="203" text-anchor="middle">POST /api/chatbot</text>
+      <text class="t-m" x="276" y="224" text-anchor="middle">auth + zod (4000 car.)</text>
+      <text class="t-m" x="276" y="240" text-anchor="middle">límite 5 msg/min por usuario</text>
+      <text class="t-m" x="276" y="256" text-anchor="middle">lee grafo de conocimiento</text>
+      <text class="t-m" x="276" y="272" text-anchor="middle">(reglas, precios, patrones)</text>
+
+      <rect class="box" x="186" y="350" width="180" height="110" rx="4" />
+      <text class="t-b" x="276" y="373" text-anchor="middle">Capa LLM (llm.ts)</text>
+      <text class="t-m" x="276" y="394" text-anchor="middle">local / OmniRoute primero</text>
+      <text class="t-m" x="276" y="410" text-anchor="middle">si falla, Gemini directo</text>
+      <text class="t-m" x="276" y="426" text-anchor="middle">timeout 25 s por llamada</text>
+      <text class="t-m" x="276" y="442" text-anchor="middle">sin reintentos</text>
+      <line class="ln-d" x1="276" y1="300" x2="276" y2="350"/>
+      <text class="t-m" x="284" y="330">usa</text>
+
+      <rect class="box-a" x="406" y="215" width="116" height="50" rx="4"/>
+      <text class="t-b" x="464" y="236" text-anchor="middle">¿agent_mode?</text>
+      <text class="t-m" x="464" y="253" text-anchor="middle">env o botón UI</text>
+
+      <rect class="box" x="580" y="40" width="250" height="170" rx="4"/>
+      <text class="t-b" x="705" y="62" text-anchor="middle">Modo Clásico</text>
+      <text class="t-m" x="705" y="84" text-anchor="middle">1 llamada LLM: parser de intención (JSON)</text>
+      <text class="t-m" x="705" y="102" text-anchor="middle">crear · modificar · enseñar regla</text>
+      <text class="t-m" x="705" y="118" text-anchor="middle">consultar precio · conversar</text>
+      <text class="t-m" x="705" y="140" text-anchor="middle">cliente por nombre (ILIKE, tope 5)</text>
+      <text class="t-m" x="705" y="156" text-anchor="middle">cotización con correlativo aleatorio</text>
+      <rect x="600" y="170" width="210" height="28" rx="3" fill="var(--high-soft)" stroke="var(--high)"/>
+      <text class="t-b" x="705" y="188" text-anchor="middle" style="fill:var(--high)">Ejecuta directo, sin confirmar</text>
+
+      <rect class="box-a" x="580" y="290" width="250" height="190" rx="4"/>
+      <text class="t-b" x="705" y="312" text-anchor="middle">Modo Agente (ReAct)</text>
+      <text class="t-m" x="705" y="334" text-anchor="middle">máx. 5 pasos · presupuesto 40 s</text>
+      <text class="t-m" x="705" y="350" text-anchor="middle">Gemini function-calling, 13 herramientas</text>
+      <text class="t-m" x="705" y="372" text-anchor="middle">herramienta de lectura: se ejecuta y vuelve</text>
+      <text class="t-m" x="705" y="388" text-anchor="middle">al modelo como resultado</text>
+      <rect x="600" y="402" width="210" height="46" rx="3" fill="var(--surface)" stroke="var(--high)" stroke-width="1.4"/>
+      <text class="t-b" x="705" y="421" text-anchor="middle" style="fill:var(--high)">Herramienta de escritura:</text>
+      <text class="t-m" x="705" y="438" text-anchor="middle">queda pendiente 15 min, no se ejecuta</text>
+      <text class="t-m" x="705" y="468" text-anchor="middle">auditoría: agent_runs / agent_steps</text>
+
+      <rect class="box" x="890" y="40" width="210" height="130" rx="4"/>
+      <text class="t-b" x="995" y="63" text-anchor="middle">Base del Maestro</text>
+      <text class="t-m" x="995" y="84" text-anchor="middle">quotations · clients · catálogos</text>
+      <text class="t-m" x="995" y="100" text-anchor="middle">chatbot_rules · chatbot_actions</text>
+      <text class="t-m" x="995" y="116" text-anchor="middle">grafo de conocimiento</text>
+      <text class="t-m" x="995" y="132" text-anchor="middle">(Neon, compartida con el bot</text>
+      <text class="t-m" x="995" y="148" text-anchor="middle">de Subcontrataley)</text>
+
+      <rect class="box-w" x="890" y="290" width="210" height="64" rx="4"/>
+      <text class="t-b" x="995" y="314" text-anchor="middle">Usuario ve la propuesta</text>
+      <text class="t-m" x="995" y="333" text-anchor="middle">una frase + Confirmar / Cancelar</text>
+
+      <rect class="box" x="890" y="396" width="210" height="84" rx="4"/>
+      <text class="t-b" x="995" y="418" text-anchor="middle">POST /actions/:id/confirm</text>
+      <text class="t-m" x="995" y="437" text-anchor="middle">reclamo atómico, 1 sola vez</text>
+      <text class="t-m" x="995" y="453" text-anchor="middle">contexto sin cotización abierta</text>
+      <text class="t-m" x="995" y="469" text-anchor="middle">y sin la instrucción original</text>
+
+      <line class="ln" x1="146" y1="240" x2="186" y2="240" marker-end="url(#ar)"/>
+      <line class="ln" x1="366" y1="240" x2="406" y2="240" marker-end="url(#ar)"/>
+      <polyline class="ln" points="464,215 464,125 580,125" marker-end="url(#ar)"/>
+      <polyline class="ln" points="464,265 464,385 580,385" marker-end="url(#ar)"/>
+      <text class="t-m" x="470" y="115">no</text><text class="t-m" x="470" y="405">sí</text>
+      <line class="ln" x1="830" y1="105" x2="890" y2="105" marker-end="url(#ar)"/>
+      <text class="t-m" x="836" y="97">escribe</text>
+      <line class="ln-w" x1="830" y1="378" x2="890" y2="330" marker-end="url(#arw)"/>
+      <line class="ln-w" x1="995" y1="354" x2="995" y2="396" marker-end="url(#arw)"/>
+      <text class="t-m" x="1003" y="380">confirma</text>
+      <polyline class="ln-w" points="1100,438 1106,438 1106,105 1100,105" marker-end="url(#arw)"/>
+      <text class="t-m" x="1008" y="30" text-anchor="middle"> </text>
+    </svg>
+    </div>
+    <figcaption>El modo Clásico escribe en la base sin pedir confirmación; el modo Agente solo propone y espera el clic del usuario. En la confirmación la herramienta se ejecuta con un contexto vacío (sin cotización abierta ni instrucción original), origen de E1.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div><p class="eyebrow">2 · Capacidades</p><h2>Cómo funciona y qué puede hacer hoy</h2>
+  <p class="sub">Cada herramienta que el modelo puede invocar. Las de escritura nunca se ejecutan durante la conversación.</p></div>
+  <div class="cards">
+    <div class="card"><h3><span class="tag t-read">lectura</span>buscar_catalogo</h3><p>Busca por texto en catálogos mecánico y eléctrico. Hasta 8 resultados con precio de lista.</p></div>
+    <div class="card"><h3><span class="tag t-read">lectura</span>consultar_regla</h3><p>Lee tarifa de colación, bono de desplazamiento y comunas de la RM.</p></div>
+    <div class="card"><h3><span class="tag t-write">escritura</span>ensenar_regla</h3><p>Cambia una de esas tres reglas. Afecta a todas las cotizaciones futuras.</p></div>
+    <div class="card"><h3><span class="tag t-read">lectura</span>consultar_precio_web</h3><p>Busca el precio de un material en tiendas chilenas con Google Search y lo reformatea a JSON validado. Las URL se filtran a http(s).</p></div>
+    <div class="card"><h3><span class="tag t-read">lectura</span>calcular_items_automaticos</h3><p>Estima mano de obra y viáticos según días, dotación y comuna.</p></div>
+    <div class="card"><h3><span class="tag t-write">escritura</span>crear_cotizacion</h3><p>Crea una cotización para un cliente existente con RUT. Completa días y dotación con el patrón histórico del cliente y lo avisa.</p></div>
+    <div class="card"><h3><span class="tag t-write">escritura</span>modificar_cotizacion</h3><p>Agrega ítems a una cotización. Respeta el control de versión (409 si otro usuario la cambió).</p></div>
+    <div class="card"><h3><span class="tag t-read">lectura</span>ver_cotizacion</h3><p>Devuelve ítems y estado de una cotización sin RUT ni contactos.</p></div>
+    <div class="card"><h3><span class="tag t-read">lectura</span>consultar_historial_cliente</h3><p>Cuenta cotizaciones por estado, tasa de adjudicación y patrones de dotación y días por comuna.</p></div>
+    <div class="card"><h3><span class="tag t-read">lectura</span>procesar_correo_cotizacion</h3><p>Redacta datos personales de un correo, elige una plantilla HVAC y cubica. Roles admin, commercial, engineer.</p></div>
+    <div class="card"><h3><span class="tag t-read">lectura</span>cubicar_especificacion_hvac</h3><p>Plantillas VRF, flushing, instalación, eléctrico y mantención. Cruza catálogo, calcula logística por km y márgenes por categoría.</p></div>
+    <div class="card"><h3><span class="tag t-read">lectura</span>analizar_win_loss_cliente</h3><p>Causas de pérdida, competidores y perfil de margen recomendado (estándar o competitivo).</p></div>
+    <div class="card"><h3><span class="tag t-read">lectura</span>preparar_seguimiento_cotizacion</h3><p>Borrador de correo en tono cordial, urgente o técnico. No envía nada.</p></div>
+    <div class="card"><h3>Briefing matutino</h3><p>Botón ☀️ del panel: resumen ejecutivo y alertas de <code>scheduledOps</code>. Es un endpoint aparte, sin LLM en el chat.</p></div>
+    <div class="card"><h3>Memoria</h3><p>Grafo de conocimiento (reglas, precios, patrones por cliente) que se inyecta como contexto. Los 4 últimos mensajes solo resuelven referencias.</p></div>
+    <div class="card"><h3>Seguridad de datos</h3><p>Filtro de RUT, correo y teléfono antes del LLM (A-21), rol por herramienta, confirmación atómica de escrituras, throttle por usuario.</p></div>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">3 · Errores</p><h2>Hallazgos ordenados por gravedad</h2>
+  <p class="sub">Todos salen de leer el código. E1 se comprobó contra el flujo completo (propuesta, confirmación y herramienta); ningún test existente lo cubre.</p></div>
+  <div class="finds">
+
+    <div class="find"><span class="id">E1</span><div class="body"><div class="head"><span class="sev s-high">ALTO</span><strong>Modificar la cotización abierta con el agente no funciona</strong></div>
+      <p>El prompt del agente nunca le dice al modelo el ID de la cotización abierta. La propuesta queda sin <code>quotation_id</code>. Al confirmar, el contexto se arma con <code>quotationId: null</code>, así que la herramienta responde «sin cotización abierta», la acción queda como confirmada y el usuario recibe un mensaje de éxito aparente.</p>
+      <p class="where">agent/loop.ts:36 · agent/pendingActions.ts:125 · agent/tools/quotationTool.ts:226</p>
+      <p class="fix">Corrección: inyectar la cotización abierta en el prompt y guardar <code>quotation_id</code> dentro de los argumentos pendientes.</p></div></div>
+
+    <div class="find"><span class="id">E2</span><div class="body"><div class="head"><span class="sev s-high">ALTO</span><strong>La confirmación no muestra lo que se va a ejecutar</strong></div>
+      <p>El código promete que la persona vea «exactamente qué se va a hacer», pero el resumen es una línea: «Crear cotización para X con N materiales». No aparecen días, dotación, comuna, precios ni correlativo. Se confirma a ciegas.</p>
+      <p class="where">agent/pendingActions.ts:7 · agent/tools/quotationTool.ts:119</p>
+      <p class="fix">Corrección: vista previa con líneas y totales calculados al proponer, y confirmar sobre ese snapshot.</p></div></div>
+
+    <div class="find"><span class="id">E3</span><div class="body"><div class="head"><span class="sev s-high">ALTO</span><strong>Los errores de cliente aparecen después de confirmar</strong></div>
+      <p>La propuesta de <code>crear_cotizacion</code> no valida nada. Cliente inexistente, ambiguo o sin RUT se descubre al hacer clic en Confirmar y vuelve como error 500 «No se pudo ejecutar la acción». Además no hay deduplicación: dos propuestas iguales crean dos cotizaciones.</p>
+      <p class="where">agent/loop.ts:239 · services/chatbotOps.ts:165 · agent/pendingActions.ts:140</p>
+      <p class="fix">Corrección: resolver cliente y validar al proponer; devolver las opciones al modelo para que pregunte.</p></div></div>
+
+    <div class="find"><span class="id">E4</span><div class="body"><div class="head"><span class="sev s-high">ALTO</span><strong>El historial entrega el RUT al LLM y no busca por RUT</strong></div>
+      <p><code>consultar_historial_cliente</code> devuelve <code>rut</code> en su salida, que viaja a Gemini. Contradice A-21 y a <code>ver_cotizacion</code>, que lo omite. Su descripción dice «nombre o RUT», pero usa búsqueda solo por nombre, así que un RUT nunca coincide.</p>
+      <p class="where">agent/tools/historyTool.ts:45 · historyTool.ts:136</p>
+      <p class="fix">Corrección: quitar el RUT de la salida y buscar por RUT en el servidor sin exponerlo.</p></div></div>
+
+    <div class="find"><span class="id">E5</span><div class="body"><div class="head"><span class="sev s-med">MEDIO</span><strong>Con LLM local u OmniRoute los precios web no tienen búsqueda real</strong></div>
+      <p>En <code>callLlm</code> la rama local ignora <code>tools</code> (Google Search). Si hay <code>LOCAL_LLM_URL</code> u <code>OMNIROUTE_URL</code> y la estrategia es <code>hybrid</code>, el precio sale de la memoria del modelo con URL posiblemente inventadas. En la rama con herramientas, un JSON de argumentos mal formado se convierte en <code>{}</code> sin avisar, y los IDs de llamada se repiten si el modelo invoca dos veces la misma herramienta.</p>
+      <p class="where">services/llm.ts:195 · llm.ts:405 · llm.ts:341</p></div></div>
+
+    <div class="find"><span class="id">E6</span><div class="body"><div class="head"><span class="sev s-med">MEDIO</span><strong>El botón «Clásico» no apaga el agente si AGENT_MODE está activo</strong></div>
+      <p>El backend calcula <code>env.AGENT_MODE || agent_mode</code>. Con la variable en true, el usuario ve «Clásico» pero ejecuta el agente.</p>
+      <p class="where">api/chatbot.ts:400</p></div></div>
+
+    <div class="find"><span class="id">E7</span><div class="body"><div class="head"><span class="sev s-med">MEDIO</span><strong>Presupuesto de pasos y de tiempo poco confiable</strong></div>
+      <p>El tope de 5 pasos se evalúa por vuelta, no por llamada: una respuesta con varias herramientas lo supera. El tiempo de cada herramienta no se acota (un precio web puede tomar 2 × 15 s) y la función vive 60 s en Vercel. Si el presupuesto se agota, el mensaje final dice «Revisa los resultados ejecutados» aunque haya propuestas pendientes, y el modelo no recibe una vuelta final para sintetizar.</p>
+      <p class="where">agent/loop.ts:14 · loop.ts:178 · loop.ts:313 · vercel.json</p></div></div>
+
+    <div class="find"><span class="id">E8</span><div class="body"><div class="head"><span class="sev s-med">MEDIO</span><strong>El agente razona sin «pensar»</strong></div>
+      <p>El comentario menciona <code>AGENT_THINKING_BUDGET</code>, pero nada lo lee y el bucle nunca pasa <code>thinkingBudget</code>: siempre 0. Para planificar cubicaciones de varios pasos es una limitación de calidad.</p>
+      <p class="where">services/llm.ts:98 · agent/loop.ts:189</p></div></div>
+
+    <div class="find"><span class="id">E9</span><div class="body"><div class="head"><span class="sev s-med">MEDIO</span><strong>Dos caminos duplicados para lo mismo</strong></div>
+      <p><code>chatbotOps.ts</code> declara ser «EXACTAMENTE el mismo camino» que el modo clásico, pero <code>api/chatbot.ts</code> no lo importa y mantiene unas 400 líneas propias. Ya divergen: el aviso de ítems sin precio, la persona y <code>scrubPii</code> están copiados dos veces. Un arreglo en uno no llega al otro.</p>
+      <p class="where">api/chatbot.ts:34-934 · services/chatbotOps.ts:16</p></div></div>
+
+    <div class="find"><span class="id">E10</span><div class="body"><div class="head"><span class="sev s-med">MEDIO</span><strong>Correlativo aleatorio y un solo reintento</strong></div>
+      <p>El bot genera <code>SYM-NNN-MM-AAAA</code> con un número al azar de 1 a 900 y reintenta una vez con el sugerido. Con muchas cotizaciones, la colisión es probable y el número no sigue la secuencia que usa la pantalla (otro hallazgo ya documentado en PR #80).</p>
+      <p class="where">services/chatbotOps.ts:440 · api/chatbot.ts:838</p></div></div>
+
+    <div class="find"><span class="id">E11</span><div class="body"><div class="head"><span class="sev s-med">MEDIO</span><strong>De cubicación a cotización pasa por el modelo</strong></div>
+      <p>No hay herramienta que convierta el resultado de <code>cubicar_especificacion_hvac</code> en una cotización. El modelo debe retranscribir 20 o más líneas a <code>materiales</code>, y la herramienta fuerza <code>dias: 1</code>. Además la cubicación entrega costo y venta estimada; no queda definido cuál se usa como precio unitario.</p>
+      <p class="where">agent/tools/quotationTool.ts:129-136 · specCubicatorTool.ts:174</p></div></div>
+
+    <div class="find"><span class="id">E12</span><div class="body"><div class="head"><span class="sev s-med">MEDIO</span><strong>procesar_correo_cotizacion promete más de lo que hace</strong></div>
+      <p>Dice «detecta cliente pagador vs usuario final», pero solo repite las pistas que recibe. <code>ciudad_faena</code> no influye en la cubicación; si falta, asume Santiago y 30 km sin avisar. Su filtro de teléfonos es distinto al de <code>scrubPii</code> y deja pasar números sin +56. La búsqueda de cliente omite <code>deleted_at IS NULL</code>.</p>
+      <p class="where">agent/tools/emailIntakeTool.ts:25 · :55 · :77 · :102</p></div></div>
+
+    <div class="find"><span class="id">E13</span><div class="body"><div class="head"><span class="sev s-low">BAJO</span><strong>La «tasa» de adjudicación se calcula de dos formas</strong></div>
+      <p>El historial divide adjudicadas por todas las cotizaciones (incluye borradores); Win/Loss divide por cerradas. El mismo cliente muestra dos porcentajes distintos en una misma conversación.</p>
+      <p class="where">historyTool.ts:82 · followUpTool.ts:93</p></div></div>
+
+    <div class="find"><span class="id">E14</span><div class="body"><div class="head"><span class="sev s-low">BAJO</span><strong>Aprendizaje por trazas sin conectar</strong></div>
+      <p><code>learningTraces.ts</code> (diferencias entre lo propuesto y lo editado por el usuario) solo se importa desde sus tests. No alimenta el grafo.</p></div></div>
+
+    <div class="find"><span class="id">E15</span><div class="body"><div class="head"><span class="sev s-low">BAJO</span><strong>Experiencia de conversación</strong></div>
+      <p>El historial vive en memoria y se pierde al recargar. Al limpiar el chat las propuestas pendientes quedan inalcanzables hasta que vencen. No se encontró en el frontend un enlace para abrir ni un refresco de la cotización recién creada. Confirmar y cancelar comparten el límite de 5 mensajes por minuto con la conversación.</p>
+      <p class="where">frontend/stores/chatStore.ts · api/chatbot.ts:285</p></div></div>
+
+    <div class="find"><span class="id">E16</span><div class="body"><div class="head"><span class="sev s-low">BAJO</span><strong>Evaluación y trazabilidad</strong></div>
+      <p>El golden set tiene 6 casos, casi todos de lectura, sin escrituras ni modelo real. La instrucción original (con posibles datos personales) se guarda cruda en <code>agent_runs</code> y <code>chatbot_actions</code>. La clave de Gemini viaja en la URL de la petición. El filtro de auditoría <code>/rut/</code> también enmascara campos como «ruta».</p>
+      <p class="where">agent/__tests__/goldenSet.test.ts · loop.ts:25 · llm.ts:53</p></div></div>
+  </div>
+</section>
+
+<section>
+  <div><p class="eyebrow">4 · Entradas y salidas</p><h2>Tabla de elementos, inconsistencias y mejoras</h2></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Elemento</th><th>Entrada</th><th>Salida</th><th>Inconsistencia</th><th>Mejora</th></tr></thead>
+    <tbody>
+    <tr><td>Endpoint de chat</td><td>instruction (≤4000), quotation_id, recent_turns (≤8), agent_mode</td><td>reply, pasos, notas, acciones_pendientes, quotation, rule, precio</td><td class="bad">agent_mode no puede apagar AGENT_MODE; clásico y agente tienen respuestas de distinta forma</td><td class="good">Un solo modo (agente) y retirar el clásico tras migrar sus casos a tests del agente</td></tr>
+    <tr><td>Modo clásico</td><td>Texto libre → JSON de intención</td><td>Cotización o regla creada al instante</td><td class="bad">Escribe sin confirmación; 400 líneas duplicadas de chatbotOps</td><td class="good">Redirigir a chatbotOps y exigir la misma confirmación</td></tr>
+    <tr><td>Loop del agente</td><td>Instrucción filtrada de PII, grafo, 4 turnos, rol</td><td>Texto final, pasos, pendientes, estado done / needs_input / budget_exhausted</td><td class="bad">No conoce la cotización abierta; thinking en 0; tope de pasos por vuelta</td><td class="good">Contexto de pantalla en el prompt, presupuesto por llamada, vuelta final de síntesis</td></tr>
+    <tr><td>Acciones pendientes</td><td>tool + args, TTL 15 min</td><td>Confirmar: ejecuta. Cancelar: descarta</td><td class="bad">Resumen de una línea; contexto vacío al confirmar; sin deduplicar</td><td class="good">Snapshot con líneas y totales, ids de cotización guardados, clave de idempotencia</td></tr>
+    <tr><td>buscar_catalogo</td><td>termino</td><td>≤8 ítems con precio</td><td>Sin ranking ni sinónimos (cañería vs tubo)</td><td class="good">Búsqueda por trigramas con sinónimos HVAC</td></tr>
+    <tr><td>consultar_precio_web</td><td>material</td><td>precio_medio, muestras, advertencia</td><td class="bad">Sin búsqueda real si hay LLM local; al modelo solo llega el conteo de muestras</td><td class="good">Fallar claro sin Google Search; pasar muestras al modelo; caché por material</td></tr>
+    <tr><td>crear_cotizacion</td><td>cliente_nombre, días, dotación, comuna, materiales</td><td>Correlativo, nº de ítems, advertencia de ítems sin precio</td><td class="bad">Validación tardía; correlativo aleatorio; dias fijo en 1</td><td class="good">Validar al proponer; correlativo secuencial del servidor</td></tr>
+    <tr><td>modificar_cotizacion</td><td>quotation_id (opcional), días, dotación, materiales</td><td>Ítems agregados</td><td class="bad">Falla al confirmar si no se pasó el id (E1); solo agrega, no edita ni borra</td><td class="good">Editar y eliminar líneas, mostrar diferencia antes/después</td></tr>
+    <tr><td>ensenar_regla</td><td>rule_key, value</td><td>Regla vigente</td><td class="bad">Sin rol restringido para un cambio que afecta todos los precios</td><td class="good">Limitar a admin y mostrar impacto estimado</td></tr>
+    <tr><td>historial cliente</td><td>nombre (o «RUT»)</td><td>Métricas, últimas 5, patrones</td><td class="bad">Devuelve RUT al LLM; RUT no busca; tasa distinta de Win/Loss</td><td class="good">Sin RUT; una sola definición de tasa en un módulo común</td></tr>
+    <tr><td>procesar correo</td><td>cuerpo, hints, ciudad, km</td><td>Texto filtrado, cliente, cubicación</td><td class="bad">No detecta cliente ni enduser; ciudad sin efecto; 30 km por defecto</td><td class="good">Extraer cliente y ciudad con el modelo, pedir km si falta</td></tr>
+    <tr><td>cubicar HVAC</td><td>plantilla, descripción, km, días, dotación, margen</td><td>Líneas con costo, margen y venta; exclusiones</td><td class="bad">No se puede cotizar directo; costo vs venta sin definir</td><td class="good">Herramienta <code>cotizar_desde_cubicacion</code> con vista previa</td></tr>
+    <tr><td>Win/Loss y seguimiento</td><td>cliente, quotation_id, tono</td><td>Margen recomendado; borrador de correo</td><td class="bad">El borrador no se envía ni se guarda; márgenes escritos en el texto</td><td class="good">Guardar borrador y enviar tras aprobación (SMTP ya existe); márgenes desde hvacTemplates</td></tr>
+    <tr><td>Memoria y aprendizaje</td><td>Grafo + 4 turnos + trazas</td><td>Contexto en el prompt</td><td class="bad">learningTraces sin conectar; sin historial persistente</td><td class="good">Guardar conversaciones, conectar trazas, resumir sesiones largas</td></tr>
+    <tr><td>Capa LLM</td><td>Mensajes + herramientas</td><td>Texto o llamadas a herramientas</td><td class="bad">Sin reintentos; args inválidos → {}; clave en URL</td><td class="good">Reintento con espera, error si el JSON falla, clave en cabecera</td></tr>
+    <tr><td>Interfaz</td><td>Texto, 4 atajos, ☀️</td><td>Burbujas de texto, lista de pasos</td><td class="bad">Sin enlace a la cotización, sin streaming, sin historial</td><td class="good">Tarjetas con enlace, vista previa en diff, respuesta en streaming</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div><p class="eyebrow">5 · Ruta al objetivo</p><h2>De asistente de cotización a chatbot que opera el Maestro</h2>
+  <p class="sub">Objetivo: que entienda el contexto de la pantalla, decida con criterio y ejecute en el sistema con aprobación explícita.</p></div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1100 190" role="img" aria-label="Arquitectura objetivo: instrucción con contexto de pantalla, planificador con razonamiento, herramientas validadas, aprobación con vista previa y ejecución con auditoría y aprendizaje.">
+      <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <rect class="box" x="10" y="40" width="170" height="100" rx="4"/><text class="t-b" x="95" y="66" text-anchor="middle">Instrucción</text><text class="t-m" x="95" y="86" text-anchor="middle">+ cotización abierta</text><text class="t-m" x="95" y="102" text-anchor="middle">+ cliente y rol</text><text class="t-m" x="95" y="118" text-anchor="middle">+ conversación guardada</text>
+      <rect class="box-a" x="225" y="40" width="170" height="100" rx="4"/><text class="t-b" x="310" y="66" text-anchor="middle">Planificador</text><text class="t-m" x="310" y="86" text-anchor="middle">razonamiento activado</text><text class="t-m" x="310" y="102" text-anchor="middle">pasos por llamada</text><text class="t-m" x="310" y="118" text-anchor="middle">síntesis final siempre</text>
+      <rect class="box" x="440" y="40" width="190" height="100" rx="4"/><text class="t-b" x="535" y="66" text-anchor="middle">Herramientas</text><text class="t-m" x="535" y="86" text-anchor="middle">validan al proponer</text><text class="t-m" x="535" y="102" text-anchor="middle">cubicar → cotizar</text><text class="t-m" x="535" y="118" text-anchor="middle">estado, duplicar, seguimiento</text>
+      <rect class="box-w" x="675" y="40" width="190" height="100" rx="4"/><text class="t-b" x="770" y="66" text-anchor="middle">Aprobación</text><text class="t-m" x="770" y="86" text-anchor="middle">vista previa con líneas</text><text class="t-m" x="770" y="102" text-anchor="middle">totales y diferencia</text><text class="t-m" x="770" y="118" text-anchor="middle">clave de idempotencia</text>
+      <rect class="box" x="910" y="40" width="180" height="100" rx="4"/><text class="t-b" x="1000" y="66" text-anchor="middle">Ejecución</text><text class="t-m" x="1000" y="86" text-anchor="middle">auditoría por paso</text><text class="t-m" x="1000" y="102" text-anchor="middle">enlace al resultado</text><text class="t-m" x="1000" y="118" text-anchor="middle">trazas → grafo</text>
+      <line class="ln" x1="180" y1="90" x2="225" y2="90" marker-end="url(#ar2)"/><line class="ln" x1="395" y1="90" x2="440" y2="90" marker-end="url(#ar2)"/><line class="ln" x1="630" y1="90" x2="675" y2="90" marker-end="url(#ar2)"/><line class="ln" x1="865" y1="90" x2="910" y2="90" marker-end="url(#ar2)"/>
+      <polyline class="ln-d" points="1000,140 1000,172 310,172 310,140" marker-end="url(#ar2)"/><text class="t-m" x="655" y="165" text-anchor="middle">lo aprendido vuelve al contexto</text>
+    </svg>
+    </div>
+    <figcaption>Misma estructura que hoy, con las piezas que faltan: contexto de pantalla, validación temprana, vista previa y ciclo de aprendizaje cerrado.</figcaption>
+  </figure>
+  <div class="phases">
+    <div class="phase"><h3>Fase 0 · Corregir</h3><ul><li>E1: id de cotización en prompt y argumentos</li><li>E4: sin RUT hacia el LLM</li><li>E3: validar cliente al proponer</li><li>E2: vista previa en la confirmación</li><li>Tests de escritura end-to-end</li></ul></div>
+    <div class="phase"><h3>Fase 1 · Ejecutar más</h3><ul><li><code>cotizar_desde_cubicacion</code></li><li>Editar y eliminar líneas</li><li>Cambiar estado y registrar pérdida</li><li>Duplicar cotización (usa PR #80)</li><li>Enviar seguimiento tras aprobar</li></ul></div>
+    <div class="phase"><h3>Fase 2 · Más criterio</h3><ul><li>Razonamiento activado en el agente</li><li>Conversaciones guardadas y resumidas</li><li>Conectar learningTraces al grafo</li><li>Una sola definición de tasa y márgenes</li></ul></div>
+    <div class="phase"><h3>Fase 3 · Medir</h3><ul><li>Golden set con escrituras y modelo real</li><li>Métricas: aciertos, pasos, costo, latencia</li><li>Retirar el modo clásico</li><li>Alertas de cuota y de fallback a Gemini</li></ul></div>
+  </div>
+</section>
+
+<footer>
+  Alcance: lectura de código y ejecución de los 93 tests del bot (8 archivos, todos en verde). No se probó contra Gemini real ni contra la base de producción, y el módulo <code>scheduledOps</code> (briefing) no se auditó a fondo. Las rutas de archivo indicadas corresponden a la rama de esta auditoría.
+</footer>
+</main>

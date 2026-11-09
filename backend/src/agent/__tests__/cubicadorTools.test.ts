@@ -652,7 +652,8 @@ describe('correcciones de la revisión final', () => {
     const datos = [...filas.values()][0].ficha.datos
     expect(Object.keys(datos)).not.toContain('__proto__')
     expect(Object.keys(datos)).not.toContain('constructor')
-    expect(({} as Record<string, unknown>).polucion).toBeUndefined()
+    expect(Object.getPrototypeOf(datos)).toBe(Object.prototype)
+    expect((datos as Record<string, unknown>).polucion).toBeUndefined()
     expect(datos.tipo_trabajo).toBe('fuga')
   })
 })

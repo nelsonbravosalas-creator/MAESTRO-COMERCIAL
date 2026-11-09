@@ -132,7 +132,7 @@ export const consultarHistorialClienteTool: AgentTool = {
       encontrado: true,
       cliente: {
         id: client.id,
-        nombre: client.name,
+        nombre: scrubPii(client.name),
       },
       metricas_comerciales: {
         total_cotizaciones: totalQuotes,
@@ -153,7 +153,7 @@ export const consultarHistorialClienteTool: AgentTool = {
 
     return {
       output: payload,
-      summary: `Historial de ${client.name}: ${totalQuotes} cotizaciones (${winRate}% tasa éxito, ${adjudicadas} adjudicadas)`,
+      summary: `Historial de ${scrubPii(client.name)}:${totalQuotes} cotizaciones (${winRate}% tasa éxito, ${adjudicadas} adjudicadas)`,
     }
   },
 }

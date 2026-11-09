@@ -162,7 +162,7 @@ export const analizarWinLossClienteTool: AgentTool = {
         perfil_margen_recomendado: perfilMargenRecomendado,
         recomendacion_estrategica: recomendacionEstrategica,
       },
-      summary: `Win/Loss ${client.name}: ${tasaConversionPct}% conversión, margen recomendado: ${perfilMargenRecomendado}`,
+      summary: `Win/Loss ${scrubPii(client.name)}:${tasaConversionPct}% conversión, margen recomendado: ${perfilMargenRecomendado}`,
     }
   },
 }

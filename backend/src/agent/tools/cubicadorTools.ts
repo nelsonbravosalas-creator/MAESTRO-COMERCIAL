@@ -26,6 +26,7 @@ import { copiarPrecio, ejecutarCubicacion, estadoCubicador } from '../../cubicad
 import { aLineas, describirListado } from '../../cubicador/ingreso'
 import { cubicar } from '../../cubicador/motor'
 import { cargarParametros } from '../../cubicador/params'
+import { resolverPreciosCatalogo } from '../../cubicador/precios'
 import { PERFILES } from '../../cubicador/perfiles'
 import type {
   Borrador,
@@ -440,7 +441,11 @@ export const ajustarListadoTool: AgentTool = {
       return copia
     })
 
-    const resultado: ResultadoCubicacion = { ...recalculo, items }
+    // Igual que cubicar: catálogo y caché al recalcular, para que un ingreso encadenado no falle (F3).
+    const resultado: ResultadoCubicacion = await resolverPreciosCatalogo(ctx.pool, {
+      ...recalculo,
+      items,
+    })
     const fichaFinal: Ficha = {
       ...ficha,
       datos: { ...datos, ajustes_listado: ajustes },

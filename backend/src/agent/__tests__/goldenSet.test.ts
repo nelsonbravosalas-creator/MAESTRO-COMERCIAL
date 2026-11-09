@@ -449,7 +449,8 @@ describe('Golden Set Cubicador — de la entrevista al ingreso', () => {
       ReturnType<typeof lookupMaterialPrice>
     >)
     let precios = await resolverPrecios(pool, cubicacion.cubicador!.borrador_id, 'u1', OP_CTX)
-    while (precios.precios_pendientes > 0) {
+    // Tope de rondas: si el código regresa, la prueba falla en vez de colgarse.
+    for (let ronda = 0; ronda < 10 && precios.precios_pendientes > 0; ronda++) {
       precios = await resolverPrecios(pool, precios.borrador_id, 'u1', OP_CTX)
     }
 
@@ -615,7 +616,7 @@ describe('Golden Set Cubicador — de la entrevista al ingreso', () => {
       ReturnType<typeof lookupMaterialPrice>
     >)
     let estado = await resolverPrecios(pool, cubicacion.cubicador!.borrador_id, 'u1', OP_CTX)
-    while (estado.precios_pendientes > 0) {
+    for (let ronda = 0; ronda < 10 && estado.precios_pendientes > 0; ronda++) {
       estado = await resolverPrecios(pool, estado.borrador_id, 'u1', OP_CTX)
     }
     expect(porDesc(estado.resultado as ResultadoCubicacion, 'R-404A')).toMatchObject({

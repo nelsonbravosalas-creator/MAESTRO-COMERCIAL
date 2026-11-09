@@ -21,7 +21,8 @@ export function validarCategoriasMateriales(args: Record<string, unknown>): void
     ? (args.materiales as Array<Record<string, unknown>>)
     : []
   for (const m of materiales) {
-    if (m.categoria === undefined) continue
+    // Sin categoría (vacía o nula) la línea cae en 'mat' por defecto, como antes (revisión final).
+    if (m.categoria === undefined || m.categoria === null || m.categoria === '') continue
     if (!(CATEGORIAS_LINEA as readonly string[]).includes(String(m.categoria))) {
       throw httpError(
         `Categoria "${String(m.categoria)}" no existe. Use una de: ${CATEGORIAS_LINEA.join(', ')}.`,

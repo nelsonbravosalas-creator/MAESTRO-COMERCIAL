@@ -118,7 +118,14 @@ export async function sendChatMessage(instruction: string, quotationId?: string 
         isSending: false,
         messages: [
           ...s.messages,
-          { id: ++nextMessageId, role: 'bot', text: data.reply, data: { reply: data.reply } },
+          // Se conserva todo el payload (acciones pendientes, pasos, cotización); solo se quita
+          // la tarjeta, que ya quedó actualizada en su mensaje original.
+          {
+            id: ++nextMessageId,
+            role: 'bot',
+            text: data.reply,
+            data: { ...data, cubicador: undefined },
+          },
         ],
       }))
     } else {

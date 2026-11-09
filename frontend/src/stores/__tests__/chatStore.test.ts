@@ -446,12 +446,18 @@ describe('tarjeta del cubicador: F3 y F8', () => {
     sendChatMessageMock.mockResolvedValue({
       reply: 'Ajustado',
       cubicador: { ...base, estado: 'cubicado', datos_completos: 4 },
+      acciones_pendientes: [
+        { id: 'acc-1', tool: 'ingresar_listado_a_cotizacion', summary: 'Ingresar' },
+      ],
     })
 
-    await sendChatMessage('ajusta', null)
+    await sendChatMessage('ajusta e ingresalo', null)
 
     expect(tarjetas()).toHaveLength(1)
     expect(tarjetas()[0].data?.cubicador?.datos_completos).toBe(4)
+    // La acción pendiente debe llegar al chat aunque la tarjeta ya exista (revisión final).
+    const conAcciones = useChatStore.getState().messages.find(m => m.data?.acciones_pendientes)
+    expect(conAcciones?.data?.acciones_pendientes).toHaveLength(1)
   })
 
   it('F8: cubicar dos veces el mismo borrador deja una sola tarjeta', async () => {

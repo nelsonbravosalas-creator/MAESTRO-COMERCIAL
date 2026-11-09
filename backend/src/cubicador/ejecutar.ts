@@ -3,6 +3,7 @@
 import type { Pool } from 'pg'
 import { httpError } from '../utils/httpError'
 import { scrubPii } from '../services/chatbotOps'
+import { aplicarAjustes, leerAjustes } from './ajustes'
 import { actualizarBorrador, obtenerBorrador } from './borradores'
 import { evaluarCompuerta, type EstadoCompuerta } from './compuerta'
 import { cubicar } from './motor'
@@ -86,12 +87,13 @@ export function copiarPrecio(destino: ItemListado, anterior: ItemListado): void 
 // Conserva los precios de los ítems cuyo `id` y `cantidad` no cambiaron.
 export function conservarPrecios(
   nuevos: ItemListado[],
-  anteriores: ItemListado[] | undefined
+  anteriores: ItemListado[] | undefined,
+  fijados: ReadonlySet<string> = new Set()
 ): ItemListado[] {
   const previos = new Map((anteriores ?? []).map(i => [i.id, i]))
   return nuevos.map(nuevo => {
     const anterior = previos.get(nuevo.id)
-    if (!anterior || anterior.cantidad !== nuevo.cantidad) return nuevo
+    if (!anterior || fijados.has(nuevo.id) || anterior.cantidad !== nuevo.cantidad) return nuevo
     const item = { ...nuevo }
     copiarPrecio(item, anterior)
     return item
@@ -118,11 +120,20 @@ export async function ejecutarCubicacion(
   }
 
   const params = await cargarParametros(pool)
-  const calculado = cubicar(borrador.perfil, borrador.ficha, params)
-  // Re-cubicar un borrador ya cubicado (botón de una tarjeta antigua) no descarta precios resueltos.
+  // Los ajustes manuales (ítems quitados, cantidades y precios fijados) se reaplican encima del
+  // cálculo; después, en una re-cubicación, se conservan los precios ya resueltos.
+  const ajustes = leerAjustes(borrador.ficha.datos.ajustes_listado)
+  const calculado = aplicarAjustes(cubicar(borrador.perfil, borrador.ficha, params), ajustes)
   const resultado: ResultadoCubicacion =
     borrador.estado === 'cubicado' && borrador.resultado
-      ? { ...calculado, items: conservarPrecios(calculado.items, borrador.resultado.items) }
+      ? {
+          ...calculado,
+          items: conservarPrecios(
+            calculado.items,
+            borrador.resultado.items,
+            new Set(Object.keys(ajustes.precios))
+          ),
+        }
       : calculado
   const actualizado = await actualizarBorrador(
     pool,

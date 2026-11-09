@@ -2,6 +2,7 @@ import { Pool } from 'pg'
 import { logger } from '../utils/logger'
 import { env } from '../config/env'
 import { httpError, asHttpError } from '../utils/httpError'
+import { resolverTienda } from './tiendasRetail'
 import { callLlm, parseLlmJson } from './llm'
 import { teachRule, ChatbotRule } from './chatbotRules'
 import { buildAutoLineItems, ImportLinea } from './chatbotCalc'
@@ -325,19 +326,34 @@ export async function lookupMaterialPrice(
   // rara no tire un precio_medio por lo demas bueno.
   const precioRaw = parseLlmJson<unknown>(raw)
   const precioParsed = chatbotPriceResponseSchema.safeParse(precioRaw)
-  // Con `tiendas`, una muestra de otra tienda se descarta (el modelo puede desobedecer el prompt).
+  // Con `tiendas`, solo cuentan las muestras de esas tiendas, resueltas por el dominio de la
+  // URL y luego por la etiqueta (el modelo puede desobedecer el prompt o etiquetar mal).
   const tiendasPermitidas = opts.tiendas?.map(t => t.toLowerCase())
-  const deTiendaPermitida = (tienda: string): boolean =>
-    !tiendasPermitidas || tiendasPermitidas.some(t => tienda.toLowerCase().includes(t))
+  const filtrarPorTienda = <T extends { tienda: string; fuente_url: string }>(
+    muestras: T[]
+  ): T[] => {
+    if (!tiendasPermitidas) return muestras
+    return muestras
+      .map(m => ({ ...m, tienda: resolverTienda(m.tienda, m.fuente_url).tienda }))
+      .filter(m => tiendasPermitidas.includes(m.tienda.toLowerCase()))
+  }
   const precio = precioParsed.success
-    ? {
-        ...precioParsed.data,
-        muestras: precioParsed.data.muestras
-          .map(m => chatbotPriceSampleSchema.safeParse(m))
-          .filter(r => r.success)
-          .map(r => r.data)
-          .filter(m => deTiendaPermitida(m.tienda)),
-      }
+    ? (() => {
+        const muestras = filtrarPorTienda(
+          precioParsed.data.muestras
+            .map(m => chatbotPriceSampleSchema.safeParse(m))
+            .filter(r => r.success)
+            .map(r => r.data)
+        )
+        // Con filtro de tiendas el promedio se recalcula solo con las muestras que quedan: una
+        // tienda descartada no debe influir en el precio que se devuelve ni en el que se guarda.
+        const precio_medio = tiendasPermitidas
+          ? muestras.length
+            ? Math.round(muestras.reduce((a, m) => a + m.precio, 0) / muestras.length)
+            : 0
+          : precioParsed.data.precio_medio
+        return { ...precioParsed.data, precio_medio, muestras }
+      })()
     : {
         precio_medio: 0,
         muestras: [],

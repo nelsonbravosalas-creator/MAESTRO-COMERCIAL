@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Pool } from 'pg'
 import { borradorBase, fakeBd, FICHA_VRF } from './fakeBd'
 import { conservarPrecios, ejecutarCubicacion } from '../ejecutar'
-import { resolverPrecios, TIENDAS_RETAIL } from '../precios'
+import { coincidenciaCatalogo, PLAZO_TIENDAS_MS, resolverPrecios, TIENDAS_RETAIL } from '../precios'
 import type { ItemListado, ResultadoCubicacion } from '../types'
 import type { PriceLookupResult } from '../../services/chatbotOps'
 
@@ -102,10 +102,9 @@ describe('resolverPrecios', () => {
   })
 
   it('catálogo primero, sin LLM', async () => {
-    const { pool, filas } = armar(
-      [item('a', { descripcion: 'Tubo de cobre 3/8', categoria: 'mat' })],
-      { catalogo: [{ description: 'Tubo de cobre 3/8', unit_name: 'm', unit_price: '4500' }] }
-    )
+    const { pool, filas } = armar([item('a', { descripcion: 'Tubo de cobre 3/8', unidad: 'm' })], {
+      catalogo: [{ description: 'Tubo de cobre 3/8', unit_name: 'm', unit_price: '4500' }],
+    })
     const estado = await resolverPrecios(pool, 'b1', 'u1', CTX)
     expect(lookup).not.toHaveBeenCalled()
     const it0 = estado.resultado?.items[0]
@@ -137,7 +136,7 @@ describe('resolverPrecios', () => {
   })
 
   it('también usa el catálogo eléctrico', async () => {
-    const { pool } = armar([item('e', { descripcion: 'Cable THHN 12 AWG' })], {
+    const { pool } = armar([item('e', { descripcion: 'Cable THHN 12 AWG', unidad: 'm' })], {
       electrico: [{ description: 'Cable THHN 12 AWG', unit_name: 'm', unit_price: '900' }],
     })
     const estado = await resolverPrecios(pool, 'b1', 'u1', CTX)
@@ -286,7 +285,7 @@ describe('resolverPrecios', () => {
       .mockResolvedValueOnce(
         respuesta([
           muestra(100, 'Construmart', 'https://c.cl/x'),
-          muestra(600, 'Punto Maestro', 'https://pm.cl/x'),
+          muestra(600, 'Punto Maestro', 'https://www.puntomaestro.cl/x'),
         ])
       )
     const estado = await resolverPrecios(pool, 'b1', 'u1', CTX)
@@ -380,5 +379,189 @@ describe('conservar precios al recalcular', () => {
       estado_precio: 'con_precio',
     })
     expect(segundo.precios_pendientes).toBe(items.length - 1)
+  })
+})
+
+describe('coincidenciaCatalogo', () => {
+  const fila = (description: string, unit_name: string, id = description) => ({
+    id,
+    description,
+    unit_name,
+    unit_price: '100',
+    category_id: null,
+  })
+  const buscar = (descripcion: string, unidad: string, filas: ReturnType<typeof fila>[]) =>
+    coincidenciaCatalogo({ descripcion, unidad }, filas)
+
+  it('acepta la igualdad exacta', () => {
+    const f = fila('Tubo de cobre 3/8', 'm')
+    expect(buscar('Tubo de cobre 3/8', 'm', [f])).toBe(f)
+  })
+
+  it('rechaza un diámetro distinto', () => {
+    expect(buscar('Tubo de cobre 3/8', 'm', [fila('Tubo de cobre 1/2', 'm')])).toBeNull()
+  })
+
+  it('una fila genérica corta («Gas») no calza con un objetivo más largo y distinto', () => {
+    expect(buscar('Gasfitería soldadura de plata', 'un', [fila('Gas', 'un')])).toBeNull()
+    expect(buscar('Gas Refrigerante R-410A', 'kg', [fila('Gas', 'kg')])).toBeNull()
+  })
+
+  it('rechaza una unidad incompatible (kg vs Rec, Hora vs Día)', () => {
+    expect(
+      buscar('Gas Refrigerante R-410A', 'kg', [fila('Gas Refrigerante R-410A', 'Rec')])
+    ).toBeNull()
+    expect(
+      buscar('Técnico Especializado HVAC', 'Hora', [fila('Técnico Especializado HVAC', 'Día')])
+    ).toBeNull()
+  })
+
+  it('acepta alias de unidad (hr, kilos, m³, balón, mts)', () => {
+    expect(buscar('Técnico HVAC', 'Hora', [fila('Técnico HVAC', 'hr')])).not.toBeNull()
+    expect(buscar('Gas R-410A', 'kg', [fila('Gas R-410A', 'Kilos')])).not.toBeNull()
+    expect(
+      buscar('Nitrógeno N2 Industrial', 'm3', [fila('Nitrógeno N2 Industrial', 'm³')])
+    ).not.toBeNull()
+    expect(buscar('Gas R-410A', 'Rec', [fila('Gas R-410A', 'Balón')])).not.toBeNull()
+    expect(buscar('Cable THHN', 'm', [fila('Cable THHN', 'mts')])).not.toBeNull()
+  })
+
+  it('R-404A no calza con R-410A y r404a equivale a R-404A', () => {
+    expect(
+      buscar('Gas Refrigerante R-404A', 'kg', [fila('Gas Refrigerante R-410A', 'kg')])
+    ).toBeNull()
+    expect(
+      buscar('Gas Refrigerante R-404A', 'kg', [fila('Gas Refrigerante r404a', 'kg')])
+    ).not.toBeNull()
+  })
+
+  it('elige la mejor fila, no la primera', () => {
+    const generica = fila('Tubo de cobre rígido', 'm', 'generica')
+    const mejor = fila('Tubo de cobre rígido tipo L', 'm', 'mejor')
+    const larga = fila('Tubo de cobre rígido tipo L tira', 'm', 'larga')
+    expect(buscar('Tubo de cobre rígido tipo L', 'm', [generica, larga, mejor])).toBe(mejor)
+  })
+
+  it('si la mejor fila tiene otra unidad usa la siguiente compatible', () => {
+    const mala = fila('Tubo de cobre 3/8', 'Tir', 'mala')
+    const buena = fila('Tubo cobre 3/8 pulgada', 'm', 'buena')
+    expect(buscar('Tubo de cobre 3/8', 'm', [mala, buena])).toBe(buena)
+  })
+})
+
+describe('muestras: dominio de la tienda', () => {
+  beforeEach(() => lookup.mockReset())
+
+  const resolverCon = async (m: { precio: number; tienda: string; fuente_url: string }[]) => {
+    const { pool } = armar([item('a')])
+    lookup.mockResolvedValue(respuesta(m))
+    return (await resolverPrecios(pool, 'b1', 'u1', CTX)).resultado?.items[0]
+  }
+
+  it('etiqueta Sodimac con un dominio ajeno se rechaza', async () => {
+    const it0 = await resolverCon([muestra(100, 'Sodimac', 'https://sodimac.cl.estafa.com/p')])
+    expect(it0?.estado_precio).toBe('sin_precio')
+  })
+
+  it('acepta un subdominio (www.sodimac.cl) y guarda el nombre canónico', async () => {
+    const it0 = await resolverCon([muestra(100, 'Sodimac Homecenter', 'https://www.sodimac.cl/p')])
+    expect(it0).toMatchObject({ tienda: 'Sodimac', precio_unitario: 100 })
+  })
+
+  it('etiqueta equivocada con el host correcto usa la tienda del host', async () => {
+    const it0 = await resolverCon([muestra(100, 'Sodimac', 'https://www.easy.cl/p')])
+    expect(it0).toMatchObject({ tienda: 'Easy', precio_unitario: 100 })
+  })
+
+  it('una URL inválida se rechaza', async () => {
+    const it0 = await resolverCon([muestra(100, 'Easy', 'https://')])
+    expect(it0?.estado_precio).toBe('sin_precio')
+  })
+
+  it('el host no distingue mayúsculas', async () => {
+    const it0 = await resolverCon([muestra(100, 'imperial', 'HTTPS://WWW.IMPERIAL.CL/P')])
+    expect(it0).toMatchObject({ tienda: 'Imperial' })
+  })
+})
+
+describe('plazo duro de la etapa de tiendas', () => {
+  beforeEach(() => {
+    lookup.mockReset()
+    vi.useFakeTimers()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('coincide con el presupuesto de reloj del agente', async () => {
+    const { WALL_CLOCK_BUDGET_MS } = await import('../../agent/loop')
+    expect(PLAZO_TIENDAS_MS).toBe(WALL_CLOCK_BUDGET_MS)
+  })
+
+  it('al vencer deja pendientes los ítems sin respuesta y guarda lo resuelto', async () => {
+    const { pool } = armar([item('a'), item('b')])
+    lookup.mockImplementation(async (_p, material) => {
+      if (material === 'Material b') return new Promise<PriceLookupResult>(() => {})
+      return respuesta([muestra(300)])
+    })
+    const promesa = resolverPrecios(pool, 'b1', 'u1', CTX)
+    await vi.advanceTimersByTimeAsync(PLAZO_TIENDAS_MS + 1)
+    const estado = await promesa
+    const [a, b] = estado.resultado?.items ?? []
+    expect(a).toMatchObject({ estado_precio: 'con_precio', precio_unitario: 300 })
+    expect(b.estado_precio).toBe('pendiente')
+    expect(estado.precios_pendientes).toBe(1)
+  })
+})
+
+describe('re-cubicar conserva los ajustes manuales', () => {
+  it('lo quitado sigue quitado, lo manual sigue manual y el precio resuelto se mantiene', async () => {
+    const { pool, filas } = fakeBd([borradorBase({ ficha: FICHA_VRF })])
+    const primero = await ejecutarCubicacion(pool, 'b1', 'u1')
+    const items = primero.resultado?.items ?? []
+    expect(items.length).toBeGreaterThan(3)
+    const [quitado, manualCantidad, manualPrecio, resuelto] = items
+
+    const b = filas.get('b1')
+    if (!b?.resultado) throw new Error('sin borrador')
+    filas.set('b1', {
+      ...b,
+      ficha: {
+        ...b.ficha,
+        datos: {
+          ...b.ficha.datos,
+          ajustes_listado: {
+            quitar: [quitado.id],
+            cantidades: { [manualCantidad.id]: 77 },
+            precios: { [manualPrecio.id]: { precio_unitario: 555, tienda: 'Taller' } },
+          },
+        },
+      },
+      resultado: {
+        ...b.resultado,
+        items: b.resultado.items.map(i =>
+          i.id === resuelto.id
+            ? {
+                ...i,
+                precio_unitario: 999,
+                fuente: 'catalogo' as const,
+                estado_precio: 'con_precio' as const,
+              }
+            : i
+        ),
+      },
+    })
+
+    const segundo = await ejecutarCubicacion(pool, 'b1', 'u1')
+    const nuevos = segundo.resultado?.items ?? []
+    expect(nuevos.find(i => i.id === quitado.id)).toBeUndefined()
+    expect(nuevos.find(i => i.id === manualCantidad.id)?.cantidad).toBe(77)
+    expect(nuevos.find(i => i.id === manualPrecio.id)).toMatchObject({
+      precio_unitario: 555,
+      tienda: 'Taller',
+      estado_precio: 'con_precio',
+    })
+    expect(nuevos.find(i => i.id === resuelto.id)).toMatchObject({
+      precio_unitario: 999,
+      fuente: 'catalogo',
+    })
   })
 })

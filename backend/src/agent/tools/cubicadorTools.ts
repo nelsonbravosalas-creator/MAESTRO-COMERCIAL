@@ -18,6 +18,7 @@ import {
   crearBorrador,
   obtenerBorrador,
 } from '../../cubicador/borradores'
+import { aplicarAjustes, leerAjustes } from '../../cubicador/ajustes'
 import { evaluarCompuerta } from '../../cubicador/compuerta'
 import { copiarPrecio, ejecutarCubicacion, estadoCubicador } from '../../cubicador/ejecutar'
 import { aLineas, describirListado } from '../../cubicador/ingreso'
@@ -269,36 +270,6 @@ export const cubicarBorradorTool: AgentTool = {
 
 // ── ajustar_listado ─────────────────────────────────────────────────
 
-interface Ajustes {
-  quitar: string[]
-  cantidades: Record<string, number>
-  precios: Record<string, { precio_unitario: number; tienda?: string }>
-}
-
-function leerAjustes(valor: unknown): Ajustes {
-  const base: Ajustes = { quitar: [], cantidades: {}, precios: {} }
-  if (!esObjeto(valor)) return base
-  if (Array.isArray(valor.quitar)) {
-    base.quitar = valor.quitar.filter((x): x is string => typeof x === 'string')
-  }
-  if (esObjeto(valor.cantidades)) {
-    for (const [k, v] of Object.entries(valor.cantidades)) {
-      if (typeof v === 'number' && Number.isFinite(v) && v > 0) base.cantidades[k] = v
-    }
-  }
-  if (esObjeto(valor.precios)) {
-    for (const [k, v] of Object.entries(valor.precios)) {
-      if (esObjeto(v) && typeof v.precio_unitario === 'number' && v.precio_unitario >= 0) {
-        base.precios[k] = {
-          precio_unitario: v.precio_unitario,
-          ...(typeof v.tienda === 'string' ? { tienda: v.tienda } : {}),
-        }
-      }
-    }
-  }
-  return base
-}
-
 export const ajustarListadoTool: AgentTool = {
   name: 'ajustar_listado',
   description:
@@ -389,28 +360,20 @@ export const ajustarListadoTool: AgentTool = {
       }
     }
 
+    // Quitar, cantidades y precios manuales se aplican con el helper compartido; luego se
+    // conservan los precios resueltos de los ítems que no cambiaron (o con cantidad fijada).
     const anteriores = new Map(previo.items.map(i => [i.id, i]))
-    const items: ItemListado[] = []
-    for (const nuevo of recalculo.items) {
-      if (ajustes.quitar.includes(nuevo.id)) continue
-      const item: ItemListado = { ...nuevo }
-      const anterior = anteriores.get(nuevo.id)
-      const cantidadManual = ajustes.cantidades[nuevo.id]
-      if (cantidadManual !== undefined) item.cantidad = cantidadManual
-      // Se conserva el precio ya resuelto si el ítem no cambió o si la persona fijó la cantidad.
-      if (anterior && (cantidadManual !== undefined || anterior.cantidad === nuevo.cantidad)) {
-        copiarPrecio(item, anterior)
-      }
-      const manual = ajustes.precios[nuevo.id]
-      if (manual) {
-        item.precio_unitario = manual.precio_unitario
-        item.fuente = null
-        item.estado_precio = 'con_precio'
-        if (manual.tienda) item.tienda = manual.tienda
-        delete item.fuente_url
-      }
-      items.push(item)
-    }
+    const items: ItemListado[] = aplicarAjustes(recalculo, ajustes).items.map(item => {
+      const anterior = anteriores.get(item.id)
+      const conservar =
+        anterior &&
+        !ajustes.precios[item.id] &&
+        (ajustes.cantidades[item.id] !== undefined || anterior.cantidad === item.cantidad)
+      if (!conservar) return item
+      const copia = { ...item }
+      copiarPrecio(copia, anterior)
+      return copia
+    })
 
     const resultado: ResultadoCubicacion = { ...recalculo, items }
     const fichaFinal: Ficha = {

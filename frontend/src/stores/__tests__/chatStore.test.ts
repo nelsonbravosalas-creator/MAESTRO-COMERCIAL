@@ -308,6 +308,24 @@ describe('resolverPreciosDesdeTarjeta', () => {
     expect(msgs[0].data?.reply).toBe('Listado')
   })
 
+  it('con dos tarjetas actualiza solo el mensaje del borrador consultado', async () => {
+    const otra = { ...conPendientes(3), borrador_id: 'b-2' }
+    useChatStore.setState({
+      messages: [
+        { id: 1, role: 'bot', text: 'A', data: { reply: 'A', cubicador: conPendientes(7) } },
+        { id: 2, role: 'bot', text: 'B', data: { reply: 'B', cubicador: otra } },
+      ],
+    })
+    resolverPreciosMock.mockResolvedValueOnce(conPendientes(0))
+
+    await resolverPreciosDesdeTarjeta('b-1')
+
+    const msgs = useChatStore.getState().messages
+    expect(msgs[0].data?.cubicador?.precios_pendientes).toBe(0)
+    expect(msgs[1].data?.cubicador).toEqual(otra)
+    expect(msgs).toHaveLength(2)
+  })
+
   it('se detiene en el tope de vueltas y avisa lo que quedó', async () => {
     resolverPreciosMock.mockResolvedValue(conPendientes(2))
 

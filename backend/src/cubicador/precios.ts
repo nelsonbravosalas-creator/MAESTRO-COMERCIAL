@@ -9,15 +9,19 @@ import type { Pool } from 'pg'
 import { matchCatalogRow, type CatalogRow } from '../agent/tools/specCubicatorTool'
 import { lookupMaterialPrice, PRECIO_STALE_DAYS, type OpContext } from '../services/chatbotOps'
 import { getGraphNode, materialNodeId } from '../services/chatbotGraph'
+import { resolverTienda, TIENDAS_RETAIL } from '../services/tiendasRetail'
 import { httpError } from '../utils/httpError'
 import { logger } from '../utils/logger'
 import { actualizarBorrador, obtenerBorrador } from './borradores'
 import { estadoCubicador, type EstadoCubicador } from './ejecutar'
 import type { Borrador, ItemListado, ResultadoCubicacion } from './types'
 
-export const TIENDAS_RETAIL = ['Sodimac', 'Easy', 'Imperial', 'Punto Maestro']
+export { TIENDAS_RETAIL }
 export const LOTE_MAX = 3
 export const TIMEOUT_TIENDA_MS = 15_000
+// Tope duro de la etapa de tiendas: igual al presupuesto de reloj del agente (WALL_CLOCK_BUDGET_MS
+// en agent/loop.ts), por debajo del límite de 60 s de la función.
+export const PLAZO_TIENDAS_MS = 40_000
 
 type PrecioResuelto = Pick<
   ItemListado,
@@ -36,27 +40,141 @@ export function esSoloCatalogo(item: ItemListado): boolean {
   )
 }
 
-async function cargarCatalogo(pool: Pool): Promise<CatalogRow[]> {
+type FilaCatalogo = CatalogRow & { id?: string }
+
+async function cargarCatalogo(pool: Pool): Promise<FilaCatalogo[]> {
+  const consulta = (tabla: string) =>
+    pool.query<{ id?: string; description: string; unit_name: string; unit_price: string }>(
+      `SELECT id, description, unit_name, unit_price FROM ${tabla} WHERE is_active = true`
+    )
   const [mec, ele] = await Promise.all([
-    pool.query<{ description: string; unit_name: string; unit_price: string }>(
-      `SELECT description, unit_name, unit_price FROM catalog_items WHERE is_active = true`
-    ),
-    pool.query<{ description: string; unit_name: string; unit_price: string }>(
-      `SELECT description, unit_name, unit_price FROM electrical_catalog_items WHERE is_active = true`
-    ),
+    consulta('catalog_items'),
+    consulta('electrical_catalog_items'),
   ])
   return [...mec.rows, ...ele.rows].map(r => ({ ...r, category_id: null }))
 }
 
-function precioCatalogo(item: ItemListado, catalogo: CatalogRow[]): PrecioResuelto | null {
-  const fila = matchCatalogRow(item.descripcion, catalogo)
+function normalizar(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\br-?(\d{2,3})([a-z])?\b/g, 'r$1$2')
+    .replace(/(\d)\s+(mm|cm|kg|lt|l|w|kw|v|a|hp|btu|awg)\b/g, '$1$2')
+    .replace(/(\d),(\d)/g, '$1.$2')
+}
+
+// Medidas y códigos: 3/8, 40x40x2, 2mm, r404a.
+const MEDIDA_RE =
+  /\br\d{2,3}[a-z]?\b|(?<![a-z0-9.])\d+(?:\.\d+)?(?:\/\d+)?(?:x\d+(?:\.\d+)?)*[a-z]{0,3}\b/g
+const PALABRAS_VACIAS = new Set(['del', 'para', 'con', 'las', 'los', 'por', 'una', 'uno'])
+
+function medidasDe(norm: string): Set<string> {
+  return new Set(norm.match(MEDIDA_RE) ?? [])
+}
+
+function palabrasDe(norm: string): Set<string> {
+  return new Set(
+    norm
+      .replace(MEDIDA_RE, ' ')
+      .split(/[^a-z]+/)
+      .filter(p => p.length >= 3 && !PALABRAS_VACIAS.has(p))
+  )
+}
+
+const ALIAS_UNIDAD: Record<string, string> = {
+  hora: 'hora',
+  horas: 'hora',
+  hr: 'hora',
+  hrs: 'hora',
+  h: 'hora',
+  kg: 'kg',
+  kgs: 'kg',
+  kilo: 'kg',
+  kilos: 'kg',
+  m3: 'm3',
+  'm\u00b3': 'm3',
+  un: 'un',
+  und: 'un',
+  uni: 'un',
+  unidad: 'un',
+  unidades: 'un',
+  u: 'un',
+  tir: 'tira',
+  tira: 'tira',
+  tiras: 'tira',
+  m: 'm',
+  mt: 'm',
+  mts: 'm',
+  metro: 'm',
+  metros: 'm',
+  rec: 'rec',
+  recarga: 'rec',
+  balon: 'rec',
+  balones: 'rec',
+}
+
+export function normalizarUnidad(unidad: string): string {
+  const u = unidad
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[.\s]/g, '')
+  return ALIAS_UNIDAD[u] ?? u
+}
+
+function mismasMedidas(a: Set<string>, b: Set<string>): boolean {
+  return a.size === b.size && [...a].every(m => b.has(m))
+}
+
+/**
+ * Fila del catálogo para un ítem, o null. Más estricta que matchCatalogRow (que no se toca: la
+ * usan otras herramientas): elige la MEJOR fila (igualdad exacta, luego más palabras en común),
+ * exige las mismas medidas (3/8, r-404a, 40x40x2) y la misma unidad una vez normalizada.
+ */
+export function coincidenciaCatalogo(
+  item: Pick<ItemListado, 'descripcion' | 'unidad'>,
+  filas: FilaCatalogo[]
+): FilaCatalogo | null {
+  const objetivo = normalizar(item.descripcion).trim()
+  const medidasObjetivo = medidasDe(objetivo)
+  const palabrasObjetivo = palabrasDe(objetivo)
+  if (palabrasObjetivo.size === 0) return null
+
+  const candidatas: Array<{ fila: FilaCatalogo; puntaje: number }> = []
+  const sugerida = matchCatalogRow(item.descripcion, filas)
+  const todas = sugerida ? [sugerida, ...filas.filter(f => f !== sugerida)] : filas
+  for (const fila of todas) {
+    const norm = normalizar(fila.description).trim()
+    if (!mismasMedidas(medidasObjetivo, medidasDe(norm))) continue
+    const palabras = palabrasDe(norm)
+    const comunes = [...palabras].filter(p => palabrasObjetivo.has(p)).length
+    const minimo = Math.ceil(0.6 * Math.max(palabras.size, palabrasObjetivo.size))
+    const exacta = norm === objetivo
+    if (!exacta && (comunes === 0 || comunes < minimo)) continue
+    const puntaje = exacta ? 1000 : comunes * 10 - Math.abs(palabras.size - palabrasObjetivo.size)
+    candidatas.push({ fila, puntaje })
+  }
+  candidatas.sort((x, y) => y.puntaje - x.puntaje)
+
+  const unidad = normalizarUnidad(item.unidad)
+  const elegida = candidatas.find(c => normalizarUnidad(c.fila.unit_name) === unidad)
+  if (!elegida && candidatas.length > 0) {
+    logger.warn('Cubicador: fila de catálogo descartada por unidad distinta', {
+      item: item.descripcion,
+      unidadItem: item.unidad,
+      fila: candidatas[0].fila.id ?? candidatas[0].fila.description,
+      unidadFila: candidatas[0].fila.unit_name,
+    })
+  }
+  return elegida?.fila ?? null
+}
+
+function precioCatalogo(item: ItemListado, catalogo: FilaCatalogo[]): PrecioResuelto | null {
+  const fila = coincidenciaCatalogo(item, catalogo)
   const precio = fila ? Number(fila.unit_price) : 0
   if (!fila || !Number.isFinite(precio) || precio <= 0) return null
-  return {
-    precio_unitario: precio,
-    fuente: 'catalogo',
-    estado_precio: 'con_precio',
-  }
+  return { precio_unitario: precio, fuente: 'catalogo', estado_precio: 'con_precio' }
 }
 
 async function precioCache(pool: Pool, item: ItemListado): Promise<PrecioResuelto | null> {
@@ -79,24 +197,20 @@ function esUrlHttp(url: string): boolean {
   return /^https?:\/\//i.test(url.trim())
 }
 
-function deTiendaRetail(tienda: string): boolean {
-  const t = tienda.toLowerCase()
-  return TIENDAS_RETAIL.some(r => t.includes(r.toLowerCase()))
-}
-
-// La muestra más barata entre las válidas: precio > 0, URL http(s) y una de las tiendas permitidas.
+// La muestra más barata entre las válidas: precio > 0 y URL http(s) cuyo dominio pertenece a una
+// de las tiendas retail (sodimac.cl o *.sodimac.cl). Se guarda el nombre canónico de la tienda,
+// no la etiqueta que escribió el modelo.
 function mejorMuestra(
   muestras: Array<{ precio: number; fuente_url: string; tienda: string }>
 ): PrecioResuelto {
-  const validas = muestras.filter(
-    m =>
-      Number.isFinite(m.precio) &&
-      m.precio > 0 &&
-      typeof m.fuente_url === 'string' &&
-      esUrlHttp(m.fuente_url) &&
-      typeof m.tienda === 'string' &&
-      deTiendaRetail(m.tienda)
-  )
+  const validas: Array<{ precio: number; fuente_url: string; tienda: string }> = []
+  for (const m of muestras) {
+    if (!Number.isFinite(m.precio) || m.precio <= 0) continue
+    if (typeof m.fuente_url !== 'string' || !esUrlHttp(m.fuente_url)) continue
+    const r = resolverTienda(typeof m.tienda === 'string' ? m.tienda : '', m.fuente_url)
+    if (!r.porHost || !TIENDAS_RETAIL.includes(r.tienda)) continue
+    validas.push({ precio: m.precio, fuente_url: m.fuente_url.trim(), tienda: r.tienda })
+  }
   if (validas.length === 0) return SIN_PRECIO
   const barata = validas.reduce((a, b) => (b.precio < a.precio ? b : a))
   return {
@@ -104,7 +218,7 @@ function mejorMuestra(
     fuente: 'tienda',
     estado_precio: 'con_precio',
     tienda: barata.tienda,
-    fuente_url: barata.fuente_url.trim(),
+    fuente_url: barata.fuente_url,
   }
 }
 
@@ -180,19 +294,34 @@ export async function resolverPrecios(
     else porBuscar.push(item)
   })
 
-  // Etapa 2: tiendas, un lote acotado en paralelo. Un fallo no tumba al resto.
+  // Etapa 2: tiendas, un lote acotado en paralelo. Un fallo no tumba al resto y, si vence el
+  // plazo duro, los ítems sin respuesta siguen pendientes (se reintentan en la próxima llamada).
   const lote = porBuscar.slice(0, LOTE_MAX)
-  const respuestas = await Promise.allSettled(lote.map(item => precioTienda(pool, item, ctx)))
-  respuestas.forEach((r, i) => {
-    if (r.status === 'fulfilled') resolver(lote[i], r.value)
-    else {
-      logger.warn('Cubicador: falló la consulta de precio en tiendas', {
-        item: lote[i].id,
-        error: r.reason instanceof Error ? r.reason.message : String(r.reason),
-      })
-      resolver(lote[i], SIN_PRECIO)
-    }
+  let cerrado = false
+  const consultas = lote.map(item =>
+    precioTienda(pool, item, ctx).then(
+      precio => {
+        if (!cerrado) resolver(item, precio)
+      },
+      (error: unknown) => {
+        logger.warn('Cubicador: falló la consulta de precio en tiendas', {
+          item: item.id,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        if (!cerrado) resolver(item, SIN_PRECIO)
+      }
+    )
+  )
+  let temporizador: ReturnType<typeof setTimeout> | undefined
+  const plazo = new Promise<void>(fin => {
+    temporizador = setTimeout(fin, PLAZO_TIENDAS_MS)
   })
+  try {
+    await Promise.race([Promise.all(consultas), plazo])
+  } finally {
+    cerrado = true
+    clearTimeout(temporizador)
+  }
 
   // Guardado con control de versión; si el borrador cambió, un reintento sobre la versión nueva.
   try {

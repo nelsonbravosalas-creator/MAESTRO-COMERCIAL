@@ -327,6 +327,7 @@ export const createChatbotRouter = (pool: Pool) => {
           reply,
           quotation: result.mutatedQuotation,
           rule: result.mutatedRule,
+          cubicador: result.cubicador,
         })
       } catch (error) {
         const httpStatus = asHttpError(error).status

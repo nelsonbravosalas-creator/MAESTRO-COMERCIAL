@@ -153,6 +153,11 @@ export async function confirmPendingAction(
   } catch (err) {
     const msg = errorMessage(err)
     await markResolved(pool, input.id, 'failed', msg)
+    // Un 4xx de la herramienta (p. ej. 409 por cambio posterior) conserva su estado.
+    const status = (err as { status?: number }).status
+    if (typeof status === 'number' && status >= 400 && status < 500) {
+      throw httpError(msg, status)
+    }
     throw httpError(`No se pudo ejecutar la acción: ${msg}`, 500)
   }
 

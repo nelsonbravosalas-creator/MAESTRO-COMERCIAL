@@ -134,6 +134,30 @@ describe('confirmPendingAction', () => {
     expect(res.result.mutatedQuotation).toEqual({ id: 'q1' })
   })
 
+  it('un 4xx de la herramienta conserva su estado y un error común queda en 500', async () => {
+    const claim = (sql: string) =>
+      sql.includes("SET status = 'confirmed'") ? { rows: [PENDING_ROW] } : undefined
+    const conflicto = writeTool()
+    conflicto.execute.mockRejectedValueOnce(httpError('El borrador cambió', 409))
+    await expect(
+      confirmPendingAction(fakePool(claim), registryWith(conflicto.tool), {
+        id: 'a',
+        userId: 'user-1',
+        model: 'm',
+      })
+    ).rejects.toMatchObject({ status: 409, message: 'El borrador cambió' })
+
+    const roto = writeTool()
+    roto.execute.mockRejectedValueOnce(new Error('boom'))
+    await expect(
+      confirmPendingAction(fakePool(claim), registryWith(roto.tool), {
+        id: 'a',
+        userId: 'user-1',
+        model: 'm',
+      })
+    ).rejects.toMatchObject({ status: 500 })
+  })
+
   it('responde 404 si la acción no existe o es de otro usuario', async () => {
     const { tool, execute } = writeTool()
     const pool = fakePool(() => undefined)

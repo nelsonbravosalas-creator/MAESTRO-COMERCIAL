@@ -47,6 +47,29 @@ describe('compuerta del servidor', () => {
     expect(e.faltantes).toEqual([])
   })
 
+  it('solo no_sabe no abre la compuerta: exige al menos un dato real', () => {
+    const e = evaluarCompuerta(
+      PERFILES.hvac,
+      ficha({}, ['trabajo_equipo', 'refrigerante_lineas', 'estado_sistema'])
+    )
+    expect(e.habilitado).toBe(false)
+    expect(e.faltantes).toEqual(['trabajo_equipo', 'refrigerante_lineas', 'estado_sistema'])
+    expect(e.motivo).toMatch(/dato real/)
+    expect(e.siguientes.length).toBeGreaterThan(0)
+  })
+
+  it('un dato real más dos no_sabe sí abre la compuerta', () => {
+    const e = evaluarCompuerta(
+      PERFILES.hvac,
+      ficha({ tipo_trabajo: 'reparacion', sistema: 'split' }, [
+        'refrigerante_lineas',
+        'estado_sistema',
+      ])
+    )
+    expect(e.habilitado).toBe(true)
+    expect(e.motivo).toBeUndefined()
+  })
+
   it('todo en el primer mensaje habilita sin preguntar', () => {
     const e = evaluarCompuerta(PERFILES.hvac, ficha(HVAC_COMPLETO))
     expect(e.respondidas).toBe(3)

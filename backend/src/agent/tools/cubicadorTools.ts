@@ -7,6 +7,7 @@ import {
   manualItemsWarning,
   resolveClientByName,
   scrubPii,
+  errorMessage,
   type ClientRecord,
 } from '../../services/chatbotOps'
 import { asHttpError, httpError } from '../../utils/httpError'
@@ -49,6 +50,24 @@ function limpiarPii(valor: unknown): unknown {
     return salida
   }
   return valor
+}
+
+const CLAVE_VALIDA = /^[a-z0-9_]{1,60}$/
+// Clave reservada: solo quitar_items / cambios_item de ajustar_listado la escriben.
+const CLAVE_RESERVADA = 'ajustes_listado'
+
+// Datos que escribe el modelo: solo claves identificador (sin la reservada) y textos sin PII.
+function limpiarDatos(valor: unknown, raiz = true): unknown {
+  if (Array.isArray(valor)) return valor.map(v => limpiarDatos(v, false))
+  if (esObjeto(valor)) {
+    const salida: Objeto = {}
+    for (const [k, v] of Object.entries(valor)) {
+      if (!CLAVE_VALIDA.test(k) || (raiz && k === CLAVE_RESERVADA)) continue
+      salida[k] = limpiarDatos(v, false)
+    }
+    return salida
+  }
+  return limpiarPii(valor)
 }
 
 // Fusión recursiva de objetos; listas y valores simples reemplazan al anterior.
@@ -131,13 +150,20 @@ export const entrevistarObraTool: AgentTool = {
     if (perfilArg && !(perfilArg in PERFILES)) {
       throw httpError(`Perfil desconocido: ${perfilArg}.`, 422)
     }
-    const datos = esObjeto(args.datos) ? (limpiarPii(args.datos) as Objeto) : {}
+    const datos = esObjeto(args.datos) ? (limpiarDatos(args.datos) as Objeto) : {}
     const descripcion = typeof args.descripcion === 'string' ? scrubPii(args.descripcion) : ''
-    const noSabe = Array.isArray(args.no_sabe)
+    const pedidos = Array.isArray(args.no_sabe)
       ? args.no_sabe.filter((x): x is string => typeof x === 'string')
       : []
 
     const activo = await borradorActivo(ctx.pool, userId)
+    // Solo cuentan las claves de preguntas reales del perfil; el resto se informa y se ignora.
+    const perfilDestino = (
+      activo && (!perfilArg || perfilArg === activo.perfil) ? activo.perfil : perfilArg
+    ) as PerfilId | null
+    const claves = new Set(perfilDestino ? PERFILES[perfilDestino].preguntas.map(q => q.clave) : [])
+    const noSabe = pedidos.filter(k => claves.has(k))
+    const ignorados = pedidos.filter(k => !claves.has(k)).map(k => scrubPii(k).slice(0, 60))
     let borrador: Borrador
     if (activo && (!perfilArg || perfilArg === activo.perfil)) {
       const ficha: Ficha = {
@@ -182,6 +208,7 @@ export const entrevistarObraTool: AgentTool = {
         segundo_nivel: PERFILES[borrador.perfil].segundoNivel(borrador.ficha.datos),
         datos_completos: estado.datos_completos,
         datos_totales: estado.datos_totales,
+        ...(ignorados.length ? { ignorados } : {}),
       },
       summary: `Ficha actualizada: ${estado.datos_completos} de ${estado.datos_totales} datos (compuerta ${
         estado.compuerta.habilitado ? 'abierta' : 'cerrada'
@@ -219,14 +246,17 @@ export const cubicarBorradorTool: AgentTool = {
       }
     } catch (err) {
       const payload = asHttpError(err).payload
-      if (asHttpError(err).status === 422 && Array.isArray(payload?.faltantes)) {
+      if (asHttpError(err).status === 422) {
         const estado = estadoCubicador(borrador)
+        const faltantes = Array.isArray(payload?.faltantes)
+          ? payload.faltantes
+          : estado.compuerta.faltantes
         return {
           output: {
             bloqueado: true,
-            faltantes: payload.faltantes,
-            siguientes: payload.siguientes ?? estado.compuerta.siguientes,
-            mensaje: 'La compuerta está cerrada: faltan datos para cubicar.',
+            motivo: scrubPii(errorMessage(err)),
+            faltantes,
+            siguientes: payload?.siguientes ?? estado.compuerta.siguientes,
           },
           summary: 'Cubicación bloqueada: faltan datos',
           cubicador: estado,
@@ -310,7 +340,7 @@ export const ajustarListadoTool: AgentTool = {
     }
     const previo = borrador.resultado
 
-    const datosNuevos = esObjeto(args.datos) ? (limpiarPii(args.datos) as Objeto) : {}
+    const datosNuevos = esObjeto(args.datos) ? (limpiarDatos(args.datos) as Objeto) : {}
     const ajustes = leerAjustes(borrador.ficha.datos.ajustes_listado)
     const quitar = Array.isArray(args.quitar_items)
       ? args.quitar_items.filter((x): x is string => typeof x === 'string')

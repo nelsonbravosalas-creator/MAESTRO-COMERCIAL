@@ -37,14 +37,24 @@ export function estadoCubicador(borrador: Borrador): EstadoCubicador {
   }
 }
 
+const MAX_VALOR = 300
+const MAX_DATOS = 1500
+const MAX_RESUMEN = 3000
+
+// Una sola línea y con tope: el texto del usuario no debe poder simular otras secciones del prompt.
+function compactar(texto: string): string {
+  return texto.replace(/\s+/g, ' ').trim().slice(0, MAX_VALOR)
+}
+
 // Resumen de la ficha para el prompt del agente. Pasa por scrubPii (A-21).
 export function resumirFicha(borrador: Borrador): string {
   const estado = estadoCubicador(borrador)
   const { ficha } = borrador
+  const datos = JSON.stringify(ficha.datos, (_k, v) => (typeof v === 'string' ? compactar(v) : v))
   const lineas = [
     `Borrador de cubicación (perfil ${borrador.perfil}, estado ${borrador.estado}).`,
-    `Descripción: ${ficha.descripcion || '(sin descripción)'}`,
-    `Datos registrados: ${JSON.stringify(ficha.datos)}`,
+    `Descripción: ${compactar(ficha.descripcion) || '(sin descripción)'}`,
+    `Datos registrados: ${datos.slice(0, MAX_DATOS)}`,
     `Preguntas marcadas «no sé»: ${ficha.no_sabe.length ? ficha.no_sabe.join(', ') : 'ninguna'}`,
     `Compuerta: ${estado.compuerta.respondidas} de ${estado.compuerta.requeridas} respuestas requeridas (${
       estado.compuerta.habilitado ? 'abierta' : 'cerrada'
@@ -58,7 +68,7 @@ export function resumirFicha(borrador: Borrador): string {
       `Listado calculado: ${borrador.resultado.items.length} ítems, ${estado.precios_pendientes} con precio pendiente.`
     )
   }
-  return scrubPii(lineas.join('\n'))
+  return scrubPii(lineas.join('\n')).slice(0, MAX_RESUMEN)
 }
 
 export async function ejecutarCubicacion(
@@ -74,7 +84,7 @@ export async function ejecutarCubicacion(
 
   const compuerta = evaluarCompuerta(PERFILES[borrador.perfil], borrador.ficha)
   if (!compuerta.habilitado) {
-    throw httpError('Faltan datos para cubicar.', 422, {
+    throw httpError(compuerta.motivo ?? 'Faltan datos para cubicar.', 422, {
       faltantes: compuerta.faltantes,
       siguientes: compuerta.siguientes,
     })

@@ -41,6 +41,44 @@ export interface HorasHombre {
   hh_barrido: number
 }
 
+/** Parámetros del cierre metálico y su acceso eléctrico (valores iniciales, a calibrar). */
+export interface Cierre {
+  perfil: string
+  barrote: string
+  separacion_postes_m: number
+  empotrado_m: number
+  travesanos: number
+  merma_pct: number
+  tira_m: number
+  hoyo_ancho_m: number
+  hoyo_largo_m: number
+  hoyo_prof_m: number
+  bisagras_por_hoja: number
+  recorte_barrote_m: number
+  separacion_barrotes_m: number
+  separacion_rigidizadores_m: number
+  pernos_por_placa: number
+  electrodo_kg_por_m: number
+  m_perfil_por_disco: number
+  perimetro_perfil_m: number
+  perimetro_barrote_m: number
+  rendimiento_pintura_m2_gal: number
+  camara_cada_m: number
+  cable_recorrido_poste_m: number
+  /** Rendimientos del soldador (HH), iniciales. */
+  hh_sold_m_perfil: number
+  hh_sold_barrote: number
+  hh_sold_plancha_m2: number
+  hh_sold_poste: number
+  hh_sold_hoja: number
+  hh_sold_pintura_m2: number
+  /** Rendimientos del electricista (HH), iniciales. */
+  hh_ele_m_canalizacion: number
+  hh_ele_punto: number
+  hh_ele_tablero: number
+  hh_ele_pruebas: number
+}
+
 // Interfaz extensible: las tareas siguientes agregan claves (cierre...).
 export interface Parametros {
   /** Diametro interior del cobre en mm, por medida nominal. */
@@ -52,6 +90,8 @@ export interface Parametros {
   hh: HorasHombre
   /** Carga de placa supuesta (kg) cuando no se conoce; se registra como supuesto crítico. */
   placa_supuesta_kg: number
+  /** Cierre metálico y acceso eléctrico. */
+  cierre: Cierre
   soldadura: { /** Uniones soldadas que se asumen si no se indican. */ uniones_supuestas: number }
 }
 
@@ -71,6 +111,42 @@ export const PARAMETROS_BASE: Parametros = {
   },
   merma_pct: 5,
   placa_supuesta_kg: 4.0,
+  // Valores iniciales del cierre metálico, a calibrar con el taller.
+  cierre: {
+    perfil: '40x40x2',
+    barrote: '20x20',
+    separacion_postes_m: 2,
+    empotrado_m: 0.6,
+    travesanos: 3,
+    merma_pct: 10,
+    tira_m: 6,
+    hoyo_ancho_m: 0.3,
+    hoyo_largo_m: 0.3,
+    hoyo_prof_m: 0.6,
+    bisagras_por_hoja: 3,
+    recorte_barrote_m: 0.6,
+    separacion_barrotes_m: 0.12,
+    separacion_rigidizadores_m: 1,
+    pernos_por_placa: 4,
+    electrodo_kg_por_m: 0.04,
+    m_perfil_por_disco: 8,
+    perimetro_perfil_m: 0.16,
+    perimetro_barrote_m: 0.08,
+    rendimiento_pintura_m2_gal: 12,
+    camara_cada_m: 12,
+    cable_recorrido_poste_m: 7.5,
+    // Rendimientos iniciales de soldador y electricista (HH), a calibrar.
+    hh_sold_m_perfil: 0.3,
+    hh_sold_barrote: 0.1,
+    hh_sold_plancha_m2: 0.4,
+    hh_sold_poste: 1.5,
+    hh_sold_hoja: 2,
+    hh_sold_pintura_m2: 0.15,
+    hh_ele_m_canalizacion: 0.5,
+    hh_ele_punto: 1.5,
+    hh_ele_tablero: 2,
+    hh_ele_pruebas: 2,
+  },
   soldadura: { uniones_supuestas: 2 },
   bombeo: { tramo: 0.2, merma: 0.3, holgura: 0.5 },
   nitrogeno: {

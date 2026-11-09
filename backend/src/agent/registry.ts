@@ -13,6 +13,7 @@ import { consultarHistorialClienteTool } from './tools/historyTool'
 import { procesarCorreoCotizacionTool } from './tools/emailIntakeTool'
 import { cubicarEspecificacionHvacTool } from './tools/specCubicatorTool'
 import { analizarWinLossClienteTool, prepararSeguimientoCotizacionTool } from './tools/followUpTool'
+import { CUBICADOR_TOOLS } from './tools/cubicadorTools'
 
 export class ToolRegistry {
   private tools = new Map<string, AgentTool>()
@@ -31,6 +32,7 @@ export class ToolRegistry {
     this.register(cubicarEspecificacionHvacTool)
     this.register(analizarWinLossClienteTool)
     this.register(prepararSeguimientoCotizacionTool)
+    for (const tool of CUBICADOR_TOOLS) this.register(tool)
   }
 
   register(tool: AgentTool): void {

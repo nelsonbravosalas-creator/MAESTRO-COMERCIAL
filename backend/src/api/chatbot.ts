@@ -6,6 +6,8 @@ import { env } from '../config/env'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 import { runAgentLoop } from '../agent/loop'
+import { borradorActivo } from '../cubicador/borradores'
+import { resumirFicha } from '../cubicador/ejecutar'
 import { defaultToolRegistry } from '../agent/registry'
 import { confirmPendingAction, cancelPendingAction } from '../agent/pendingActions'
 import { uuidParams } from '../schemas/common'
@@ -400,6 +402,8 @@ export const createChatbotRouter = (pool: Pool) => {
       const isAgentMode =
         env.AGENT_MODE || Boolean((req.body as Record<string, unknown>)?.agent_mode)
       if (isAgentMode) {
+        // Borrador del cubicador en curso: una falla degrada a "sin borrador", nunca bloquea el turno.
+        const borrador = userId ? await borradorActivo(pool, userId).catch(() => null) : null
         try {
           const agentResult = await runAgentLoop({
             pool,
@@ -411,6 +415,7 @@ export const createChatbotRouter = (pool: Pool) => {
             graphContext,
             runId: randomUUID(),
             model: env.AGENT_MODEL,
+            cubicadorContexto: borrador ? resumirFicha(borrador) : undefined,
           })
 
           const statusCode =
@@ -429,6 +434,7 @@ export const createChatbotRouter = (pool: Pool) => {
             precio_medio: agentResult.precio_medio,
             muestras: agentResult.muestras,
             advertencia: agentResult.advertencia,
+            cubicador: agentResult.cubicador,
           })
         } catch (error) {
           logger.error('Chatbot: error en modo agente', { error: errorMessage(error), userId })

@@ -54,6 +54,7 @@ function buildAgentSystemPrompt(ctx: AgentContext): string {
     '- cubicar_especificacion_hvac: desglosar EE.TT. o informes técnicos HVAC en mano de obra, materiales, logística por tramo de Km, 13 exclusiones y márgenes.',
     '- analizar_win_loss_cliente: analizar causas de pérdida y competidores de un cliente para recomendar perfil de margen (estándar vs competitivo).',
     '- preparar_seguimiento_cotizacion: redactar borrador de seguimiento comercial con aprobación humana (Human-in-the-Loop).',
+    '- entrevistar_obra / cubicar_borrador / ajustar_listado / ingresar_listado_a_cotizacion: cubicador guiado de obras HVAC y cierres metálicos (el código calcula las cantidades, tú solo registras datos).',
     '',
     'Reglas operacionales:',
     '1. Planificación autónoma: si la instrucción requiere varios pasos (ej. averiguar precio de un material antes de cotizar), ejecuta primero la consulta y luego la creación/modificación.',
@@ -68,6 +69,18 @@ function buildAgentSystemPrompt(ctx: AgentContext): string {
           ...ctx.recentTurns.map(
             t => `${t.role === 'user' ? 'Usuario' : 'Asistente'}: ${scrubPii(t.text)}`
           ),
+          '',
+        ]
+      : []),
+    ...(ctx.cubicadorContexto
+      ? [
+          '## Cubicador guiado (borrador activo):',
+          ctx.cubicadorContexto,
+          'Reglas del cubicador:',
+          '- NUNCA calcules cantidades ni totales tú mismo: las calcula el código al cubicar.',
+          '- En cada turno llama a entrevistar_obra con lo que el usuario acaba de decir (solo datos nuevos).',
+          '- Llama a cubicar_borrador solo cuando el usuario escriba «procede» o «cubica». Si el servidor responde bloqueado, pide lo que falta.',
+          '- Pregunta como máximo las preguntas de `siguientes` (máximo 3 por mensaje) y no repitas lo ya respondido.',
           '',
         ]
       : []),
@@ -171,6 +184,7 @@ export async function runAgentLoop(
   let lastMutatedQuotation: unknown = undefined
   let lastMutatedRule: unknown = undefined
   let lastPriceData: AgentToolResult['priceData'] = undefined
+  let lastCubicador: AgentToolResult['cubicador'] = undefined
   const pendingActions: PendingActionRef[] = []
 
   let finalReply = ''
@@ -290,6 +304,7 @@ export async function runAgentLoop(
         if (toolResult.mutatedRule) lastMutatedRule = toolResult.mutatedRule
         if (toolResult.notas) accumulatedNotes.push(...toolResult.notas)
         if (toolResult.priceData) lastPriceData = toolResult.priceData
+        if (toolResult.cubicador) lastCubicador = toolResult.cubicador
 
         await recordStepAudit(ctx.pool, ctx.runId, ctx.tenantId, {
           idx: stepCount,
@@ -368,5 +383,6 @@ export async function runAgentLoop(
     precio_medio: lastPriceData?.precio_medio,
     muestras: lastPriceData?.muestras,
     advertencia: lastPriceData?.advertencia,
+    cubicador: lastCubicador,
   }
 }

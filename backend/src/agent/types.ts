@@ -1,5 +1,6 @@
 import { Pool } from 'pg'
 import { ChatbotProactiveNote } from '../services/chatbotOps'
+import type { EstadoCubicador } from '../cubicador/ejecutar'
 
 export interface AgentContext {
   pool: Pool
@@ -12,6 +13,8 @@ export interface AgentContext {
   runId: string
   tenantId?: string | null
   model: string
+  /** Resumen de la ficha del cubicador activo del usuario, para el prompt. */
+  cubicadorContexto?: string
 }
 
 export interface AgentToolResult {
@@ -20,6 +23,7 @@ export interface AgentToolResult {
   mutatedQuotation?: unknown
   mutatedRule?: unknown
   notas?: ChatbotProactiveNote[]
+  cubicador?: EstadoCubicador
   priceData?: {
     material: string
     precio_medio: number
@@ -71,4 +75,5 @@ export interface AgentRunResult {
   muestras?: unknown[]
   advertencia?: string | null
   reporte_importacion?: unknown
+  cubicador?: EstadoCubicador
 }

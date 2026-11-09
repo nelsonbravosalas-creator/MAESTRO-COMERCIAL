@@ -23,7 +23,23 @@ export interface Nitrogeno {
   presion_prueba_barg: Record<string, number>
 }
 
-// Interfaz extensible: las tareas siguientes agregan claves (nitrogeno, hh, cierre...).
+export interface TareaParam {
+  descripcion: string
+  hh: number
+  /** Si está, la tarea escala por unidad: interior, exterior o metro de línea. */
+  por?: 'interior' | 'exterior' | 'metro_linea'
+}
+
+export interface HorasHombre {
+  /** Tareas por actividad (supuestos iniciales, a calibrar). */
+  tareas: Record<string, TareaParam[]>
+  eficiencia: number
+  horas_jornada: number
+  /** HH por cada barrido de flushing. */
+  hh_barrido: number
+}
+
+// Interfaz extensible: las tareas siguientes agregan claves (cierre...).
 export interface Parametros {
   /** Diametro interior del cobre en mm, por medida nominal. */
   cobre: Record<string, number>
@@ -31,6 +47,7 @@ export interface Parametros {
   merma_pct: number
   bombeo: { tramo: number; merma: number; holgura: number }
   nitrogeno: Nitrogeno
+  hh: HorasHombre
 }
 
 export const PARAMETROS_BASE: Parametros = {
@@ -58,6 +75,42 @@ export const PARAMETROS_BASE: Parametros = {
     presion_barrido_barg: 5,
     // 37,9 barg = los 550 psi de la plantilla; el resto es un supuesto crítico.
     presion_prueba_barg: { 'R-410A': 37.9, 'R-32': 37.9, default: 9 },
+  },
+  hh: {
+    eficiencia: 0.85,
+    horas_jornada: 8,
+    hh_barrido: 2,
+    // Valores iniciales de los diseños, a calibrar.
+    tareas: {
+      reparacion_fuga: [
+        { descripcion: 'Diagnóstico', hh: 6 },
+        { descripcion: 'Recuperación de refrigerante', hh: 3 },
+        { descripcion: 'Presurización', hh: 8 },
+        { descripcion: 'Soldadura y filtro', hh: 8 },
+        { descripcion: 'Vacío', hh: 4 },
+        { descripcion: 'Control de estanqueidad', hh: 2 },
+        { descripcion: 'Recarga y puesta en marcha', hh: 4 },
+        { descripcion: 'Informe', hh: 2 },
+      ],
+      puesta_a_punto: [
+        { descripcion: 'Revisión', hh: 3 },
+        { descripcion: 'Recuperación de refrigerante', hh: 2 },
+        { descripcion: 'Filtro', hh: 3 },
+        { descripcion: 'Prueba', hh: 1.5 },
+        { descripcion: 'Vacío', hh: 3 },
+        { descripcion: 'Carga', hh: 2 },
+        { descripcion: 'Ajuste de válvula', hh: 4 },
+        { descripcion: 'Puesta en marcha e informe', hh: 3 },
+      ],
+      instalacion: [
+        { descripcion: 'Unidades interiores', hh: 2, por: 'interior' },
+        { descripcion: 'Unidades exteriores', hh: 3, por: 'exterior' },
+        { descripcion: 'Línea frigorífica', hh: 0.4, por: 'metro_linea' },
+        { descripcion: 'Vacío', hh: 3 },
+        { descripcion: 'Puesta en marcha', hh: 2 },
+        { descripcion: 'Informe', hh: 1 },
+      ],
+    },
   },
 }
 

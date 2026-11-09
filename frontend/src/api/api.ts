@@ -1164,6 +1164,11 @@ export const api = {
   cubicarBorrador: (id: string): Promise<EstadoCubicador> =>
     post<EstadoCubicador>(`/api/chatbot/cubicador/${id}/cubicar`, {}),
 
+  // Resuelve un lote de precios pendientes (catálogo, caché y tiendas); repetir mientras
+  // `precios_pendientes > 0`.
+  resolverPreciosBorrador: (id: string): Promise<EstadoCubicador> =>
+    post<EstadoCubicador>(`/api/chatbot/cubicador/${id}/precios`, {}),
+
   getChatbotRules: (): Promise<{ rules: ChatbotRule[] }> => get('/api/chatbot/rules'),
   getCommercialBriefing: (): Promise<CommercialBriefingResponse> => get('/api/chatbot/briefing'),
 

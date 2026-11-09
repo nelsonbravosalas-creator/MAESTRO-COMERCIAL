@@ -9,6 +9,7 @@ const {
   confirmActionMock,
   cancelActionMock,
   cubicarBorradorMock,
+  resolverPreciosMock,
 } = vi.hoisted(() => {
   class MockApiError extends Error {
     status: number
@@ -25,6 +26,7 @@ const {
     confirmActionMock: vi.fn(),
     cancelActionMock: vi.fn(),
     cubicarBorradorMock: vi.fn(),
+    resolverPreciosMock: vi.fn(),
   }
 })
 
@@ -35,6 +37,7 @@ vi.mock('../../api/api', () => ({
     confirmChatbotAction: confirmActionMock,
     cancelChatbotAction: cancelActionMock,
     cubicarBorrador: cubicarBorradorMock,
+    resolverPreciosBorrador: resolverPreciosMock,
   },
   default: { sendChatMessage: sendChatMessageMock },
 }))
@@ -45,6 +48,8 @@ import {
   clearChat,
   resolveChatAction,
   cubicarDesdeBoton,
+  resolverPreciosDesdeTarjeta,
+  MAX_RONDAS_PRECIOS,
 } from '../chatStore'
 import type { EstadoCubicador } from '../../api/api'
 
@@ -54,6 +59,7 @@ beforeEach(() => {
   confirmActionMock.mockReset()
   cancelActionMock.mockReset()
   cubicarBorradorMock.mockReset()
+  resolverPreciosMock.mockReset()
   useChatStore.setState({ actionStates: {} })
 })
 
@@ -248,5 +254,136 @@ describe('cubicarDesdeBoton', () => {
     const m = useChatStore.getState().messages[0]
     expect(m.role).toBe('error')
     expect(m.text).toBe('No se pudo cubicar. Intente de nuevo.')
+  })
+})
+
+describe('resolverPreciosDesdeTarjeta', () => {
+  const conPendientes = (n: number): EstadoCubicador => ({
+    borrador_id: 'b-1',
+    perfil: 'hvac',
+    estado: 'cubicado',
+    compuerta: { respondidas: 3, requeridas: 3, habilitado: true, faltantes: [], siguientes: [] },
+    datos_completos: 3,
+    datos_totales: 5,
+    resultado: { items: [], supuestos: [], advertencias: [], dotacion: null },
+    precios_pendientes: n,
+  })
+
+  beforeEach(() => {
+    useChatStore.setState({
+      messages: [
+        {
+          id: 1,
+          role: 'bot',
+          text: 'Listado',
+          data: { reply: 'Listado', cubicador: conPendientes(7) },
+        },
+      ],
+    })
+  })
+
+  it('repite mientras haya pendientes y se detiene en 0', async () => {
+    resolverPreciosMock
+      .mockResolvedValueOnce(conPendientes(4))
+      .mockResolvedValueOnce(conPendientes(1))
+      .mockResolvedValueOnce(conPendientes(0))
+
+    await resolverPreciosDesdeTarjeta('b-1')
+
+    expect(resolverPreciosMock).toHaveBeenCalledTimes(3)
+    expect(resolverPreciosMock).toHaveBeenCalledWith('b-1')
+  })
+
+  it('reemplaza el estado de la tarjeta en su mensaje, sin agregar mensajes', async () => {
+    resolverPreciosMock
+      .mockResolvedValueOnce(conPendientes(3))
+      .mockResolvedValueOnce(conPendientes(0))
+
+    await resolverPreciosDesdeTarjeta('b-1')
+
+    const msgs = useChatStore.getState().messages
+    expect(msgs).toHaveLength(1)
+    expect(msgs[0].id).toBe(1)
+    expect(msgs[0].data?.cubicador?.precios_pendientes).toBe(0)
+    expect(msgs[0].data?.reply).toBe('Listado')
+  })
+
+  it('se detiene en el tope de vueltas y avisa lo que quedó', async () => {
+    resolverPreciosMock.mockResolvedValue(conPendientes(2))
+
+    await resolverPreciosDesdeTarjeta('b-1')
+
+    expect(resolverPreciosMock).toHaveBeenCalledTimes(MAX_RONDAS_PRECIOS)
+    expect(MAX_RONDAS_PRECIOS).toBe(10)
+    const ultimo = useChatStore.getState().messages.slice(-1)[0]
+    expect(ultimo.role).toBe('error')
+    expect(ultimo.text).toContain('2 precios sin consultar')
+  })
+
+  it('se detiene ante el primer error y lo muestra en español', async () => {
+    resolverPreciosMock
+      .mockResolvedValueOnce(conPendientes(5))
+      .mockRejectedValueOnce(new MockApiError(429, 'Too many requests'))
+
+    await resolverPreciosDesdeTarjeta('b-1')
+
+    expect(resolverPreciosMock).toHaveBeenCalledTimes(2)
+    const msgs = useChatStore.getState().messages
+    expect(msgs[0].data?.cubicador?.precios_pendientes).toBe(5)
+    expect(msgs[1]).toMatchObject({
+      role: 'error',
+      text: 'Demasiadas solicitudes, reintenta en un minuto.',
+    })
+  })
+
+  it('409 explica que el listado cambió o ya fue ingresado', async () => {
+    resolverPreciosMock.mockRejectedValue(new MockApiError(409, 'conflicto'))
+    await resolverPreciosDesdeTarjeta('b-1')
+    expect(useChatStore.getState().messages.slice(-1)[0].text).toContain(
+      'El listado ya fue ingresado o cambió'
+    )
+  })
+
+  it('no lanza dos bucles en paralelo para el mismo borrador', async () => {
+    let liberar: (e: EstadoCubicador) => void = () => {}
+    resolverPreciosMock.mockReturnValueOnce(new Promise<EstadoCubicador>(r => (liberar = r)))
+
+    const primera = resolverPreciosDesdeTarjeta('b-1')
+    const segunda = resolverPreciosDesdeTarjeta('b-1')
+    liberar(conPendientes(0))
+    await Promise.all([primera, segunda])
+
+    expect(resolverPreciosMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('cubicarDesdeBoton resuelve los precios automáticamente tras cubicar', async () => {
+    useChatStore.setState({ messages: [] })
+    cubicarBorradorMock.mockResolvedValue(conPendientes(2))
+    resolverPreciosMock.mockResolvedValueOnce(conPendientes(0))
+
+    await cubicarDesdeBoton('b-1')
+
+    expect(resolverPreciosMock).toHaveBeenCalledTimes(1)
+    const msgs = useChatStore.getState().messages
+    expect(msgs).toHaveLength(1)
+    expect(msgs[0].data?.cubicador?.precios_pendientes).toBe(0)
+  })
+
+  it('cubicarDesdeBoton no consulta precios si no hay pendientes', async () => {
+    useChatStore.setState({ messages: [] })
+    cubicarBorradorMock.mockResolvedValue(conPendientes(0))
+    await cubicarDesdeBoton('b-1')
+    expect(resolverPreciosMock).not.toHaveBeenCalled()
+  })
+
+  it('cubicarDesdeBoton muestra mensajes específicos para 409 y 429', async () => {
+    useChatStore.setState({ messages: [] })
+    cubicarBorradorMock.mockRejectedValueOnce(new MockApiError(409, 'x'))
+    await cubicarDesdeBoton('b-1')
+    cubicarBorradorMock.mockRejectedValueOnce(new MockApiError(429, 'x'))
+    await cubicarDesdeBoton('b-1')
+    const textos = useChatStore.getState().messages.map(m => m.text)
+    expect(textos[0]).toContain('ya fue ingresado o cambió')
+    expect(textos[1]).toContain('Demasiadas solicitudes')
   })
 })

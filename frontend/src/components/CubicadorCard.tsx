@@ -104,6 +104,12 @@ export function CubicadorCard({ estado, onCubicar, busy }: Props) {
         {busy ? 'Cubicando…' : 'Cubicar'}
       </button>
 
+      {estado.precios_pendientes > 0 && (
+        <p className="cubicador-precios-pendientes" role="status">
+          Consultando precios… ({estado.precios_pendientes} pendientes)
+        </p>
+      )}
+
       {!habilitado && (
         <div className="cubicador-faltan">
           {compuerta.motivo && <p>{compuerta.motivo}</p>}

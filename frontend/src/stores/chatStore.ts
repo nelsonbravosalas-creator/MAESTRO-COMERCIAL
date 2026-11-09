@@ -1,5 +1,11 @@
 import { create } from 'zustand'
-import { api, ApiError, type ChatMessageResponse, type ChatRecentTurn } from '../api/api'
+import {
+  api,
+  ApiError,
+  type ChatMessageResponse,
+  type ChatRecentTurn,
+  type EstadoCubicador,
+} from '../api/api'
 
 // Historial de la conversación con el asistente: estado de sesión (como
 // uiStore.ts), no de negocio — no se persiste. Lo que el bot efectivamente
@@ -221,10 +227,22 @@ function mensajeCompuertaCerrada(error: ApiError): string {
     : motivo
 }
 
+/** Mensaje en español para los errores comunes de las rutas del cubicador. */
+function mensajeErrorCubicador(error: unknown, porDefecto: string): string {
+  if (error instanceof ApiError) {
+    if (error.status === 404)
+      return 'El borrador de cubicación ya no está disponible. Empiece de nuevo.'
+    if (error.status === 409) return 'El listado ya fue ingresado o cambió. Vuelva a cargarlo.'
+    if (error.status === 429) return 'Demasiadas solicitudes, reintenta en un minuto.'
+  }
+  return porDefecto
+}
+
 /**
  * Botón «Cubicar» de la tarjeta del chat: llama al servidor (sin LLM) y agrega
- * el listado como mensaje de bot. `_quotationId` se acepta por simetría con
- * sendChatMessage; el ingreso a una cotización es un paso posterior.
+ * el listado como mensaje de bot; luego resuelve los precios pendientes por lotes.
+ * `_quotationId` se acepta por simetría con sendChatMessage; el ingreso a una
+ * cotización es un paso posterior.
  */
 export async function cubicarDesdeBoton(borradorId: string, _quotationId?: string | null) {
   if (cubicando.has(borradorId)) return
@@ -240,18 +258,70 @@ export async function cubicarDesdeBoton(borradorId: string, _quotationId?: strin
         { id: ++nextMessageId, role: 'bot', text: reply, data: { reply, cubicador } },
       ],
     }))
+    if (cubicador.precios_pendientes > 0) await resolverPreciosDesdeTarjeta(borradorId)
   } catch (error) {
     const message =
       error instanceof ApiError && error.status === 422
         ? mensajeCompuertaCerrada(error)
-        : error instanceof ApiError && error.status === 404
-          ? 'El borrador de cubicación ya no está disponible. Empiece de nuevo.'
-          : 'No se pudo cubicar. Intente de nuevo.'
+        : mensajeErrorCubicador(error, 'No se pudo cubicar. Intente de nuevo.')
     useChatStore.setState(s => ({
       isSending: false,
       messages: [...s.messages, { id: ++nextMessageId, role: 'error', text: message }],
     }))
   } finally {
     cubicando.delete(borradorId)
+  }
+}
+
+// Borradores cuyos precios se están consultando: ignora una segunda llamada en paralelo.
+const resolviendoPrecios = new Set<string>()
+
+/** Vueltas máximas por listado: cada una resuelve un lote en el servidor (límite de 60 s). */
+export const MAX_RONDAS_PRECIOS = 10
+
+// Reemplaza el estado de la tarjeta en su mensaje, sin agregar mensajes nuevos.
+function actualizarTarjeta(estado: EstadoCubicador) {
+  useChatStore.setState(s => ({
+    messages: s.messages.map(m =>
+      m.data?.cubicador?.borrador_id === estado.borrador_id
+        ? { ...m, data: { ...m.data, cubicador: estado } as ChatMessageResponse }
+        : m
+    ),
+  }))
+}
+
+/**
+ * Consulta los precios pendientes de la tarjeta por lotes: repite mientras queden
+ * pendientes (tope MAX_RONDAS_PRECIOS) y detiene el bucle ante el primer error.
+ */
+export async function resolverPreciosDesdeTarjeta(borradorId: string) {
+  if (resolviendoPrecios.has(borradorId)) return
+  resolviendoPrecios.add(borradorId)
+  try {
+    let pendientes = Number.POSITIVE_INFINITY
+    for (let ronda = 0; ronda < MAX_RONDAS_PRECIOS && pendientes > 0; ronda++) {
+      const estado = await api.resolverPreciosBorrador(borradorId)
+      actualizarTarjeta(estado)
+      pendientes = estado.precios_pendientes
+    }
+    if (pendientes > 0) {
+      useChatStore.setState(s => ({
+        messages: [
+          ...s.messages,
+          {
+            id: ++nextMessageId,
+            role: 'error',
+            text: `Quedaron ${pendientes} precios sin consultar. Vuelva a intentarlo en un momento.`,
+          },
+        ],
+      }))
+    }
+  } catch (error) {
+    const message = mensajeErrorCubicador(error, 'No se pudieron consultar los precios.')
+    useChatStore.setState(s => ({
+      messages: [...s.messages, { id: ++nextMessageId, role: 'error', text: message }],
+    }))
+  } finally {
+    resolviendoPrecios.delete(borradorId)
   }
 }

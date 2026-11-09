@@ -108,6 +108,13 @@ describe('CubicadorCard', () => {
     expect(onCubicar).toHaveBeenCalledTimes(1)
   })
 
+  it('muestra «Consultando precios…» solo mientras hay precios pendientes', () => {
+    render({ ...base, precios_pendientes: 4 })
+    expect(container.textContent).toContain('Consultando precios… (4 pendientes)')
+    render({ ...base, precios_pendientes: 0 })
+    expect(container.textContent).not.toContain('Consultando precios')
+  })
+
   it('muestra el botón bloqueado mientras está ocupado', () => {
     const estado: EstadoCubicador = {
       ...base,

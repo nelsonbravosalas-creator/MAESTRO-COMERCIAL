@@ -190,7 +190,17 @@ export async function callLlm(messages: LlmMessage[], opts: CallLlmOptions): Pro
   const localConfig = getLocalLlmConfig()
   const strategy = env.LLM_ROUTING_STRATEGY
 
-  if (strategy !== 'cloud_only' && localConfig) {
+  // Una llamada con `tools` (google_search) necesita el grounding de Gemini: el
+  // motor local las ignora y el modelo inventaría precios. Va directo a Gemini.
+  const requiereGemini = (opts.tools?.length ?? 0) > 0
+  if (requiereGemini && strategy === 'local_only') {
+    throw httpError(
+      'Esta consulta requiere búsqueda web (Gemini), pero LLM_ROUTING_STRATEGY=local_only la deshabilita.',
+      503
+    )
+  }
+
+  if (!requiereGemini && strategy !== 'cloud_only' && localConfig) {
     try {
       const openAiMessages = messages.map(m => ({
         role: m.role,

@@ -11,7 +11,7 @@ import {
   inferHvacTemplate,
 } from '../../services/hvacTemplates'
 
-interface CatalogRow {
+export interface CatalogRow {
   description: string
   unit_name: string
   unit_price: string | number
@@ -43,7 +43,10 @@ function isValidTemplateId(value: string): value is HvacTemplateId {
   return Object.prototype.hasOwnProperty.call(HVAC_TEMPLATES, value)
 }
 
-function matchCatalogRow(targetDesc: string, catalogRows: CatalogRow[]): CatalogRow | undefined {
+export function matchCatalogRow(
+  targetDesc: string,
+  catalogRows: CatalogRow[]
+): CatalogRow | undefined {
   const normTarget = normalizeText(targetDesc)
   if (!normTarget) return undefined
 

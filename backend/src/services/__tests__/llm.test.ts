@@ -364,6 +364,81 @@ describe('OmniRoute delegation & fallback', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0][0]).toContain('googleapis.com')
   })
+
+  it('callLlm con tools no usa el LLM local: va directo a Gemini con google_search', async () => {
+    vi.resetModules()
+    vi.doMock('../../config/env', () => ({
+      env: {
+        GEMINI_API_KEY: 'test-gemini-key',
+        LOCAL_LLM_URL: 'http://localhost:11434/v1',
+        LLM_ROUTING_STRATEGY: 'hybrid',
+      },
+    }))
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: 'Resultado con búsqueda web' }] } }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { callLlm: conTools } = await import('../llm')
+    const res = await conTools([{ role: 'user', content: 'Precio cobre' }], {
+      model: 'gemini-3.6-flash',
+      tools: [{ google_search: {} }],
+    })
+
+    expect(res).toBe('Resultado con búsqueda web')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('googleapis.com')
+    expect(String(url)).not.toContain('localhost:11434')
+    expect(JSON.parse(init.body).tools).toEqual([{ google_search: {} }])
+  })
+
+  it('callLlm con tools y local_only lanza 503 en vez de inventar sin búsqueda', async () => {
+    vi.resetModules()
+    vi.doMock('../../config/env', () => ({
+      env: {
+        GEMINI_API_KEY: 'test-gemini-key',
+        LOCAL_LLM_URL: 'http://localhost:11434/v1',
+        LLM_ROUTING_STRATEGY: 'local_only',
+      },
+    }))
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { callLlm: conTools } = await import('../llm')
+    await expect(
+      conTools([{ role: 'user', content: 'Precio cobre' }], {
+        model: 'gemini-3.6-flash',
+        tools: [{ google_search: {} }],
+      })
+    ).rejects.toMatchObject({ status: 503, message: expect.stringContaining('búsqueda web') })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('sin tools y en híbrido sigue usando primero el LLM local (regresión)', async () => {
+    vi.resetModules()
+    vi.doMock('../../config/env', () => ({
+      env: {
+        GEMINI_API_KEY: 'test-gemini-key',
+        LOCAL_LLM_URL: 'http://localhost:11434/v1',
+        LLM_ROUTING_STRATEGY: 'hybrid',
+      },
+    }))
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { role: 'assistant', content: 'Local' } }] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { callLlm: sinTools } = await import('../llm')
+    await sinTools([{ role: 'user', content: 'Hola' }], { model: 'gemini-3.6-flash', tools: [] })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:11434/v1/chat/completions')
+  })
 })
 
 describe('parseLlmJson', () => {

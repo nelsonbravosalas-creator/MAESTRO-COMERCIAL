@@ -8,7 +8,7 @@ import { evaluarCompuerta, type EstadoCompuerta } from './compuerta'
 import { cubicar } from './motor'
 import { cargarParametros } from './params'
 import { PERFILES } from './perfiles'
-import type { Borrador, PerfilId, ResultadoCubicacion } from './types'
+import type { Borrador, ItemListado, PerfilId, ResultadoCubicacion } from './types'
 
 export interface EstadoCubicador {
   borrador_id: string
@@ -71,6 +71,33 @@ export function resumirFicha(borrador: Borrador): string {
   return scrubPii(lineas.join('\n')).slice(0, MAX_RESUMEN)
 }
 
+// Copia el precio ya resuelto de un ítem anterior al recalculado. Única fuente de esta
+// regla: la usan ajustar_listado y la re-cubicación, para que ninguna borre precios.
+export function copiarPrecio(destino: ItemListado, anterior: ItemListado): void {
+  destino.precio_unitario = anterior.precio_unitario
+  destino.fuente = anterior.fuente
+  destino.estado_precio = anterior.estado_precio
+  if (anterior.tienda !== undefined) destino.tienda = anterior.tienda
+  else delete destino.tienda
+  if (anterior.fuente_url !== undefined) destino.fuente_url = anterior.fuente_url
+  else delete destino.fuente_url
+}
+
+// Conserva los precios de los ítems cuyo `id` y `cantidad` no cambiaron.
+export function conservarPrecios(
+  nuevos: ItemListado[],
+  anteriores: ItemListado[] | undefined
+): ItemListado[] {
+  const previos = new Map((anteriores ?? []).map(i => [i.id, i]))
+  return nuevos.map(nuevo => {
+    const anterior = previos.get(nuevo.id)
+    if (!anterior || anterior.cantidad !== nuevo.cantidad) return nuevo
+    const item = { ...nuevo }
+    copiarPrecio(item, anterior)
+    return item
+  })
+}
+
 export async function ejecutarCubicacion(
   pool: Pool,
   borradorId: string,
@@ -91,7 +118,12 @@ export async function ejecutarCubicacion(
   }
 
   const params = await cargarParametros(pool)
-  const resultado = cubicar(borrador.perfil, borrador.ficha, params)
+  const calculado = cubicar(borrador.perfil, borrador.ficha, params)
+  // Re-cubicar un borrador ya cubicado (botón de una tarjeta antigua) no descarta precios resueltos.
+  const resultado: ResultadoCubicacion =
+    borrador.estado === 'cubicado' && borrador.resultado
+      ? { ...calculado, items: conservarPrecios(calculado.items, borrador.resultado.items) }
+      : calculado
   const actualizado = await actualizarBorrador(
     pool,
     borrador.id,

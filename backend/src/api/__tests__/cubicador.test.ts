@@ -14,6 +14,10 @@ vi.mock('../../cubicador/ejecutar', () => ({ ejecutarCubicacion: vi.fn() }))
 import { ejecutarCubicacion } from '../../cubicador/ejecutar'
 const ejecutarMock = vi.mocked(ejecutarCubicacion)
 
+vi.mock('../../cubicador/precios', () => ({ resolverPrecios: vi.fn() }))
+import { resolverPrecios } from '../../cubicador/precios'
+const preciosMock = vi.mocked(resolverPrecios)
+
 const authHeader = () => {
   const token = jwt.sign(
     { id: 'u1', email: 'test@test.com', name: 'Test', role: 'admin' },
@@ -108,6 +112,62 @@ describe('POST /api/chatbot/cubicador/:id/cubicar', () => {
     const res = await request(buildApp())
       .post(`/api/chatbot/cubicador/${BORRADOR_ID}/cubicar`)
       .set('Authorization', authHeader())
+    expect(res.status).toBe(500)
+    expect(JSON.stringify(res.body)).not.toContain('host interno')
+  })
+})
+
+describe('POST /api/chatbot/cubicador/:id/precios', () => {
+  const url = `/api/chatbot/cubicador/${BORRADOR_ID}/precios`
+  beforeAll(() => {
+    process.env.JWT_SECRET = JWT_SECRET
+  })
+  beforeEach(() => {
+    preciosMock.mockReset()
+  })
+
+  it('sin sesión responde 401', async () => {
+    const res = await request(buildApp()).post(url)
+    expect(res.status).toBe(401)
+    expect(preciosMock).not.toHaveBeenCalled()
+  })
+
+  it('borrador ajeno o vencido responde 404', async () => {
+    preciosMock.mockImplementation(async () => {
+      throw httpError('Borrador no encontrado', 404)
+    })
+    const res = await request(buildApp()).post(url).set('Authorization', authHeader())
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Borrador no encontrado')
+  })
+
+  it('borrador no cubicado responde 409', async () => {
+    preciosMock.mockImplementation(async () => {
+      throw httpError('El listado aún no está cubicado o ya fue ingresado.', 409)
+    })
+    const res = await request(buildApp()).post(url).set('Authorization', authHeader())
+    expect(res.status).toBe(409)
+  })
+
+  it('devuelve el estado con precios_pendientes del usuario autenticado', async () => {
+    const parcial: EstadoCubicador = { ...estado, precios_pendientes: 4 }
+    preciosMock.mockResolvedValue(parcial)
+    const res = await request(buildApp()).post(url).set('Authorization', authHeader())
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual(parcial)
+    expect(preciosMock).toHaveBeenCalledWith(
+      pool,
+      BORRADOR_ID,
+      'u1',
+      expect.objectContaining({ userId: 'u1' })
+    )
+  })
+
+  it('un error inesperado responde 500 con mensaje genérico', async () => {
+    preciosMock.mockImplementation(async () => {
+      throw new Error('conexion rota con host interno')
+    })
+    const res = await request(buildApp()).post(url).set('Authorization', authHeader())
     expect(res.status).toBe(500)
     expect(JSON.stringify(res.body)).not.toContain('host interno')
   })

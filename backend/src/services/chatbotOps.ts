@@ -246,14 +246,19 @@ export async function teachRuleOp(
 // turno porque entrelazaba tool-use con texto libre, Gemini no.
 
 /** Paso 1: busqueda web real con grounding. Texto libre, sin pedir JSON. */
-function buildPriceSearchPrompt(material: string): string {
-  return [
-    'Busca en la web el precio de venta al publico en Chile (CLP) para el siguiente material de',
-    'construccion/HVAC. Da 2 a 4 muestras de distintas tiendas si puedes (ej. Sodimac, Construmart,',
-    'MercadoLibre, Easy), con el precio y la URL de cada una.',
-    '',
-    `Material: "${material.replace(/"/g, "'")}"`,
-  ].join('\n')
+function buildPriceSearchPrompt(material: string, tiendas?: string[]): string {
+  const cabecera = tiendas?.length
+    ? [
+        'Busca en la web el precio de venta al publico en Chile (CLP) para el siguiente material de',
+        `construccion/HVAC, SOLO en estas tiendas: ${tiendas.join(', ')}. No uses otras tiendas.`,
+        'Da una muestra por tienda si puedes, con el precio y la URL de cada una.',
+      ]
+    : [
+        'Busca en la web el precio de venta al publico en Chile (CLP) para el siguiente material de',
+        'construccion/HVAC. Da 2 a 4 muestras de distintas tiendas si puedes (ej. Sodimac, Construmart,',
+        'MercadoLibre, Easy), con el precio y la URL de cada una.',
+      ]
+  return [...cabecera, '', `Material: "${material.replace(/"/g, "'")}"`].join('\n')
 }
 
 /** Paso 2: sin tools, solo reformatea el texto libre del paso 1 al JSON que espera chatbotPriceResponseSchema. */
@@ -291,17 +296,20 @@ export async function lookupMaterialPrice(
   pool: Pool,
   material: string,
   ctx: OpContext,
-  opts: { timeoutMs?: number } = {}
+  opts: { timeoutMs?: number; tiendas?: string[] } = {}
 ): Promise<PriceLookupResult> {
   // Leido ANTES de recordGraphFacts (que sobrescribe este mismo nodo) -- es
   // el precio "anterior" el que importa para decidir si avisar que puede
   // estar desactualizado.
   const previousMaterialNode = await getGraphNode(pool, materialNodeId(material)).catch(() => null)
-  const searchText = await callLlm([{ role: 'user', content: buildPriceSearchPrompt(material) }], {
-    model: env.CHATBOT_PRICE_MODEL,
-    tools: [{ google_search: {} }],
-    ...(opts.timeoutMs ? { timeoutMs: opts.timeoutMs } : {}),
-  })
+  const searchText = await callLlm(
+    [{ role: 'user', content: buildPriceSearchPrompt(material, opts.tiendas) }],
+    {
+      model: env.CHATBOT_PRICE_MODEL,
+      tools: [{ google_search: {} }],
+      ...(opts.timeoutMs ? { timeoutMs: opts.timeoutMs } : {}),
+    }
+  )
   const raw = await callLlm([{ role: 'user', content: buildPriceExtractionPrompt(searchText) }], {
     model: env.CHATBOT_PRICE_MODEL,
     json: true,
@@ -317,13 +325,18 @@ export async function lookupMaterialPrice(
   // rara no tire un precio_medio por lo demas bueno.
   const precioRaw = parseLlmJson<unknown>(raw)
   const precioParsed = chatbotPriceResponseSchema.safeParse(precioRaw)
+  // Con `tiendas`, una muestra de otra tienda se descarta (el modelo puede desobedecer el prompt).
+  const tiendasPermitidas = opts.tiendas?.map(t => t.toLowerCase())
+  const deTiendaPermitida = (tienda: string): boolean =>
+    !tiendasPermitidas || tiendasPermitidas.some(t => tienda.toLowerCase().includes(t))
   const precio = precioParsed.success
     ? {
         ...precioParsed.data,
         muestras: precioParsed.data.muestras
           .map(m => chatbotPriceSampleSchema.safeParse(m))
           .filter(r => r.success)
-          .map(r => r.data),
+          .map(r => r.data)
+          .filter(m => deTiendaPermitida(m.tienda)),
       }
     : {
         precio_medio: 0,

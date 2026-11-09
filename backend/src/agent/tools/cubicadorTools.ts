@@ -19,7 +19,7 @@ import {
   obtenerBorrador,
 } from '../../cubicador/borradores'
 import { evaluarCompuerta } from '../../cubicador/compuerta'
-import { ejecutarCubicacion, estadoCubicador } from '../../cubicador/ejecutar'
+import { copiarPrecio, ejecutarCubicacion, estadoCubicador } from '../../cubicador/ejecutar'
 import { aLineas, describirListado } from '../../cubicador/ingreso'
 import { cubicar } from '../../cubicador/motor'
 import { cargarParametros } from '../../cubicador/params'
@@ -399,11 +399,7 @@ export const ajustarListadoTool: AgentTool = {
       if (cantidadManual !== undefined) item.cantidad = cantidadManual
       // Se conserva el precio ya resuelto si el ítem no cambió o si la persona fijó la cantidad.
       if (anterior && (cantidadManual !== undefined || anterior.cantidad === nuevo.cantidad)) {
-        item.precio_unitario = anterior.precio_unitario
-        item.fuente = anterior.fuente
-        item.estado_precio = anterior.estado_precio
-        if (anterior.tienda !== undefined) item.tienda = anterior.tienda
-        if (anterior.fuente_url !== undefined) item.fuente_url = anterior.fuente_url
+        copiarPrecio(item, anterior)
       }
       const manual = ajustes.precios[nuevo.id]
       if (manual) {

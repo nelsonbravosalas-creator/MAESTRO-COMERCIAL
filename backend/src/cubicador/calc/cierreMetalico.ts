@@ -16,7 +16,7 @@ export interface DatosCierre {
   puerta: PuertaCierre | null
   tipo: 'reja' | 'solido'
   anclaje: 'empotrado' | 'placa'
-  cerradura: 'mecanica' | 'electrica'
+  cerradura: 'mecanica' | 'electrica' | 'candado'
   /** Sobrescriben el valor por defecto de los parámetros cuando se indican. */
   separacion_postes_m?: number
   travesanos?: number
@@ -72,6 +72,8 @@ const REGLAS_PARAMS: Regla[] = [
   ['rendimiento_pintura_m2_gal', 'positivo'],
   ['camara_cada_m', 'positivo'],
   ['cable_recorrido_poste_m', 'noNegativo'],
+  ['puntos_base_electricista', 'noNegativo'],
+  ['caras_pintura', 'noNegativo'],
   ['hh_sold_m_perfil', 'noNegativo'],
   ['hh_sold_barrote', 'noNegativo'],
   ['hh_sold_plancha_m2', 'noNegativo'],
@@ -158,7 +160,9 @@ export function geometriaCierre(d: DatosCierre, params: Parametros): GeometriaCi
   const rigidM = filasRigid * relleno
 
   const area =
-    (mPerfil + rigidM) * c.perimetro_perfil_m + mBarrotes * c.perimetro_barrote_m + planchaM2 * 2 // ambas caras
+    (mPerfil + rigidM) * c.perimetro_perfil_m +
+    mBarrotes * c.perimetro_barrote_m +
+    planchaM2 * c.caras_pintura
 
   return {
     postes,

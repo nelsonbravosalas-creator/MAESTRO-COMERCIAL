@@ -373,27 +373,24 @@ describe('cierre metálico: datos inválidos -> 422', () => {
     })
   }
 
-  it('medidas como texto ilegible lanza 422 nombrando medidas', () => {
-    const e = fallo(() => calc(reja({ medidas: 'grande' })))
-    expect(e.status).toBe(422)
-    expect(e.message).toContain('"medidas"')
-  })
-
   it('medidas como texto con cero lanza 422', () => {
     const e = fallo(() => calc(reja({ medidas: '0 x 3' })))
     expect(e.status).toBe(422)
     expect(e.message).toContain('medidas.largo_m')
   })
 
-  it('tipo, anclaje y cerradura desconocidos lanzan 422 con los valores válidos', () => {
-    const t = fallo(() => calc(reja({ tipo_cierre: 'portón corredero' })))
+  it('tipo_cierre que no es texto lanza 422 con los valores válidos', () => {
+    const t = fallo(() => calc(reja({ tipo_cierre: 42 })))
     expect(t.status).toBe(422)
     expect(t.message).toContain('tipo_cierre')
     expect(t.message).toContain('reja, solido')
+  })
+
+  it('anclaje y cerradura desconocidos lanzan 422 con los valores válidos', () => {
     const a = fallo(() => calc(reja({ anclaje: 'pegamento' })))
     expect(a.message).toContain('empotrado, placa')
     const c = fallo(() => calc(reja({ cerradura: 'huella' })))
-    expect(c.message).toContain('mecanica, electrica')
+    expect(c.message).toContain('mecanica, electrica, candado')
   })
 
   it('distancia al tablero inválida lanza 422', () => {

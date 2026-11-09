@@ -37,7 +37,7 @@ export const datosCierreSchema = z.object({
   medidas: medidasSchema.optional(),
   tipo_cierre: z.enum(['reja', 'solido']).optional(),
   anclaje: z.enum(['empotrado', 'placa']).optional(),
-  cerradura: z.enum(['mecanica', 'electrica']).optional(),
+  cerradura: z.enum(['mecanica', 'electrica', 'candado']).optional(),
   chapa_electrica: z.boolean().optional(),
   separacion_postes_m: positivo.optional(),
   travesanos: z.number().int().min(1).optional(),
@@ -65,7 +65,8 @@ const REGLAS: Record<string, Reglas> = {
   ],
   cerradura: [
     [/electric|electroiman|magnet/, 'electrica'],
-    [/mecanic|embutir|candado|llave|cerrojo|manual/, 'mecanica'],
+    [/candado/, 'candado'],
+    [/mecanic|embutir|llave|cerrojo|manual/, 'mecanica'],
   ],
   canalizacion: [
     [/enterr|subterr|zanja/, 'enterrada'],
@@ -76,6 +77,8 @@ const REGLAS: Record<string, Reglas> = {
 
 function normalizarEnum(campo: string, valor: string): string {
   const t = sistemaDe(valor).trim()
+  // "sin chapa eléctrica", "no eléctrica": la negación de lo eléctrico es mecánica.
+  if (campo === 'cerradura' && /\b(sin|no)\b(\s+\w+){0,2}\s+electric/.test(t)) return 'mecanica'
   for (const [re, canon] of REGLAS[campo]) if (re.test(t)) return canon
   return t.replace(/\s+/g, '_')
 }
@@ -84,16 +87,56 @@ function numeroDe(s: string): number {
   return Number(s.replace(',', '.'))
 }
 
-/** "8 x 3 m" -> { largo_m: 8, alto_m: 3 }. Si no se entiende, 422 con un mensaje legible. */
-function medidasDeTexto(texto: string): Record<string, unknown> {
-  const m = /(\d+(?:[.,]\d+)?)\s*(?:m|mts?|metros?)?\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i.exec(texto)
-  if (!m) {
-    throw httpError(
-      'El campo "medidas" no se pudo interpretar: indique largo y alto en metros (por ejemplo, "8 x 3 m").',
-      422
-    )
+interface MedidasTexto {
+  medidas: { largo_m: number; alto_m: number }
+  /** Sin palabras clave: se tomó "N x M" como ancho x alto. */
+  supuestoOrden: boolean
+  /** El texto mencionaba una puerta, que no se interpreta desde texto libre. */
+  puertaIgnorada: boolean
+}
+
+const UNIDAD = /^(mtrs|mts|mtr|mt|metros|metro|m)?\b\s*(de\s+)?/
+
+/**
+ * "8 x 3 m", "8 por 3", "8 m de largo por 3 m de alto", "8 metros de ancho y 3 de alto".
+ * Devuelve null si el texto no se entiende (las medidas se tratan como desconocidas).
+ */
+function medidasDeTexto(texto: string): MedidasTexto | null {
+  let t = sistemaDe(texto)
+  const corte = t.search(/puerta|porton|acceso/)
+  const puertaIgnorada = corte >= 0
+  if (corte >= 0) t = t.slice(0, corte)
+  const nums = [...t.matchAll(/\d+(?:[.,]\d+)?/g)]
+  if (nums.length !== 2) return null
+  const etiqueta = (i: number): 'largo' | 'alto' | null => {
+    const fin = nums[i].index + nums[i][0].length
+    const despues = t.slice(fin, nums[i + 1]?.index ?? t.length)
+    const antes = t.slice(i === 0 ? 0 : nums[i - 1].index + nums[i - 1][0].length, nums[i].index)
+    const lab = (s: string): 'largo' | 'alto' | null =>
+      /^(largo|ancho|long|longitud)/.test(s) ? 'largo' : /^(alto|altura)/.test(s) ? 'alto' : null
+    const d1 = despues.trim().replace(UNIDAD, '')
+    const a1 = /(largo|ancho|longitud|long|alto|altura)\s*(de|:|=)?\s*$/.exec(antes)
+    return (a1 ? lab(a1[1]) : null) ?? lab(d1)
   }
-  return { largo_m: numeroDe(m[1]), alto_m: numeroDe(m[2]) }
+  const l0 = etiqueta(0)
+  const l1 = etiqueta(1)
+  const v0 = numeroDe(nums[0][0])
+  const v1 = numeroDe(nums[1][0])
+  if (l0 === null && l1 === null) {
+    const entre = t
+      .slice(nums[0].index + nums[0][0].length, nums[1].index)
+      .replace(/\b(mtrs|mts|mtr|mt|metros|metro|m)\b/g, ' ')
+      .trim()
+    if (!/^(x|×|\*|por|y)?$/.test(entre)) return null
+    return { medidas: { largo_m: v0, alto_m: v1 }, supuestoOrden: true, puertaIgnorada }
+  }
+  if (l0 !== null && l0 === l1) return null
+  const primeroLargo = l0 === 'largo' || l1 === 'alto'
+  return {
+    medidas: primeroLargo ? { largo_m: v0, alto_m: v1 } : { largo_m: v1, alto_m: v0 },
+    supuestoOrden: false,
+    puertaIgnorada,
+  }
 }
 
 function conAlias(obj: Record<string, unknown>, alias: Record<string, string>) {
@@ -110,7 +153,36 @@ function esObjeto(v: unknown): v is Record<string, unknown> {
 }
 
 /** Prepara los datos de la ficha: sin nulos ni vacíos, sin lo que el usuario no sabe, enums normalizados. */
-function prepararDatos(ficha: Ficha): Record<string, unknown> {
+interface Extras {
+  /** Tipo de cierre que el motor no cubica (portón corredero, cortina...). */
+  tipoNoSoportado?: string
+  medidasSupuestoOrden: boolean
+  medidasIlegibles: boolean
+  puertaIgnorada: boolean
+}
+
+function booleano(valor: unknown, campo: string): boolean {
+  if (typeof valor === 'boolean') return valor
+  const invalido = () =>
+    httpError(
+      `Los datos de la ficha del cierre metálico no son válidos: el campo "${campo}" no es válido (valores válidos: true, false, sí, no, eléctrica, mecánica).`,
+      422
+    )
+  if (typeof valor !== 'string') throw invalido()
+  const t = sistemaDe(valor).trim()
+  if (/^(si|true|yes|verdadero)$/.test(t)) return true
+  if (/^(no|false|falso)$/.test(t)) return false
+  if (/\b(sin|no)\b(\s+\w+){0,2}\s+electric/.test(t) || /^mecanic/.test(t)) return false
+  if (/electric/.test(t)) return true
+  throw invalido()
+}
+
+function prepararDatos(ficha: Ficha): { d: Record<string, unknown>; extras: Extras } {
+  const extras: Extras = {
+    medidasSupuestoOrden: false,
+    medidasIlegibles: false,
+    puertaIgnorada: false,
+  }
   const d: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(ficha.datos)) {
     if (v === null || v === undefined) continue
@@ -122,7 +194,32 @@ function prepararDatos(ficha: Ficha): Record<string, unknown> {
     const v = d[campo]
     if (typeof v === 'string') d[campo] = normalizarEnum(campo, v)
   }
-  if (typeof d.medidas === 'string') d.medidas = medidasDeTexto(d.medidas)
+  if (typeof d.tipo_cierre === 'string' && !['reja', 'solido'].includes(d.tipo_cierre)) {
+    extras.tipoNoSoportado = String(ficha.datos.tipo_cierre)
+    delete d.tipo_cierre
+  }
+  if (d.chapa_electrica !== undefined)
+    d.chapa_electrica = booleano(d.chapa_electrica, 'chapa_electrica')
+  if (Array.isArray(d.control_acceso) && d.control_acceso.every(x => typeof x === 'string')) {
+    d.control_acceso = d.control_acceso.join(' ')
+  }
+  if (d.control_acceso !== undefined && typeof d.control_acceso !== 'string') {
+    throw httpError(
+      'Los datos de la ficha del cierre metálico no son válidos: el campo "control_acceso" debe ser un texto (por ejemplo, "botón adentro y citófono afuera").',
+      422
+    )
+  }
+  if (typeof d.medidas === 'string') {
+    const m = medidasDeTexto(d.medidas)
+    if (m) {
+      d.medidas = m.medidas
+      extras.medidasSupuestoOrden = m.supuestoOrden
+      extras.puertaIgnorada = m.puertaIgnorada
+    } else {
+      delete d.medidas
+      extras.medidasIlegibles = true
+    }
+  }
   if (esObjeto(d.medidas)) {
     const m = conAlias(d.medidas, { largo: 'largo_m', alto: 'alto_m' })
     const puerta = m.puerta ?? d.puerta
@@ -132,7 +229,7 @@ function prepararDatos(ficha: Ficha): Record<string, unknown> {
     d.medidas = m
   }
   delete d.puerta
-  return d
+  return { d, extras }
 }
 
 function valorEn(obj: unknown, ruta: PropertyKey[]): unknown {
@@ -144,10 +241,10 @@ function valorEn(obj: unknown, ruta: PropertyKey[]): unknown {
   return actual
 }
 
-function parsearDatos(ficha: Ficha): DatosCierreFicha {
-  const prep = prepararDatos(ficha)
+function parsearDatos(ficha: Ficha): { d: DatosCierreFicha; extras: Extras } {
+  const { d: prep, extras } = prepararDatos(ficha)
   const r = datosCierreSchema.safeParse(prep)
-  if (r.success) return r.data
+  if (r.success) return { d: r.data, extras }
   const detalle = r.error.issues
     .map(i => {
       const campo = i.path.length > 0 ? i.path.join('.') : 'datos'
@@ -183,7 +280,7 @@ function itemsHH(
 }
 
 export function motorCierre(ficha: Ficha, params: Parametros): ResultadoCubicacion {
-  const d = parsearDatos(ficha)
+  const { d, extras } = parsearDatos(ficha)
   validarParametrosCierre(params)
   const c = params.cierre
 
@@ -195,7 +292,16 @@ export function motorCierre(ficha: Ficha, params: Parametros): ResultadoCubicaci
 
   // Datos que el usuario no sabe o no dijo: se usa el valor por defecto y se marca.
   const tipo = d.tipo_cierre ?? 'reja'
-  if (d.tipo_cierre === undefined) {
+  if (extras.tipoNoSoportado !== undefined) {
+    agregarSupuesto({
+      clave: 'tipo_cierre',
+      texto: `El tipo de cierre indicado ("${extras.tipoNoSoportado}") no lo cubica esta calculadora: se cubicó como reja con barrotes.`,
+      critico: true,
+    })
+    advertencias.push(
+      'Los portones corredizos, abatibles y las cortinas enrollables (rieles, ruedas, motor) no se cubican con esta calculadora; se cubicó la reja fija como aproximación.'
+    )
+  } else if (d.tipo_cierre === undefined) {
     agregarSupuesto({
       clave: 'tipo_cierre',
       texto: 'Se asumió un cierre de reja con barrotes porque no se indicó el tipo de cierre.',
@@ -219,12 +325,20 @@ export function motorCierre(ficha: Ficha, params: Parametros): ResultadoCubicaci
     })
   }
   if (d.chapa_electrica === true) {
-    if (d.cerradura === 'mecanica') {
+    if (d.cerradura === 'mecanica' || d.cerradura === 'candado') {
       advertencias.push(
-        'La ficha indica una cerradura mecánica y también chapa eléctrica: se cubicó la chapa eléctrica.'
+        'La ficha indica una cerradura no eléctrica y también chapa eléctrica: se cubicó la chapa eléctrica.'
       )
     }
     cerradura = 'electrica'
+  }
+  if (cerradura === 'candado') {
+    agregarSupuesto({
+      clave: 'candado',
+      texto: 'La cerradura es un candado: no se incluye en la cubicación.',
+      critico: false,
+    })
+    advertencias.push('El candado no se incluye en la cubicación; no se agregó ninguna chapa.')
   }
 
   const items: ItemListado[] = []
@@ -239,7 +353,24 @@ export function motorCierre(ficha: Ficha, params: Parametros): ResultadoCubicaci
       critico: true,
     })
     advertencias.push('No se cubicó la reja porque se desconocen sus medidas (largo y alto).')
+    if (extras.medidasIlegibles) {
+      advertencias.push(
+        'No se entendieron las medidas indicadas: indique el ancho y el alto del cierre en metros (por ejemplo, 8 x 3 m).'
+      )
+    }
   } else {
+    if (extras.medidasSupuestoOrden) {
+      agregarSupuesto({
+        clave: 'medidas_orden',
+        texto: 'Se interpretó el texto de medidas como ancho x alto.',
+        critico: false,
+      })
+    }
+    if (extras.puertaIgnorada) {
+      advertencias.push(
+        'El texto de medidas menciona una puerta, que no se interpreta desde texto libre: indíquela con sus medidas para cubicarla.'
+      )
+    }
     const { largo_m, alto_m, puerta } = d.medidas
     if (puerta) {
       if (puerta.ancho_m >= largo_m) {

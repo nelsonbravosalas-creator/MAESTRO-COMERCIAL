@@ -128,7 +128,7 @@ export function calcularAcceso(d: DatosAcceso, params: Parametros): ItemListado[
 export function hhElectricista(d: DatosAcceso, params: Parametros): number {
   validarParametrosCierre(params)
   const c = params.cierre
-  const puntos = 2 + (d.citofono ? 1 : 0) + (d.boton ? 1 : 0)
+  const puntos = c.puntos_base_electricista + (d.citofono ? 1 : 0) + (d.boton ? 1 : 0)
   const metros =
     d.distancia_tablero_m !== undefined && d.canalizacion !== 'aerea' ? d.distancia_tablero_m : 0
   return (

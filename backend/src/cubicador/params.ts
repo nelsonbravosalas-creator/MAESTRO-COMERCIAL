@@ -65,6 +65,10 @@ export interface Cierre {
   rendimiento_pintura_m2_gal: number
   camara_cada_m: number
   cable_recorrido_poste_m: number
+  /** Puntos eléctricos base del acceso (chapa y fuente de poder). */
+  puntos_base_electricista: number
+  /** Caras pintadas de la plancha del cierre sólido. */
+  caras_pintura: number
   /** Rendimientos del soldador (HH), iniciales. */
   hh_sold_m_perfil: number
   hh_sold_barrote: number
@@ -135,6 +139,8 @@ export const PARAMETROS_BASE: Parametros = {
     rendimiento_pintura_m2_gal: 12,
     camara_cada_m: 12,
     cable_recorrido_poste_m: 7.5,
+    puntos_base_electricista: 2,
+    caras_pintura: 2,
     // Rendimientos iniciales de soldador y electricista (HH), a calibrar.
     hh_sold_m_perfil: 0.3,
     hh_sold_barrote: 0.1,

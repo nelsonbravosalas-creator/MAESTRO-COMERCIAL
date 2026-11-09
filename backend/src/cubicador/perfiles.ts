@@ -119,7 +119,8 @@ const CIERRE_METALICO: PerfilEntrevista = {
     },
     {
       clave: 'tipo_cierre',
-      texto: '¿Qué tipo de cierre es: portón corredero, abatible, reja, cortina enrollable?',
+      texto:
+        '¿El cierre es sólido de plancha o reja con barrotes? (Por ahora no se cubican portones corredizos, abatibles motorizados ni cortinas enrollables.)',
       completa: d => hay(d.tipo_cierre),
       impacto: 4,
     },

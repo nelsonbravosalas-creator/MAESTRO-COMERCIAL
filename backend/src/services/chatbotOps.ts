@@ -6,7 +6,12 @@ import { resolverTienda } from './tiendasRetail'
 import { callLlm, parseLlmJson } from './llm'
 import { teachRule, ChatbotRule } from './chatbotRules'
 import { buildAutoLineItems, ImportLinea } from './chatbotCalc'
-import { applyQuotationImport, applyQuotationUpdate, fullQuotation } from '../api/quotations'
+import {
+  applyQuotationImport,
+  applyQuotationUpdate,
+  filaCategoriaPorDefecto,
+  fullQuotation,
+} from '../api/quotations'
 import {
   chatbotTeachRuleSchema,
   chatbotPriceResponseSchema,
@@ -463,7 +468,8 @@ export async function createQuotationOp(
     origen: { skill: 'chatbot-cotizaciones', generado_en: now.toISOString() },
     correlative,
     cliente: { nombre: client.name, rut: client.rut },
-    ref: input.descripcionTrabajo || ctx.instruction.slice(0, 200),
+    // A-21: la referencia es texto libre del usuario; se limpia antes de guardarla.
+    ref: scrubPii(input.descripcionTrabajo || ctx.instruction.slice(0, 200)),
     uf_manual: ufManual,
     lineas,
   })
@@ -531,6 +537,17 @@ export async function createQuotationOp(
     // recent_turns).
     reply: `Cotizacion ${result.quotation.correlative} creada con ${lineas.length} item(s).${manualItemsWarning(manualLineas)}`,
   }
+}
+
+// Agrega la fila por defecto de cada categoría que las líneas nuevas usan y la
+// cotización aún no tiene (F2). Las filas existentes no se tocan.
+export function categoriasConFaltantes<T extends { category_id: string }>(
+  existentes: T[],
+  lineas: Array<{ category_id: string }>
+): T[] {
+  const ids = new Set(existentes.map(c => c.category_id))
+  const faltantes = [...new Set(lineas.map(l => l.category_id))].filter(id => !ids.has(id))
+  return [...existentes, ...faltantes.map(id => filaCategoriaPorDefecto(id))] as T[]
 }
 
 export async function addLinesToQuotationOp(
@@ -612,8 +629,9 @@ export async function addLinesToQuotationOp(
     show_usd_equivalent: existing.show_usd_equivalent,
     usd_value: existing.usd_value,
     version: existing.version,
-    // categories y terms quedan intactas: solo se agregan line_items.
-    categories: existing.categories,
+    // Las categorías existentes se conservan; las que falten para las líneas
+    // nuevas reciben su fila por defecto (margen 30 %) para no quedar en 0 % (F2).
+    categories: categoriasConFaltantes(existing.categories, newLineItems),
     terms: existing.terms,
     line_items: [...existingLineItems, ...newLineItems],
   }

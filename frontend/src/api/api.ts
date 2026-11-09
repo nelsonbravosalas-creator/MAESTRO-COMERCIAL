@@ -767,6 +767,8 @@ export interface ChatActionResponse {
   reply: string
   quotation?: MasterQuotation
   rule?: ChatbotRule
+  /** Estado del cubicador tras confirmar (p. ej. 'ingresado'): la tarjeta lo muestra. */
+  cubicador?: EstadoCubicador
 }
 
 export interface ChatRecentTurn {
@@ -1150,11 +1152,13 @@ export const api = {
       reply: string
       quotation?: RawQuotation
       rule?: ChatbotRule
+      cubicador?: EstadoCubicador
     }>(`/api/chatbot/actions/${id}/confirm`, {})
     return {
       reply: raw.reply,
       rule: raw.rule,
       quotation: raw.quotation ? toMasterQuotation(raw.quotation) : undefined,
+      cubicador: raw.cubicador,
     }
   },
   cancelChatbotAction: (id: string) =>

@@ -68,6 +68,9 @@ function cubicado(over: Partial<Borrador> = {}): Borrador {
   return { ...base, resultado: over.resultado ?? resultadoDe(base) }
 }
 
+// Listado cubicado con los precios aún pendientes (el estado por defecto de la fixture).
+const cubicadoPendiente = (over: Partial<Borrador> = {}): Borrador => cubicado(over)
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -244,7 +247,34 @@ describe('ajustar_listado', () => {
   })
 })
 
+// Listado con todos sus precios resueltos: el ingreso exige que no queden pendientes (F3).
+function cubicadoListo(over: Partial<Borrador> = {}): Borrador {
+  const b = cubicado(over)
+  if (!b.resultado) return b
+  const items = b.resultado.items.map(i => ({
+    ...i,
+    precio_unitario: i.precio_unitario ?? 100,
+    fuente: 'catalogo' as const,
+    estado_precio: 'con_precio' as const,
+  }))
+  return { ...b, resultado: { ...b.resultado, items } }
+}
+
 describe('ingresar_listado_a_cotizacion', () => {
+  // En este bloque, `cubicado` es el listado con precios resueltos.
+  const cubicado = cubicadoListo
+
+  it('rechaza mientras haya precios pendientes (F3)', async () => {
+    const pendiente = cubicadoPendiente()
+    const { pool } = fakeBd([pendiente])
+    await expect(
+      ingresarListadoTool.prepare!(
+        { cliente_nombre: undefined },
+        ctxDe(pool, { quotationId: 'q-abierta' })
+      )
+    ).rejects.toThrow(/Faltan precios por consultar/)
+  })
+
   it('ingresar propone una acción con todas las líneas', async () => {
     const base = cubicado()
     const { pool } = fakeBd([base])
@@ -371,7 +401,7 @@ describe('ingresar_listado_a_cotizacion', () => {
 
 describe('confirmación vencida', () => {
   it('borrador cambiado después de proponer: el confirm responde 409 y no escribe', async () => {
-    const bd = fakeBd([cubicado()])
+    const bd = fakeBd([cubicadoListo()])
     const args = await ingresarListadoTool.prepare!({}, ctxDe(bd.pool, { quotationId: 'q1' }))
     bd.filas.set('b1', { ...bd.filas.get('b1')!, version: 9 })
     const pool = {
@@ -547,5 +577,82 @@ describe('integración con el agente', () => {
     const r = await runAgentLoop(ctxDe(pool))
     expect(r.cubicador?.estado).toBe('cubicado')
     expect(r.cubicador?.resultado?.items.length).toBeGreaterThan(0)
+  })
+})
+
+// Correcciones de la revisión final: F4 (alias), F5 (cantidades a mano), F9 (cotización), F10 (prototipo).
+describe('correcciones de la revisión final', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('F4: los alias de datos se promueven al nombre canónico', async () => {
+    const { pool, filas } = fakeBd()
+    await entrevistarObraTool.execute(
+      {
+        perfil: 'hvac',
+        descripcion: 'VRF con fuga',
+        datos: { estado: 'fuga visible', lineas: { liquido: { diametro: '3/8', largo_m: 20 } } },
+      },
+      ctxDe(pool)
+    )
+    const datos = [...filas.values()][0].ficha.datos
+    expect(datos.estado_texto).toBe('fuga visible')
+    expect(datos.linea_liquido).toEqual({ diametro: '3/8', largo_m: 20 })
+    expect(datos.estado).toBeUndefined()
+    expect(datos.lineas).toBeUndefined()
+  })
+
+  it('F5: cambiar medidas descarta las cantidades a mano de las medidas anteriores', async () => {
+    const base = cubicado()
+    const conAjustes = {
+      ...base,
+      ficha: {
+        ...base.ficha,
+        datos: {
+          ...base.ficha.datos,
+          ajustes_listado: { quitar: [], cantidades: { 'hvac-refrigerante': 99 }, precios: {} },
+        },
+      },
+    }
+    const { pool, filas } = fakeBd([conAjustes])
+    await ajustarListadoTool.execute({ datos: { comuna: 'Santiago' } }, ctxDe(pool))
+    const ajustes = (filas.get('b1')!.ficha.datos.ajustes_listado ?? {}) as { cantidades: object }
+    expect(ajustes.cantidades).toEqual({})
+  })
+
+  it('F9: con la cotización cerrada, ingresar falla con 403 si no se indica otro cliente', async () => {
+    const { pool } = fakeBd([cubicadoListo()])
+    const original = pool.query
+    pool.query = vi.fn(async (sql: string, params?: unknown[]) =>
+      sql.includes('FROM quotations')
+        ? { rows: [{ status: 'Adjudicada' }], rowCount: 1 }
+        : original(sql, params)
+    ) as never
+    await expect(
+      ingresarListadoTool.prepare!(
+        { cliente_nombre: undefined },
+        ctxDe(pool, { quotationId: 'q-cerrada', userRole: 'commercial' })
+      )
+    ).rejects.toThrow(/Adjudicada/)
+  })
+
+  it('F10: las claves del prototipo no entran a los datos del borrador', async () => {
+    const { pool, filas } = fakeBd()
+    await entrevistarObraTool.execute(
+      {
+        perfil: 'hvac',
+        descripcion: 'x',
+        datos: JSON.parse(
+          '{"__proto__": {"polucion": 1}, "constructor": {"x": 2}, "tipo_trabajo": "fuga"}'
+        ),
+      },
+      ctxDe(pool)
+    )
+    const datos = [...filas.values()][0].ficha.datos
+    expect(Object.keys(datos)).not.toContain('__proto__')
+    expect(Object.keys(datos)).not.toContain('constructor')
+    expect(({} as Record<string, unknown>).polucion).toBeUndefined()
+    expect(datos.tipo_trabajo).toBe('fuga')
   })
 })

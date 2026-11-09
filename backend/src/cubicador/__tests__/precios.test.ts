@@ -382,7 +382,11 @@ describe('conservar precios al recalcular', () => {
       fuente_url: 'https://sodimac.cl/p',
       estado_precio: 'con_precio',
     })
-    expect(segundo.precios_pendientes).toBe(items.length - 1)
+    // Desde F3, catálogo, caché y solo-catálogo se resuelven al cubicar: el conteo cuenta
+    // lo que de verdad queda pendiente en el listado nuevo.
+    expect(segundo.precios_pendientes).toBe(
+      segundo.resultado?.items.filter(i => i.estado_precio === 'pendiente').length
+    )
   })
 })
 

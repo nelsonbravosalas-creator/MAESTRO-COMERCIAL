@@ -1,5 +1,5 @@
 import { AgentTool, AgentContext, AgentToolResult } from '../types'
-import { findClientByName } from '../../services/chatbotOps'
+import { findClientByName, scrubPii } from '../../services/chatbotOps'
 import { clienteNodeId } from '../../services/chatbotGraph'
 
 function modeFromCounts(counts?: Record<string, number>): number | null {
@@ -145,7 +145,7 @@ export const consultarHistorialClienteTool: AgentTool = {
         correlativo: q.correlative,
         fecha: q.date,
         estado: q.status,
-        asunto: q.subject,
+        asunto: q.subject ? scrubPii(String(q.subject)) : q.subject,
         tipo: q.kind,
       })),
       patrones_operacionales: patronesPorComuna,

@@ -837,7 +837,7 @@ export const createChatbotRouter = (pool: Pool) => {
               origen: { skill: 'chatbot-cotizaciones', generado_en: now.toISOString() },
               correlative,
               cliente: { nombre: client.name, rut: client.rut },
-              ref: parsed.descripcion_trabajo || instruction.slice(0, 200),
+              ref: scrubPii(parsed.descripcion_trabajo || instruction.slice(0, 200)),
               uf_manual: ufManual,
               lineas,
             })

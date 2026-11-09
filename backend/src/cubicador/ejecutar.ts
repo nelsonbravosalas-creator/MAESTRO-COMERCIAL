@@ -9,6 +9,7 @@ import { evaluarCompuerta, type EstadoCompuerta } from './compuerta'
 import { cubicar } from './motor'
 import { cargarParametros } from './params'
 import { PERFILES } from './perfiles'
+import { resolverPreciosCatalogo } from './precios'
 import type { Borrador, ItemListado, PerfilId, ResultadoCubicacion } from './types'
 
 export interface EstadoCubicador {
@@ -144,7 +145,9 @@ export async function ejecutarCubicacion(
     borrador.id,
     userId,
     {
-      resultado,
+      // F3: el catálogo y la caché se resuelven aquí, no después, para que el listado llegue
+      // sin precios pendientes que la cotización rechazaría en el mismo turno.
+      resultado: await resolverPreciosCatalogo(pool, resultado),
       estado: 'cubicado',
       ...(podados
         ? {

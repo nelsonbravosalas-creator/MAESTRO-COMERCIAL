@@ -271,6 +271,35 @@ function aplicar(resultado: ResultadoCubicacion, resoluciones: Map<string, Resol
   return { ...resultado, items }
 }
 
+/**
+ * Etapa 1 sola, sin LLM ni tiendas: catálogo y caché, y sin precio para lo que solo
+ * admite catálogo. Se usa al cubicar para que el listado no nazca con precios pendientes
+ * (F3): así un ingreso encadenado en el mismo turno ya no falla por precios pendientes.
+ */
+export async function resolverPreciosCatalogo(
+  pool: Pool,
+  resultado: ResultadoCubicacion
+): Promise<ResultadoCubicacion> {
+  const pendientes = resultado.items.filter(i => i.estado_precio === 'pendiente')
+  if (pendientes.length === 0) return resultado
+  const resoluciones = new Map<string, Resolucion>()
+  const catalogo = await cargarCatalogo(pool)
+  const sinCatalogo: ItemListado[] = []
+  for (const item of pendientes) {
+    const p = precioCatalogo(item, catalogo)
+    if (p) resoluciones.set(item.id, { cantidad: item.cantidad, precio: p })
+    else sinCatalogo.push(item)
+  }
+  const cacheados = await Promise.all(sinCatalogo.map(item => precioCache(pool, item)))
+  sinCatalogo.forEach((item, i) => {
+    const p = cacheados[i]
+    if (p) resoluciones.set(item.id, { cantidad: item.cantidad, precio: p })
+    else if (esSoloCatalogo(item))
+      resoluciones.set(item.id, { cantidad: item.cantidad, precio: SIN_PRECIO })
+  })
+  return aplicar(resultado, resoluciones)
+}
+
 function exigirCubicado(borrador: Borrador | null): Borrador & { resultado: ResultadoCubicacion } {
   if (!borrador) throw httpError('Borrador no encontrado', 404)
   if (borrador.estado !== 'cubicado' || !borrador.resultado) {

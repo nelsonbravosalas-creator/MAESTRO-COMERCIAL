@@ -81,10 +81,10 @@ describe('cierre metálico: texto libre de medidas', () => {
     }
   )
 
-  it('un texto legible pero con cero sigue siendo 422 nombrando el campo', () => {
-    const e = fallo(() => calc(reja({ medidas: '0 x 3' })))
-    expect(e.status).toBe(422)
-    expect(e.message).toContain('medidas.largo_m')
+  // F6: en texto libre un valor no válido es medida desconocida, no 422 (el motor no inventa).
+  it('un texto legible pero con cero se trata como medida desconocida, sin 422', () => {
+    const r = calc(reja({ medidas: '0 x 3' }))
+    expect(r.items.find(i => i.id === 'cierre-perfil')).toBeUndefined()
   })
 })
 

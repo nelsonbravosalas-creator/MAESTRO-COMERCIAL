@@ -373,10 +373,10 @@ describe('cierre metálico: datos inválidos -> 422', () => {
     })
   }
 
-  it('medidas como texto con cero lanza 422', () => {
-    const e = fallo(() => calc(reja({ medidas: '0 x 3' })))
-    expect(e.status).toBe(422)
-    expect(e.message).toContain('medidas.largo_m')
+  // F6: en texto libre un valor no válido es medida desconocida (no 422): el motor no inventa.
+  it('medidas como texto con cero se tratan como desconocidas, sin 422', () => {
+    const r = calc(reja({ medidas: '0 x 3' }))
+    expect(r.items.find(i => i.id === 'cierre-perfil')).toBeUndefined()
   })
 
   it('tipo_cierre que no es texto lanza 422 con los valores válidos', () => {

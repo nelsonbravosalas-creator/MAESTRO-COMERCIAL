@@ -1,4 +1,5 @@
 import { AgentTool, AgentContext, AgentToolResult } from '../types'
+import { scrubPii } from '../../services/chatbotOps'
 
 interface ClientNameRow {
   id: string
@@ -111,8 +112,9 @@ export const analizarWinLossClienteTool: AgentTool = {
     let perdidasPorPrecioOCompetidor = 0
 
     for (const row of lostRes.rows) {
-      const motivo = (row.loss_reason ?? 'No especificado').trim()
-      const competidor = row.loss_competitor ? row.loss_competitor.trim() : null
+      // A-21: motivo y competidor son texto libre; se limpian antes de llegar al modelo.
+      const motivo = scrubPii((row.loss_reason ?? 'No especificado').trim())
+      const competidor = row.loss_competitor ? scrubPii(row.loss_competitor.trim()) : null
       if (competidor) {
         competidoresSet.add(competidor)
       }
@@ -148,7 +150,7 @@ export const analizarWinLossClienteTool: AgentTool = {
     return {
       output: {
         encontrado: true,
-        cliente_nombre: client.name,
+        cliente_nombre: scrubPii(client.name),
         resumen: {
           adjudicadas,
           perdidas,
@@ -220,8 +222,9 @@ export const prepararSeguimientoCotizacionTool: AgentTool = {
     }
 
     const q = qRes.rows[0]
-    const clienteNombre = q.client_name ?? 'Cliente'
-    const refText = q.ref ? ` (${q.ref})` : ''
+    // A-21: nombre de cliente y referencia son texto libre; se limpian antes del modelo.
+    const clienteNombre = scrubPii(q.client_name ?? 'Cliente')
+    const refText = q.ref ? ` (${scrubPii(String(q.ref))})` : ''
     const totalClp = Number(q.total ?? 0).toLocaleString('es-CL')
     const vigencia = q.valid_until ? String(q.valid_until).slice(0, 10) : 'próxima a vencer'
 

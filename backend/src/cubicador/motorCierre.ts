@@ -28,8 +28,8 @@ const puertaSchema = z.object({
 })
 
 const medidasSchema = z.object({
-  largo_m: positivo,
-  alto_m: positivo,
+  largo_m: positivo.max(500),
+  alto_m: positivo.max(20),
   puerta: puertaSchema.optional(),
 })
 
@@ -56,6 +56,8 @@ type Reglas = [RegExp, string][]
 // Orden importa: "placa/pernos/muro" gana sobre "hormigón" ("sobre sardinel de hormigón").
 const REGLAS: Record<string, Reglas> = {
   tipo_cierre: [
+    // Un portón (corredero, abatible, cortina) no se cubica como reja aunque tenga barrotes (F6).
+    [/porton|correder|corrediz|abatibl|cortina|enrollabl/, 'no_soportado'],
     [/solid|plancha|ciego|macizo/, 'solido'],
     [/reja|barrote|baranda|enrejado/, 'reja'],
   ],
@@ -79,6 +81,14 @@ function normalizarEnum(campo: string, valor: string): string {
   const t = sistemaDe(valor).trim()
   // "sin chapa eléctrica", "no eléctrica": la negación de lo eléctrico es mecánica.
   if (campo === 'cerradura' && /\b(sin|no)\b(\s+\w+){0,2}\s+electric/.test(t)) return 'mecanica'
+  // "sin candado" dice que NO hay candado: no debe leerse como candado (F6). Si además se
+  // menciona lo eléctrico, prevalece lo eléctrico ("chapa eléctrica, sin candado").
+  if (
+    campo === 'cerradura' &&
+    /\b(sin|no)\b(\s+\w+){0,2}\s+candado/.test(t) &&
+    !/electric|electroiman|magnet/.test(t)
+  )
+    return 'mecanica'
   for (const [re, canon] of REGLAS[campo]) if (re.test(t)) return canon
   return t.replace(/\s+/g, '_')
 }
@@ -122,21 +132,36 @@ function medidasDeTexto(texto: string): MedidasTexto | null {
   const l1 = etiqueta(1)
   const v0 = numeroDe(nums[0][0])
   const v1 = numeroDe(nums[1][0])
+  if (!(v0 > 0 && v1 > 0)) return null
+  // Sin separador explícito ("56 912345678" no es 56 × 912345678): las medidas son desconocidas (F6).
+  const entre = t
+    .slice(nums[0].index + nums[0][0].length, nums[1].index)
+    .replace(/\b(mtrs|mts|mtr|mt|metros|metro|m)\b/g, ' ')
+    .trim()
   if (l0 === null && l1 === null) {
-    const entre = t
-      .slice(nums[0].index + nums[0][0].length, nums[1].index)
-      .replace(/\b(mtrs|mts|mtr|mt|metros|metro|m)\b/g, ' ')
-      .trim()
-    if (!/^(x|×|\*|por|y)?$/.test(entre)) return null
-    return { medidas: { largo_m: v0, alto_m: v1 }, supuestoOrden: true, puertaIgnorada }
+    if (!/^(x|×|\*|por|y)$/.test(entre)) return null
+    return dentroDeLimites({ largo_m: v0, alto_m: v1 }, true, puertaIgnorada)
   }
   if (l0 !== null && l0 === l1) return null
   const primeroLargo = l0 === 'largo' || l1 === 'alto'
-  return {
-    medidas: primeroLargo ? { largo_m: v0, alto_m: v1 } : { largo_m: v1, alto_m: v0 },
-    supuestoOrden: false,
-    puertaIgnorada,
-  }
+  return dentroDeLimites(
+    primeroLargo ? { largo_m: v0, alto_m: v1 } : { largo_m: v1, alto_m: v0 },
+    false,
+    puertaIgnorada
+  )
+}
+
+// Cotas razonables para un cierre: más allá, el texto se trata como medidas desconocidas (F6).
+const LARGO_MAX_M = 500
+const ALTO_MAX_M = 20
+
+function dentroDeLimites(
+  medidas: { largo_m: number; alto_m: number },
+  supuestoOrden: boolean,
+  puertaIgnorada: boolean
+): MedidasTexto | null {
+  if (medidas.largo_m > LARGO_MAX_M || medidas.alto_m > ALTO_MAX_M) return null
+  return { medidas, supuestoOrden, puertaIgnorada }
 }
 
 function conAlias(obj: Record<string, unknown>, alias: Record<string, string>) {

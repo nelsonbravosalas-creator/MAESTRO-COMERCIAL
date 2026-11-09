@@ -10,6 +10,8 @@ import {
   errorMessage,
   type ClientRecord,
 } from '../../services/chatbotOps'
+import type { Pool } from 'pg'
+import { LOCKED_STATUSES } from '../../api/quotations'
 import { asHttpError, httpError } from '../../utils/httpError'
 import { logger } from '../../utils/logger'
 import {
@@ -58,12 +60,17 @@ const CLAVE_VALIDA = /^[a-z0-9_]{1,60}$/
 const CLAVE_RESERVADA = 'ajustes_listado'
 
 // Datos que escribe el modelo: solo claves identificador (sin la reservada) y textos sin PII.
+// Claves del prototipo: CLAVE_VALIDA las deja pasar (solo letras y guiones bajos),
+// así que se bloquean aquí en todos los niveles (F10).
+const CLAVES_PROTOTIPO = new Set(['__proto__', 'constructor', 'prototype'])
+
 function limpiarDatos(valor: unknown, raiz = true): unknown {
   if (Array.isArray(valor)) return valor.map(v => limpiarDatos(v, false))
   if (esObjeto(valor)) {
     const salida: Objeto = {}
     for (const [k, v] of Object.entries(valor)) {
-      if (!CLAVE_VALIDA.test(k) || (raiz && k === CLAVE_RESERVADA)) continue
+      if (!CLAVE_VALIDA.test(k) || CLAVES_PROTOTIPO.has(k) || (raiz && k === CLAVE_RESERVADA))
+        continue
       salida[k] = limpiarDatos(v, false)
     }
     return salida
@@ -71,14 +78,56 @@ function limpiarDatos(valor: unknown, raiz = true): unknown {
   return limpiarPii(valor)
 }
 
+// F4: el modelo a veces nombra distinto una clave conocida. Se promueve al nombre canónico
+// (lineas.liquido -> linea_liquido, lineas.gas -> linea_gas, estado -> estado_texto).
+function normalizarAliasDatos(datos: Objeto): Objeto {
+  const salida: Objeto = { ...datos }
+  if (esObjeto(salida.lineas)) {
+    const l = salida.lineas as Objeto
+    if (l.liquido !== undefined && salida.linea_liquido === undefined)
+      salida.linea_liquido = l.liquido
+    if (l.gas !== undefined && salida.linea_gas === undefined) salida.linea_gas = l.gas
+    delete salida.lineas
+  }
+  if (salida.estado !== undefined && salida.estado_texto === undefined) {
+    salida.estado_texto = salida.estado
+    delete salida.estado
+  }
+  return salida
+}
+
 // Fusión recursiva de objetos; listas y valores simples reemplazan al anterior.
 function fusionar(base: Objeto, nuevo: Objeto): Objeto {
   const salida: Objeto = { ...base }
   for (const [k, v] of Object.entries(nuevo)) {
+    if (CLAVES_PROTOTIPO.has(k)) continue
     const previo = salida[k]
     salida[k] = esObjeto(v) && esObjeto(previo) ? fusionar(previo, v) : v
   }
   return salida
+}
+
+// F9: la cotización abierta debe existir y, si está en estado final, solo un admin la toca.
+async function verificarCotizacionEditable(
+  pool: Pool,
+  quotationId: string,
+  role: string | undefined
+): Promise<void> {
+  const r = await pool.query('SELECT status FROM quotations WHERE id = $1 AND deleted_at IS NULL', [
+    quotationId,
+  ])
+  if (r.rows.length === 0) {
+    throw httpError(
+      'La cotización abierta ya no existe. Indica el cliente para crear una nueva.',
+      404
+    )
+  }
+  if (role !== 'admin' && LOCKED_STATUSES.includes(r.rows[0].status)) {
+    throw httpError(
+      `Esta cotización está ${r.rows[0].status} y no puede ser modificada. Indica el cliente para crear una nueva.`,
+      403
+    )
+  }
 }
 
 function exigirUsuario(ctx: AgentContext): string {
@@ -134,7 +183,11 @@ export const entrevistarObraTool: AgentTool = {
       datos: {
         type: 'object',
         description:
-          'Datos nuevos de la obra (clave: valor), solo lo que el usuario dijo en este mensaje. Se fusionan con lo anterior.',
+          'Datos nuevos de la obra (clave: valor), solo lo que el usuario dijo en este mensaje. Se fusionan con lo anterior. ' +
+          'Claves hvac: tipo_trabajo, sistema, actividad, refrigerante, carga_placa_kg, linea_liquido {diametro, largo_m}, ' +
+          'linea_gas {diametro, largo_m}, estado_texto, uniones, jornadas_fijadas, tecnicos, ayudantes, comuna. ' +
+          'Claves cierre_metalico: medidas {largo_m, alto_m}, tipo_cierre, anclaje, cerradura, comuna, chapa_electrica. ' +
+          'Alias aceptados: lineas.liquido -> linea_liquido, lineas.gas -> linea_gas, estado -> estado_texto.',
       },
       no_sabe: {
         type: 'array',
@@ -151,7 +204,9 @@ export const entrevistarObraTool: AgentTool = {
     if (perfilArg && !(perfilArg in PERFILES)) {
       throw httpError(`Perfil desconocido: ${perfilArg}.`, 422)
     }
-    const datos = esObjeto(args.datos) ? (limpiarDatos(args.datos) as Objeto) : {}
+    const datos = esObjeto(args.datos)
+      ? normalizarAliasDatos(limpiarDatos(args.datos) as Objeto)
+      : {}
     const descripcion = typeof args.descripcion === 'string' ? scrubPii(args.descripcion) : ''
     const pedidos = Array.isArray(args.no_sabe)
       ? args.no_sabe.filter((x): x is string => typeof x === 'string')
@@ -167,10 +222,15 @@ export const entrevistarObraTool: AgentTool = {
     const ignorados = pedidos.filter(k => !claves.has(k)).map(k => scrubPii(k).slice(0, 60))
     let borrador: Borrador
     if (activo && (!perfilArg || perfilArg === activo.perfil)) {
+      const datosFusionados = fusionar(activo.ficha.datos, datos)
+      // F5: cambiar medidas invalida las cantidades a mano de las medidas anteriores.
+      if (Object.keys(datos).length > 0 && esObjeto(datosFusionados.ajustes_listado)) {
+        datosFusionados.ajustes_listado = { ...datosFusionados.ajustes_listado, cantidades: {} }
+      }
       const ficha: Ficha = {
         ...activo.ficha,
         descripcion: descripcion || activo.ficha.descripcion,
-        datos: fusionar(activo.ficha.datos, datos),
+        datos: datosFusionados,
         no_sabe: Array.from(new Set([...activo.ficha.no_sabe, ...noSabe])),
       }
       const cambio = Object.keys(datos).length > 0 || noSabe.length > 0
@@ -311,8 +371,13 @@ export const ajustarListadoTool: AgentTool = {
     }
     const previo = borrador.resultado
 
-    const datosNuevos = esObjeto(args.datos) ? (limpiarDatos(args.datos) as Objeto) : {}
+    const datosNuevos = esObjeto(args.datos)
+      ? normalizarAliasDatos(limpiarDatos(args.datos) as Objeto)
+      : {}
     const ajustes = leerAjustes(borrador.ficha.datos.ajustes_listado)
+    // Si cambian las medidas, las cantidades a mano de las medidas anteriores ya no
+    // valen y pisarían el cálculo nuevo: se descartan; quitar y precios se conservan (F5).
+    if (Object.keys(datosNuevos).length > 0) ajustes.cantidades = {}
     const quitar = Array.isArray(args.quitar_items)
       ? args.quitar_items.filter((x): x is string => typeof x === 'string')
       : []
@@ -463,17 +528,26 @@ export const ingresarListadoTool: AgentTool = {
         ? scrubPii(borrador.ficha.descripcion).slice(0, 200)
         : null,
     }
-    if (ctx.quotationId) {
+    // F3: no se ingresa mientras haya precios por consultar.
+    const pendientes = snapshot.items.filter(i => i.estado_precio === 'pendiente').length
+    if (pendientes > 0) {
+      throw httpError(
+        'Faltan precios por consultar: espera a que termine la consulta de precios.',
+        422
+      )
+    }
+    // F9: un cliente indicado explícitamente crea una cotización nueva aunque haya una abierta.
+    const nombre = typeof args.cliente_nombre === 'string' ? args.cliente_nombre.trim() : ''
+    if (ctx.quotationId && !nombre) {
+      await verificarCotizacionEditable(ctx.pool, ctx.quotationId, ctx.userRole)
       salida.quotation_id = ctx.quotationId
-    } else {
-      const nombre = typeof args.cliente_nombre === 'string' ? args.cliente_nombre.trim() : ''
-      if (!nombre) {
-        throw httpError(
-          'No hay una cotización abierta. Indica la cotización o el cliente para crear una nueva.',
-          422
-        )
-      }
+    } else if (nombre) {
       salida.cliente = await resolveClientByName(ctx.pool, nombre)
+    } else {
+      throw httpError(
+        'No hay una cotización abierta. Indica la cotización o el cliente para crear una nueva.',
+        422
+      )
     }
     return salida
   },

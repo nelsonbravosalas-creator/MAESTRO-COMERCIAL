@@ -110,10 +110,27 @@ export async function sendChatMessage(instruction: string, quotationId?: string 
 
   try {
     const data = await api.sendChatMessage(text, quotationId, recentTurns, currentAgentMode)
-    useChatStore.setState(s => ({
-      isSending: false,
-      messages: [...s.messages, { id: ++nextMessageId, role: 'bot', text: data.reply, data }],
-    }))
+    const cubicador = data.cubicador
+    if (cubicador && hayTarjeta(cubicador.borrador_id)) {
+      // F8: la tarjeta de ese borrador ya existe; se actualiza, no se duplica.
+      actualizarTarjeta(cubicador)
+      useChatStore.setState(s => ({
+        isSending: false,
+        messages: [
+          ...s.messages,
+          { id: ++nextMessageId, role: 'bot', text: data.reply, data: { reply: data.reply } },
+        ],
+      }))
+    } else {
+      useChatStore.setState(s => ({
+        isSending: false,
+        messages: [...s.messages, { id: ++nextMessageId, role: 'bot', text: data.reply, data }],
+      }))
+    }
+    // F3: una tarjeta que trae el agente con precios pendientes también consulta sus precios.
+    if (cubicador && cubicador.precios_pendientes > 0) {
+      void resolverPreciosDesdeTarjeta(cubicador.borrador_id)
+    }
   } catch (error) {
     let message = error instanceof ApiError ? error.message : 'No se pudo contactar al asistente.'
     // El 409 "cliente ambiguo" trae opciones en error.data — sin esto el
@@ -153,6 +170,8 @@ export async function resolveChatAction(actionId: string, decision: 'confirm' | 
         ? await api.confirmChatbotAction(actionId)
         : await api.cancelChatbotAction(actionId)
     setActionState(actionId, decision === 'confirm' ? 'confirmed' : 'cancelled')
+    // F8: el estado nuevo del listado (p. ej. 'ingresado') va a la tarjeta existente.
+    if (res.cubicador) actualizarTarjeta(res.cubicador)
     const data: ChatMessageResponse = {
       reply: res.reply,
       quotation: res.quotation,
@@ -251,11 +270,18 @@ export async function cubicarDesdeBoton(borradorId: string, _quotationId?: strin
   try {
     const cubicador = await api.cubicarBorrador(borradorId)
     const reply = 'Listado de cubicación generado. Revise los supuestos antes de usarlo.'
+    // F8: si la tarjeta ya existe, se actualiza en vez de agregar otra.
+    if (hayTarjeta(borradorId)) actualizarTarjeta(cubicador)
     useChatStore.setState(s => ({
       isSending: false,
       messages: [
         ...s.messages,
-        { id: ++nextMessageId, role: 'bot', text: reply, data: { reply, cubicador } },
+        {
+          id: ++nextMessageId,
+          role: 'bot',
+          text: reply,
+          data: hayTarjeta(borradorId) ? { reply } : { reply, cubicador },
+        },
       ],
     }))
     if (cubicador.precios_pendientes > 0) await resolverPreciosDesdeTarjeta(borradorId)
@@ -278,6 +304,11 @@ const resolviendoPrecios = new Set<string>()
 
 /** Vueltas máximas por listado: cada una resuelve un lote en el servidor (límite de 60 s). */
 export const MAX_RONDAS_PRECIOS = 10
+
+// ¿Ya hay una tarjeta de cubicación para este borrador en el historial?
+function hayTarjeta(borradorId: string): boolean {
+  return useChatStore.getState().messages.some(m => m.data?.cubicador?.borrador_id === borradorId)
+}
 
 // Reemplaza el estado de la tarjeta en su mensaje, sin agregar mensajes nuevos.
 function actualizarTarjeta(estado: EstadoCubicador) {

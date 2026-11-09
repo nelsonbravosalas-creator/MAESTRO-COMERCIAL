@@ -130,6 +130,10 @@ describe('Golden Set HVAC — Evaluación de Capacidades del Agente Comercial', 
         }
       }
       // 5. Métricas de cotizaciones
+      // F9: la cotización abierta existe y es editable.
+      if (s.startsWith('SELECT status FROM quotations')) {
+        return { rows: [{ status: 'Borrador' }] }
+      }
       if (s.includes('COUNT(*)::text AS total') && s.includes('FROM quotations')) {
         return {
           rows: [
@@ -439,6 +443,15 @@ describe('Golden Set Cubicador — de la entrevista al ingreso', () => {
     expect(new Set(resultado.items.map(i => i.categoria))).toEqual(
       new Set(['mec', 'mat', 'ins', 'ele', 'mo'])
     )
+
+    // F3: el ingreso exige precios resueltos. Sin fuente en tiendas, cada ítem queda «sin precio».
+    mPrecio.mockResolvedValue({ muestras: [] } as unknown as Awaited<
+      ReturnType<typeof lookupMaterialPrice>
+    >)
+    let precios = await resolverPrecios(pool, cubicacion.cubicador!.borrador_id, 'u1', OP_CTX)
+    while (precios.precios_pendientes > 0) {
+      precios = await resolverPrecios(pool, precios.borrador_id, 'u1', OP_CTX)
+    }
 
     // Turno 3: ingresar propone UNA acción pendiente que lista todos los ítems.
     const propuesta = await turno(

@@ -405,3 +405,78 @@ describe('resolverPreciosDesdeTarjeta', () => {
     expect(textos[1]).toContain('Demasiadas solicitudes')
   })
 })
+
+// F3 y F8: la tarjeta del cubicador no se duplica y refleja el estado real.
+describe('tarjeta del cubicador: F3 y F8', () => {
+  const base: EstadoCubicador = {
+    borrador_id: 'b-1',
+    perfil: 'hvac',
+    estado: 'cubicado',
+    compuerta: { respondidas: 3, requeridas: 3, habilitado: true, faltantes: [], siguientes: [] },
+    datos_completos: 3,
+    datos_totales: 5,
+    resultado: { items: [], supuestos: [], advertencias: [], dotacion: null },
+    precios_pendientes: 0,
+  }
+
+  const tarjetas = () => useChatStore.getState().messages.filter(m => m.data?.cubicador)
+
+  beforeEach(() => {
+    useChatStore.setState({ messages: [] })
+    resolverPreciosMock.mockReset()
+  })
+
+  it('F3: una tarjeta que trae el agente con precios pendientes inicia la consulta de precios', async () => {
+    sendChatMessageMock.mockResolvedValue({
+      reply: 'Listo',
+      cubicador: { ...base, precios_pendientes: 2 },
+    })
+    resolverPreciosMock.mockResolvedValue({ ...base, precios_pendientes: 0 })
+
+    await sendChatMessage('procede', null)
+    await vi.waitFor(() => expect(resolverPreciosMock).toHaveBeenCalledWith('b-1'))
+  })
+
+  it('F8: una respuesta del agente sobre un borrador con tarjeta actualiza esa tarjeta sin duplicarla', async () => {
+    useChatStore.setState({
+      messages: [
+        { id: 1, role: 'bot', text: 'Tarjeta', data: { reply: 'Tarjeta', cubicador: base } },
+      ],
+    })
+    sendChatMessageMock.mockResolvedValue({
+      reply: 'Ajustado',
+      cubicador: { ...base, estado: 'cubicado', datos_completos: 4 },
+    })
+
+    await sendChatMessage('ajusta', null)
+
+    expect(tarjetas()).toHaveLength(1)
+    expect(tarjetas()[0].data?.cubicador?.datos_completos).toBe(4)
+  })
+
+  it('F8: cubicar dos veces el mismo borrador deja una sola tarjeta', async () => {
+    cubicarBorradorMock.mockResolvedValue(base)
+
+    await cubicarDesdeBoton('b-1', null)
+    await cubicarDesdeBoton('b-1', null)
+
+    expect(tarjetas()).toHaveLength(1)
+  })
+
+  it('F8: al confirmar el ingreso, la tarjeta pasa a «ingresado»', async () => {
+    useChatStore.setState({
+      messages: [
+        { id: 1, role: 'bot', text: 'Tarjeta', data: { reply: 'Tarjeta', cubicador: base } },
+      ],
+    })
+    confirmActionMock.mockResolvedValue({
+      reply: 'Ingresado',
+      cubicador: { ...base, estado: 'ingresado' },
+    })
+
+    await resolveChatAction('acc-9', 'confirm')
+
+    expect(tarjetas()).toHaveLength(1)
+    expect(tarjetas()[0].data?.cubicador?.estado).toBe('ingresado')
+  })
+})

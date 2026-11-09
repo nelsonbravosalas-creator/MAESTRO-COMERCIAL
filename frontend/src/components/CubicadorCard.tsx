@@ -82,10 +82,17 @@ export function CubicadorCard({ estado, onCubicar, busy }: Props) {
   const { compuerta, resultado } = estado
   const habilitado = compuerta.habilitado
   const faltan = compuerta.siguientes.length > 0 ? compuerta.siguientes : compuerta.faltantes
-  const bloqueado = !habilitado || busy
+  // F8: un listado ingresado o cancelado ya no se vuelve a cubicar desde la tarjeta.
+  const cerrado = estado.estado === 'ingresado' || estado.estado === 'cancelado'
+  const bloqueado = !habilitado || busy || cerrado
 
   return (
     <div className="cubicador-card">
+      {cerrado && (
+        <p className="cubicador-estado" role="status">
+          {estado.estado === 'ingresado' ? 'Ingresado a la cotización' : 'Cancelado'}
+        </p>
+      )}
       <p className="cubicador-contador">
         {habilitado
           ? `${estado.datos_completos} de ${estado.datos_totales} datos · ${resultado?.supuestos.length ?? 0} supuestos`

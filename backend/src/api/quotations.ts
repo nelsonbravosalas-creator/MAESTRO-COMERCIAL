@@ -38,6 +38,21 @@ const VALID_STATUSES = [
 const VALID_OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada']
 const CATEGORY_IDS = ['mo', 'log', 'mat', 'rep', 'ins', 'mec', 'ele']
 const TERM_TYPES = ['scope', 'exclusion', 'commercial']
+export const MARGEN_CATEGORIA_NUEVA = 30
+
+// Fila de categoría por defecto para una categoría que la cotización aún no tiene.
+// Sin fila, sus líneas no tienen margen y el total queda con 0 % (F2).
+export function filaCategoriaPorDefecto(categoryId: string) {
+  return {
+    category_id: categoryId,
+    label: CATEGORY_LABELS[categoryId] ?? categoryId,
+    margin_pct: MARGEN_CATEGORIA_NUEVA,
+    color: CATEGORY_COLORS[categoryId] ?? null,
+    note: null,
+    sort_order: CATEGORY_IDS.indexOf(categoryId),
+  }
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   mo: 'Mano de Obra Especializada',
   log: 'Logistica y Operacion',
@@ -644,7 +659,7 @@ export const applyQuotationImport = async (pool: Pool, body: any, userId: string
   }
 }
 
-const LOCKED_STATUSES = ['Adjudicada', 'Perdida', 'Anulada', 'Cerrada']
+export const LOCKED_STATUSES = ['Adjudicada', 'Perdida', 'Anulada', 'Cerrada']
 
 // Extraido del handler de PUT /:id por la misma razon que applyQuotationImport:
 // el router de chatbot (backend/src/api/chatbot.ts) necesita el mismo camino

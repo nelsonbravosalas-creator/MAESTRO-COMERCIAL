@@ -46,6 +46,8 @@ export function fakeBd(iniciales: Borrador[] = []) {
   const query = vi.fn(async (sql: string, params: unknown[] = []) => {
     const res = (rows: unknown[]) => ({ rows, rowCount: rows.length })
     if (sql.includes('cubicador_parametros')) return res([])
+    // F9: verificación de la cotización abierta antes de proponer el ingreso.
+    if (sql.includes('SELECT status FROM quotations')) return res([{ status: 'Borrador' }])
     if (sql.includes('INSERT INTO cubicador_borradores')) {
       const [userId, tenantId, quotationId, perfil, ficha] = params as [
         string,

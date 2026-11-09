@@ -7,20 +7,29 @@ import {
 } from '../../services/chatbotOps'
 import { fullQuotation } from '../../api/quotations'
 import { ImportLinea } from '../../services/chatbotCalc'
+import { scrubPii } from '../../services/chatbotOps'
 import { httpError } from '../../utils/httpError'
 
 // Categorías de línea que el modelo puede usar al proponer materiales.
-export const CATEGORIAS_LINEA = [
-  'mat',
-  'mec',
-  'ele',
-  'sub',
-  'eq',
-  'ins',
-  'rep',
-  'mo',
-  'log',
-] as const
+// Debe coincidir con CATEGORY_IDS de api/quotations.ts: cualquier otra
+// categoría se descartaría en silencio al guardar (F1).
+export const CATEGORIAS_LINEA = ['mat', 'mec', 'ele', 'ins', 'rep', 'mo', 'log'] as const
+
+// Rechaza al proponer una categoría que la cotización no guardaría (F1).
+export function validarCategoriasMateriales(args: Record<string, unknown>): void {
+  const materiales = Array.isArray(args.materiales)
+    ? (args.materiales as Array<Record<string, unknown>>)
+    : []
+  for (const m of materiales) {
+    if (m.categoria === undefined) continue
+    if (!(CATEGORIAS_LINEA as readonly string[]).includes(String(m.categoria))) {
+      throw httpError(
+        `Categoria "${String(m.categoria)}" no existe. Use una de: ${CATEGORIAS_LINEA.join(', ')}.`,
+        422
+      )
+    }
+  }
+}
 
 const clp = (n: number): string =>
   Math.round(n)
@@ -90,7 +99,7 @@ export const verCotizacionTool: AgentTool = {
     // A-21: Minimización de datos personales — no exponemos RUT, email ni teléfono del cliente al LLM.
     const sanitizedItems = (q.line_items ?? []).map((li: Record<string, unknown>) => ({
       categoria: li.category_id,
-      descripcion: li.description,
+      descripcion: scrubPii(String(li.description ?? '')),
       unidad: li.unit_name,
       cantidad: Number(li.quantity),
       dias: Number(li.days),
@@ -101,9 +110,9 @@ export const verCotizacionTool: AgentTool = {
       output: {
         id: q.id,
         correlativo: q.correlative,
-        cliente_nombre: q.client_name,
+        cliente_nombre: q.client_name ? scrubPii(String(q.client_name)) : q.client_name,
         estado: q.status,
-        referencia: q.ref,
+        referencia: q.ref ? scrubPii(String(q.ref)) : q.ref,
         fecha: q.date,
         cantidad_items: sanitizedItems.length,
         items: sanitizedItems,
@@ -172,6 +181,7 @@ export const crearCotizacionTool: AgentTool = {
   },
   // Valida el cliente al proponer: sin cliente, ambiguo o sin RUT no se crea propuesta.
   prepare: async (args, ctx) => {
+    validarCategoriasMateriales(args)
     await resolveClientByName(ctx.pool, String(args.cliente_nombre ?? '').trim())
     return args
   },
@@ -283,6 +293,7 @@ export const modificarCotizacionTool: AgentTool = {
       .join('\n')
   },
   prepare: async (args, ctx) => {
+    validarCategoriasMateriales(args)
     const qId = (args.quotation_id as string) || ctx.quotationId
     if (!qId) {
       throw httpError(

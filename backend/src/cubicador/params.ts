@@ -21,6 +21,8 @@ export interface Nitrogeno {
   presion_barrido_barg: number
   /** Presión de prueba por código de refrigerante; `default` cubre el resto (supuesto). */
   presion_prueba_barg: Record<string, number>
+  /** Volumen supuesto (L) de un tramo abierto cuando la prueba es solo del tramo. */
+  volumen_tramo_l: number
 }
 
 export interface TareaParam {
@@ -50,6 +52,7 @@ export interface Parametros {
   hh: HorasHombre
   /** Carga de placa supuesta (kg) cuando no se conoce; se registra como supuesto crítico. */
   placa_supuesta_kg: number
+  soldadura: { /** Uniones soldadas que se asumen si no se indican. */ uniones_supuestas: number }
 }
 
 export const PARAMETROS_BASE: Parametros = {
@@ -68,6 +71,7 @@ export const PARAMETROS_BASE: Parametros = {
   },
   merma_pct: 5,
   placa_supuesta_kg: 4.0,
+  soldadura: { uniones_supuestas: 2 },
   bombeo: { tramo: 0.2, merma: 0.3, holgura: 0.5 },
   nitrogeno: {
     caudal_lpm: 3,
@@ -78,6 +82,7 @@ export const PARAMETROS_BASE: Parametros = {
     presion_barrido_barg: 5,
     // 37,9 barg = los 550 psi de la plantilla; el resto es un supuesto crítico.
     presion_prueba_barg: { 'R-410A': 37.9, 'R-32': 37.9, default: 9 },
+    volumen_tramo_l: 1,
   },
   hh: {
     eficiencia: 0.85,

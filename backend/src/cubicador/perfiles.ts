@@ -44,7 +44,7 @@ function textoDe(valor: unknown): string {
 }
 
 // Minusculas y sin tildes, para que "Cámara frigorífica" coincida con "camara".
-function sistemaDe(valor: unknown): string {
+export function sistemaDe(valor: unknown): string {
   return typeof valor === 'string'
     ? valor
         .normalize('NFD')

@@ -168,6 +168,201 @@ describe('cubicar hvac', () => {
   })
 })
 
+describe('cubicar hvac: lo que falta se omite y se marca', () => {
+  it('fuga con refrigerante_lineas en no_sabe y sin refrigerante ni líneas: sin 422', () => {
+    const r = cubicar(
+      'hvac',
+      ficha(
+        { tipo_trabajo: 'reparacion', sistema: 'vrf', actividad: 'fuga', estado_texto: 'fuga' },
+        ['refrigerante_lineas']
+      ),
+      p
+    )
+    expect(r.items.some(i => i.descripcion.includes('Refrigerante'))).toBe(false)
+    expect(r.items.some(i => i.descripcion.includes('Nitrógeno'))).toBe(false)
+    expect(r.supuestos.find(s => s.clave === 'refrigerante')).toMatchObject({ critico: true })
+    expect(r.advertencias.some(a => a.includes('refrigerante'))).toBe(true)
+    expect(r.items.filter(i => i.categoria === 'mo')).toHaveLength(2)
+    expect(r.dotacion?.hh_cotizadas).toBe(37)
+    sinNaN(r)
+  })
+
+  it('refrigerante conocido sin líneas: carga solo por placa y supuesto crítico de líneas', () => {
+    const datos = { ...vrf().datos }
+    delete datos.linea_liquido
+    delete datos.linea_gas
+    const r = cubicar('hvac', ficha({ ...datos, volumen_equipos_l: 13.5 }), p)
+    expect(porDesc(r, 'R-410A')!.cantidad).toBe(8.9) // 8,5 × 1,05
+    expect(r.supuestos.find(s => s.clave === 'lineas')).toMatchObject({ critico: true })
+    expect(porDesc(r, 'Nitrógeno')).toBeDefined()
+    sinNaN(r)
+  })
+
+  it('una sola línea conocida marca el supuesto crítico y no falla en cámara', () => {
+    const datos = { ...camara().datos }
+    delete datos.linea_gas
+    const r = cubicar('hvac', ficha(datos, ['refrigerante_lineas']), p)
+    expect(r.supuestos.find(s => s.clave === 'lineas')).toMatchObject({ critico: true })
+    expect(porDesc(r, 'R-404A')).toBeDefined()
+  })
+
+  it('sin líneas ni volumen en circuito: nitrógeno solo de purga y supuesto crítico', () => {
+    const datos = { ...vrf().datos }
+    delete datos.linea_liquido
+    delete datos.linea_gas
+    delete datos.volumen_equipos_l
+    const r = cubicar('hvac', ficha(datos), p)
+    expect(r.supuestos.find(s => s.clave === 'nitrogeno_volumen')).toMatchObject({ critico: true })
+    expect(porDesc(r, 'Nitrógeno')).toBeDefined()
+  })
+
+  it('no_sabe con placa positiva: gana el valor dado y no hay supuesto de placa', () => {
+    const r = cubicar('hvac', ficha(vrf().datos, ['refrigerante_lineas']), p)
+    expect(r.supuestos.some(s => s.clave === 'carga_placa_kg')).toBe(false)
+  })
+
+  it('basura sigue dando 422 y nombra el campo', () => {
+    const malo = (cambio: Record<string, unknown>) =>
+      fallo(() => cubicar('hvac', ficha({ ...vrf().datos, ...cambio }), p))
+    expect(malo({ carga_placa_kg: -3 }).message).toContain('carga_placa_kg')
+    expect(malo({ uniones: 'dos' }).status).toBe(422)
+    expect(malo({ tipo_trabajo: 'volar' }).message).toContain('instalacion')
+    expect(malo({ refrigerante: 'R-999' }).status).toBe(422)
+  })
+
+  it('un campo obligatorio ausente se nombra en el 422', () => {
+    const datos = { ...vrf().datos }
+    delete datos.sistema
+    const e = fallo(() => cubicar('hvac', ficha(datos), p))
+    expect(e.status).toBe(422)
+    expect(e.message).toContain('falta el campo "sistema"')
+  })
+})
+
+describe('cubicar hvac: texto libre y parámetros', () => {
+  const con = (cambio: Record<string, unknown>) =>
+    cubicar('hvac', ficha({ ...vrf().datos, ...cambio }), p)
+
+  it.each([
+    ['Cámara frigorífica', 'camara'],
+    ['camara', 'camara'],
+    ['Rack central', 'central'],
+    ['VRV', 'vrf'],
+    ['Multi split', 'multisplit'],
+    ['Split', 'split'],
+    ['Precisión', 'precision'],
+  ])('sistema "%s" se acepta', (texto, canon) => {
+    const datos = { ...camara().datos, sistema: texto }
+    expect(() => cubicar('hvac', ficha(datos, ['refrigerante_lineas']), p)).not.toThrow()
+    // El sistema "camara" suma succión: es la única diferencia observable de masa.
+    const conVapor = canon === 'camara' || canon === 'central'
+    const r = cubicar('hvac', ficha(datos, ['refrigerante_lineas']), p)
+    expect(porDesc(r, 'R-404A')!.cantidad).toBe(conVapor ? 5.4 : 5.3)
+  })
+
+  it('sistema desconocido da 422 con los valores válidos', () => {
+    const e = fallo(() => con({ sistema: 'chiller' }))
+    expect(e.status).toBe(422)
+    expect(e.message).toContain('multisplit')
+  })
+
+  it.each([
+    ['Reparación', false],
+    ['reparar', false],
+    ['arreglo', false],
+    ['Instalación', true],
+    ['instalar', true],
+    ['montaje', true],
+  ])('tipo_trabajo "%s"', (texto, esInstalacion) => {
+    const datos = { ...vrf().datos, tipo_trabajo: texto, actividad: undefined }
+    const r = cubicar('hvac', ficha(datos), p)
+    expect(r.items.some(i => i.categoria === 'rep')).toBe(!esInstalacion)
+  })
+
+  it.each(['Mantención', 'mantener', 'Mantenimiento'])('tipo_trabajo "%s" deriva', texto => {
+    const e = fallo(() => con({ tipo_trabajo: texto }))
+    expect(e.message).toContain('cubicar_especificacion_hvac')
+  })
+
+  it('actividad y refrigerante en texto libre', () => {
+    const base = cubicar(
+      'hvac',
+      ficha({ ...camara().datos, actividad: 'Puesta a punto' }, ['refrigerante_lineas']),
+      p
+    )
+    for (const ref of ['r-404a', 'R404A', 'r 404 a', '404A']) {
+      const r = cubicar(
+        'hvac',
+        ficha({ ...camara().datos, refrigerante: ref }, ['refrigerante_lineas']),
+        p
+      )
+      expect(porDesc(r, 'Gas Refrigerante R-404A')!.cantidad).toBe(5.4)
+    }
+    expect(base.dotacion?.hh_calculadas).toBe(21.5)
+    expect(con({ actividad: 'Fugas' }).dotacion?.hh_calculadas).toBe(37)
+    expect(porDesc(con({ actividad: 'flushing' }), 'Aceite')).toBeDefined()
+  })
+
+  it('volumen del tramo viene de params y deja un supuesto no crítico', () => {
+    const r = cubicar('hvac', camara(), p)
+    expect(r.supuestos.find(s => s.clave === 'volumen_tramo')).toMatchObject({ critico: false })
+    const grande = { ...p, nitrogeno: { ...p.nitrogeno, volumen_tramo_l: 10 } }
+    expect(porDesc(cubicar('hvac', camara(), grande), 'Nitrógeno')!.cantidad).toBeGreaterThan(0.13)
+    const malo = { ...p, nitrogeno: { ...p.nitrogeno, volumen_tramo_l: 0 } }
+    expect(fallo(() => cubicar('hvac', camara(), malo)).status).toBe(422)
+  })
+
+  it('uniones supuestas vienen de params; críticas en instalación', () => {
+    const datos = { ...vrf().datos }
+    delete datos.uniones
+    const rep = cubicar('hvac', ficha(datos), p)
+    expect(rep.supuestos.find(s => s.clave === 'uniones')).toMatchObject({ critico: false })
+    expect(porDesc(rep, 'Soldadura')!.cantidad).toBe(2)
+    const inst = cubicar('hvac', ficha({ ...datos, tipo_trabajo: 'instalacion' }), p)
+    expect(inst.supuestos.find(s => s.clave === 'uniones')).toMatchObject({ critico: true })
+  })
+
+  it('reparto de HH con 2 técnicos y 1 ayudante (24 HH -> 16 y 8)', () => {
+    const r = con({ tecnicos: 2, ayudantes: 1, jornadas_fijadas: 1 })
+    expect(r.items.find(i => i.descripcion.startsWith('Técnico'))!.cantidad).toBe(16)
+    expect(r.items.find(i => i.descripcion.startsWith('Ayudante'))!.cantidad).toBe(8)
+  })
+
+  it('sin ayudantes no hay línea de ayudante', () => {
+    const r = con({ ayudantes: 0 })
+    expect(r.items.some(i => i.descripcion.startsWith('Ayudante'))).toBe(false)
+    expect(r.items.find(i => i.descripcion.startsWith('Técnico'))!.cantidad).toBe(37)
+  })
+
+  it('método bombeo: 1,0 kg de refrigerante', () => {
+    const r = con({ metodo: 'bombeo', carga_placa_kg: undefined })
+    expect(porDesc(r, 'R-410A')!.cantidad).toBe(1)
+    expect(r.supuestos.some(s => s.clave === 'carga_placa_kg')).toBe(false)
+  })
+
+  it('instalación: cobra solo el exceso de línea y no lleva filtro secador', () => {
+    const r = cubicar(
+      'hvac',
+      ficha({
+        tipo_trabajo: 'instalacion',
+        sistema: 'split',
+        refrigerante: 'R-410A',
+        linea_liquido: { diametro: '3/8', largo_m: 10 },
+        linea_gas: { diametro: '5/8', largo_m: 10 },
+        largo_incluido_m: 5,
+        unidades_interiores: 1,
+        unidades_exteriores: 1,
+        estado_texto: 'obra nueva',
+      }),
+      p
+    )
+    expect(porDesc(r, 'R-410A')!.cantidad).toBe(0.3)
+    expect(r.items.some(i => i.categoria === 'rep')).toBe(false)
+    expect(r.supuestos.some(s => s.clave === 'carga_placa_kg')).toBe(false)
+    sinNaN(r)
+  })
+})
+
 describe('CRITERIOS_REPARACION', () => {
   it('tiene 10 entradas completas', () => {
     expect(CRITERIOS_REPARACION).toHaveLength(10)

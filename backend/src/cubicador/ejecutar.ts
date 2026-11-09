@@ -3,7 +3,7 @@
 import type { Pool } from 'pg'
 import { httpError } from '../utils/httpError'
 import { scrubPii } from '../services/chatbotOps'
-import { aplicarAjustes, leerAjustes } from './ajustes'
+import { aplicarAjustes, leerAjustes, podarAjustes } from './ajustes'
 import { actualizarBorrador, obtenerBorrador } from './borradores'
 import { evaluarCompuerta, type EstadoCompuerta } from './compuerta'
 import { cubicar } from './motor'
@@ -123,7 +123,11 @@ export async function ejecutarCubicacion(
   // Los ajustes manuales (ítems quitados, cantidades y precios fijados) se reaplican encima del
   // cálculo; después, en una re-cubicación, se conservan los precios ya resueltos.
   const ajustes = leerAjustes(borrador.ficha.datos.ajustes_listado)
-  const calculado = aplicarAjustes(cubicar(borrador.perfil, borrador.ficha, params), ajustes)
+  const motor = cubicar(borrador.perfil, borrador.ficha, params)
+  const calculado = aplicarAjustes(motor, ajustes)
+  // Los ajustes de ítems que el motor ya no emite se podan: no deben ocultar ni congelar otros.
+  const idsMotor = new Set(motor.items.map(i => i.id))
+  const podados = podarAjustes(ajustes, idsMotor)
   const resultado: ResultadoCubicacion =
     borrador.estado === 'cubicado' && borrador.resultado
       ? {
@@ -139,7 +143,18 @@ export async function ejecutarCubicacion(
     pool,
     borrador.id,
     userId,
-    { resultado, estado: 'cubicado' },
+    {
+      resultado,
+      estado: 'cubicado',
+      ...(podados
+        ? {
+            ficha: {
+              ...borrador.ficha,
+              datos: { ...borrador.ficha.datos, ajustes_listado: podados },
+            },
+          }
+        : {}),
+    },
     borrador.version
   )
   return estadoCubicador(actualizado)

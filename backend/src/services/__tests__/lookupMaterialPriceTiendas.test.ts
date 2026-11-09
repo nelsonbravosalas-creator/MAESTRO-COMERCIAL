@@ -85,3 +85,23 @@ describe('lookupMaterialPrice con tiendas: precio_medio', () => {
     expect(res.muestras).toEqual([])
   })
 })
+
+describe('lookupMaterialPrice con tiendas: etiqueta sin dominio', () => {
+  it('una muestra con etiqueta Sodimac pero dominio ajeno se descarta y no contamina el precio', async () => {
+    llm.mockReset()
+    llm.mockResolvedValueOnce('texto').mockResolvedValueOnce(
+      JSON.stringify({
+        precio_medio: 400,
+        muestras: [
+          { precio: 100, fuente_url: 'https://tienda-falsa.com/a', tienda: 'Sodimac' },
+          { precio: 700, fuente_url: 'https://www.sodimac.cl/b', tienda: 'Sodimac' },
+        ],
+        advertencia: null,
+      })
+    )
+    const res = await lookupMaterialPrice(pool, 'Tubo', ctx, { tiendas: ['Sodimac'] })
+    expect(res.muestras).toHaveLength(1)
+    expect(res.muestras[0].fuente_url).toContain('sodimac.cl')
+    expect(res.precio_medio).toBe(700)
+  })
+})

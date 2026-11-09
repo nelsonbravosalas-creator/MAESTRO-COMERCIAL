@@ -315,7 +315,7 @@ export function motorHvac(ficha: Ficha, params: Parametros): ResultadoCubicacion
       refItem = item(
         'hvac-refrigerante',
         'ins',
-        `Gas Refrigerante ${refrigerante}`,
+        `Refrigerante ${refrigerante}`,
         'kg',
         ref.kg,
         ref.formula
@@ -390,7 +390,18 @@ export function motorHvac(ficha: Ficha, params: Parametros): ResultadoCubicacion
     )
     advertencias.push(...n2.advertencias)
     if (n2.m3 > 0) {
-      n2Item = item('hvac-nitrogeno', 'ins', 'Nitrógeno N2 Industrial', 'm3', n2.m3, n2.formula)
+      // El nitrógeno se compra por balón entero: la cantidad son los balones y el cálculo en m³
+      // queda visible en la fórmula.
+      const balonM3 = params.nitrogeno.balon_m3
+      const formulaN2 = `${n2.formula} → ${n2.balones} ${n2.balones === 1 ? 'balón' : 'balones'} de ${fmt(balonM3, 0)} m³`
+      n2Item = item(
+        'hvac-nitrogeno',
+        'ins',
+        'Nitrógeno N2 Industrial',
+        'Rec',
+        n2.balones,
+        formulaN2
+      )
     } else {
       agregarSupuesto({
         clave: 'nitrogeno_omitido',

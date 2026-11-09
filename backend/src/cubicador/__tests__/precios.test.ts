@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Pool } from 'pg'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { cubicar } from '../motor'
+import { PARAMETROS_BASE } from '../params'
 import { borradorBase, fakeBd, FICHA_VRF } from './fakeBd'
 import { conservarPrecios, ejecutarCubicacion } from '../ejecutar'
 import { coincidenciaCatalogo, PLAZO_TIENDAS_MS, resolverPrecios, TIENDAS_RETAIL } from '../precios'
@@ -562,6 +566,140 @@ describe('re-cubicar conserva los ajustes manuales', () => {
     expect(nuevos.find(i => i.id === resuelto.id)).toMatchObject({
       precio_unitario: 999,
       fuente: 'catalogo',
+    })
+  })
+})
+
+describe('coincidenciaCatalogo: contención', () => {
+  const fila = (description: string, unit_name: string) => ({
+    id: description,
+    description,
+    unit_name,
+    unit_price: '100',
+    category_id: null,
+  })
+
+  it('acepta «Refrigerante R-410A» contra la fila «Refrigerante R-410a»', () => {
+    const f = fila('Refrigerante R-410a', 'Kg')
+    expect(coincidenciaCatalogo({ descripcion: 'Refrigerante R-410A', unidad: 'kg' }, [f])).toBe(f)
+  })
+
+  it('la fila corta contenida en una descripción más larga calza (Nitrógeno N2)', () => {
+    const f = fila('Nitrógeno N2', 'Rec')
+    expect(
+      coincidenciaCatalogo({ descripcion: 'Nitrógeno N2 Industrial', unidad: 'Rec' }, [f])
+    ).toBe(f)
+  })
+
+  it('rechaza R-404A contra una fila R-410a aunque el resto esté contenido', () => {
+    const f = fila('Refrigerante R-410a', 'Kg')
+    expect(
+      coincidenciaCatalogo({ descripcion: 'Refrigerante R-404A', unidad: 'kg' }, [f])
+    ).toBeNull()
+  })
+
+  it('«Gas» solo no calza con nada más largo', () => {
+    const f = fila('Gas', 'kg')
+    expect(
+      coincidenciaCatalogo({ descripcion: 'Gas Refrigerante R-410A', unidad: 'kg' }, [f])
+    ).toBeNull()
+    expect(
+      coincidenciaCatalogo({ descripcion: 'Gas licuado industrial', unidad: 'kg' }, [f])
+    ).toBeNull()
+  })
+
+  it('con la contención sigue exigiendo la misma unidad', () => {
+    const f = fila('Nitrógeno N2', 'm3')
+    expect(
+      coincidenciaCatalogo({ descripcion: 'Nitrógeno N2 Industrial', unidad: 'Rec' }, [f])
+    ).toBeNull()
+  })
+})
+
+describe('el motor HVAC contra el catálogo sembrado', () => {
+  // Filas reales de seed.sql: ('cat', 'descripción', 'unidad', precio, ...)
+  function filasSembradas(): FilaCatalogo[] {
+    const sql = readFileSync(join(__dirname, '../../db/seed.sql'), 'utf-8')
+    const re = /\('(?:mo|ins|mat|rep|log)',\s*'([^']+)',\s*'([^']+)',\s*(\d+)/g
+    return [...sql.matchAll(re)].map(m => ({
+      description: m[1],
+      unit_name: m[2],
+      unit_price: m[3],
+    }))
+  }
+
+  const itemsDe = (refrigerante: string) =>
+    cubicar('hvac', { ...FICHA_VRF, datos: { ...FICHA_VRF.datos, refrigerante } }, PARAMETROS_BASE)
+      .items
+
+  beforeEach(() => lookup.mockReset())
+
+  it('la sembrada trae las filas esperadas', () => {
+    const d = filasSembradas().map(f => `${f.description}|${f.unit_name}`)
+    expect(d).toEqual(
+      expect.arrayContaining([
+        'Refrigerante R-410a|Kg',
+        'Nitrógeno N2|Rec',
+        'Técnico Especializado HVAC|Hora',
+        'Ayudante Técnico HVAC|Hora',
+      ])
+    )
+  })
+
+  it('VRF R-410A: HH, nitrógeno y refrigerante resuelven desde el catálogo', async () => {
+    const { pool } = armar(itemsDe('R-410A'), { catalogo: filasSembradas() })
+    lookup.mockResolvedValue(respuesta([]))
+    const estado = await resolverPrecios(pool, 'b1', 'u1', CTX)
+    const por = (id: string) => estado.resultado?.items.find(i => i.id === id)
+    expect(por('hvac-refrigerante')).toMatchObject({ precio_unitario: 120000, fuente: 'catalogo' })
+    expect(por('hvac-nitrogeno')).toMatchObject({
+      precio_unitario: 35000,
+      fuente: 'catalogo',
+      unidad: 'Rec',
+    })
+    expect(por('hvac-hh-tecnico')).toMatchObject({ precio_unitario: 150000, fuente: 'catalogo' })
+    expect(por('hvac-hh-ayudante')).toMatchObject({ precio_unitario: 80000, fuente: 'catalogo' })
+  })
+
+  it('R-404A no tiene fila sembrada: queda sin_precio y nunca se cobra con la de R-410a', async () => {
+    const { pool } = armar(itemsDe('R-404A'), { catalogo: filasSembradas() })
+    lookup.mockResolvedValue(respuesta([]))
+    const estado = await resolverPrecios(pool, 'b1', 'u1', CTX)
+    const ref = estado.resultado?.items.find(i => i.id === 'hvac-refrigerante')
+    expect(ref).toMatchObject({ estado_precio: 'sin_precio', precio_unitario: null })
+    expect(ref?.descripcion).toBe('Refrigerante R-404A')
+    expect(estado.resultado?.items.find(i => i.id === 'hvac-nitrogeno')?.precio_unitario).toBe(
+      35000
+    )
+  })
+})
+
+describe('re-cubicar poda ajustes de ítems que ya no existen', () => {
+  it('guarda en la ficha solo los ajustes de ids vigentes', async () => {
+    const { pool, filas } = fakeBd([borradorBase({ ficha: FICHA_VRF })])
+    const primero = await ejecutarCubicacion(pool, 'b1', 'u1')
+    const vigente = primero.resultado?.items[0].id ?? ''
+    const b = filas.get('b1')
+    if (!b) throw new Error('sin borrador')
+    filas.set('b1', {
+      ...b,
+      ficha: {
+        ...b.ficha,
+        datos: {
+          ...b.ficha.datos,
+          ajustes_listado: {
+            quitar: ['id-fantasma', vigente],
+            cantidades: { 'otro-fantasma': 5 },
+            precios: { 'fantasma-3': { precio_unitario: 10 } },
+          },
+        },
+      },
+    })
+    await ejecutarCubicacion(pool, 'b1', 'u1')
+    expect(filas.get('b1')?.ficha.datos.ajustes_listado).toEqual({
+      quitar: [vigente],
+      cantidades: {},
+      precios: {},
     })
   })
 })

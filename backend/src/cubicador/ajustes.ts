@@ -62,3 +62,16 @@ export function aplicarAjustes(
   }
   return { ...resultado, items }
 }
+
+// Ajustes sin los ids que ya no existen; null si no había nada que podar.
+export function podarAjustes(ajustes: Ajustes, idsValidos: ReadonlySet<string>): Ajustes | null {
+  const vale = (id: string) => idsValidos.has(id)
+  const quitar = ajustes.quitar.filter(vale)
+  const cantidades = Object.fromEntries(Object.entries(ajustes.cantidades).filter(([k]) => vale(k)))
+  const precios = Object.fromEntries(Object.entries(ajustes.precios).filter(([k]) => vale(k)))
+  const cambio =
+    quitar.length !== ajustes.quitar.length ||
+    Object.keys(cantidades).length !== Object.keys(ajustes.cantidades).length ||
+    Object.keys(precios).length !== Object.keys(ajustes.precios).length
+  return cambio ? { quitar, cantidades, precios } : null
+}

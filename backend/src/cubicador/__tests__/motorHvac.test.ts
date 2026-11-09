@@ -62,15 +62,20 @@ function sinNaN(r: ResultadoCubicacion) {
   }
 }
 
+// m³ de nitrógeno que muestra la fórmula (la cantidad del ítem son los balones enteros).
+const m3Formula = (r: ResultadoCubicacion): number =>
+  Number(/= ([\d,]+) m³/.exec(porDesc(r, 'Nitrógeno')!.formula)![1].replace(',', '.'))
+
 describe('cubicar hvac', () => {
   it('caso R-404A de cámara: refrigerante, nitrógeno, filtro, soldadura y HH', () => {
     const r = cubicar('hvac', camara(), p)
     expect(porDesc(r, 'R-404A')).toMatchObject({ categoria: 'ins', unidad: 'kg', cantidad: 5.4 })
     expect(porDesc(r, 'Nitrógeno')).toMatchObject({
       categoria: 'ins',
-      unidad: 'm3',
-      cantidad: 0.13,
+      unidad: 'Rec',
+      cantidad: 1,
     })
+    expect(porDesc(r, 'Nitrógeno')!.formula).toContain('0,13 m³')
     expect(porDesc(r, 'Filtro deshidratador 3/8"')).toMatchObject({ categoria: 'rep' })
     expect(porDesc(r, 'Soldadura')).toMatchObject({ categoria: 'ins' })
     for (const rol of ['Técnico Especializado HVAC', 'Ayudante Técnico HVAC']) {
@@ -124,9 +129,7 @@ describe('cubicar hvac', () => {
     const kg = (x: ResultadoCubicacion) => porDesc(x, 'R-410A')!.cantidad
     expect(kg(r)).toBeGreaterThan(kg(normal))
     expect(r.advertencias.some(a => a.includes('reutilizable'))).toBe(true)
-    expect(porDesc(r, 'Nitrógeno')!.cantidad).toBeGreaterThan(
-      porDesc(normal, 'Nitrógeno')!.cantidad
-    )
+    expect(m3Formula(r)).toBeGreaterThan(m3Formula(normal))
     sinNaN(r)
   })
 
@@ -298,7 +301,7 @@ describe('cubicar hvac: texto libre y parámetros', () => {
         ficha({ ...camara().datos, refrigerante: ref }, ['refrigerante_lineas']),
         p
       )
-      expect(porDesc(r, 'Gas Refrigerante R-404A')!.cantidad).toBe(5.4)
+      expect(porDesc(r, 'Refrigerante R-404A')!.cantidad).toBe(5.4)
     }
     expect(base.dotacion?.hh_calculadas).toBe(21.5)
     expect(con({ actividad: 'Fugas' }).dotacion?.hh_calculadas).toBe(37)
@@ -309,7 +312,7 @@ describe('cubicar hvac: texto libre y parámetros', () => {
     const r = cubicar('hvac', camara(), p)
     expect(r.supuestos.find(s => s.clave === 'volumen_tramo')).toMatchObject({ critico: false })
     const grande = { ...p, nitrogeno: { ...p.nitrogeno, volumen_tramo_l: 10 } }
-    expect(porDesc(cubicar('hvac', camara(), grande), 'Nitrógeno')!.cantidad).toBeGreaterThan(0.13)
+    expect(m3Formula(cubicar('hvac', camara(), grande))).toBeGreaterThan(0.13)
     const malo = { ...p, nitrogeno: { ...p.nitrogeno, volumen_tramo_l: 0 } }
     expect(fallo(() => cubicar('hvac', camara(), malo)).status).toBe(422)
   })

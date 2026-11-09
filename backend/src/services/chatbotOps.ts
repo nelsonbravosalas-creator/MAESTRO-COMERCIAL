@@ -329,13 +329,15 @@ export async function lookupMaterialPrice(
   // Con `tiendas`, solo cuentan las muestras de esas tiendas, resueltas por el dominio de la
   // URL y luego por la etiqueta (el modelo puede desobedecer el prompt o etiquetar mal).
   const tiendasPermitidas = opts.tiendas?.map(t => t.toLowerCase())
+  // El host debe ser el de la tienda que dice ser: una etiqueta sola (dominio ajeno) no cuenta.
   const filtrarPorTienda = <T extends { tienda: string; fuente_url: string }>(
     muestras: T[]
   ): T[] => {
     if (!tiendasPermitidas) return muestras
     return muestras
-      .map(m => ({ ...m, tienda: resolverTienda(m.tienda, m.fuente_url).tienda }))
-      .filter(m => tiendasPermitidas.includes(m.tienda.toLowerCase()))
+      .map(m => ({ m, r: resolverTienda(m.tienda, m.fuente_url) }))
+      .filter(({ r }) => r.porHost && tiendasPermitidas.includes(r.tienda.toLowerCase()))
+      .map(({ m, r }) => ({ ...m, tienda: r.tienda }))
   }
   const precio = precioParsed.success
     ? (() => {

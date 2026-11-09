@@ -67,7 +67,20 @@ function normalizar(texto: string): string {
 // Medidas y códigos: 3/8, 40x40x2, 2mm, r404a.
 const MEDIDA_RE =
   /\br\d{2,3}[a-z]?\b|(?<![a-z0-9.])\d+(?:\.\d+)?(?:\/\d+)?(?:x\d+(?:\.\d+)?)*[a-z]{0,3}\b/g
-const PALABRAS_VACIAS = new Set(['del', 'para', 'con', 'las', 'los', 'por', 'una', 'uno'])
+const PALABRAS_VACIAS = new Set([
+  'de',
+  'del',
+  'al',
+  'el',
+  'la',
+  'para',
+  'con',
+  'las',
+  'los',
+  'por',
+  'una',
+  'uno',
+])
 
 function medidasDe(norm: string): Set<string> {
   return new Set(norm.match(MEDIDA_RE) ?? [])
@@ -77,8 +90,8 @@ function palabrasDe(norm: string): Set<string> {
   return new Set(
     norm
       .replace(MEDIDA_RE, ' ')
-      .split(/[^a-z]+/)
-      .filter(p => p.length >= 3 && !PALABRAS_VACIAS.has(p))
+      .split(/[^a-z0-9]+/)
+      .filter(p => p.length >= 2 && !PALABRAS_VACIAS.has(p))
   )
 }
 
@@ -151,7 +164,16 @@ export function coincidenciaCatalogo(
     const comunes = [...palabras].filter(p => palabrasObjetivo.has(p)).length
     const minimo = Math.ceil(0.6 * Math.max(palabras.size, palabrasObjetivo.size))
     const exacta = norm === objetivo
-    if (!exacta && (comunes === 0 || comunes < minimo)) continue
+    // Contención: todas las palabras de la descripción más corta están en la más larga
+    // («Refrigerante R-410A» en «Gas Refrigerante R-410A»); la corta debe tener al menos 2
+    // elementos (palabras + medidas) para que una fila genérica como «Gas» no calce con todo.
+    const [corta, larga] =
+      palabras.size <= palabrasObjetivo.size
+        ? [palabras, palabrasObjetivo]
+        : [palabrasObjetivo, palabras]
+    const elementosCorta = corta.size + medidasObjetivo.size
+    const contenida = elementosCorta >= 2 && [...corta].every(w => larga.has(w))
+    if (!exacta && !contenida && (comunes === 0 || comunes < minimo)) continue
     const puntaje = exacta ? 1000 : comunes * 10 - Math.abs(palabras.size - palabrasObjetivo.size)
     candidatas.push({ fila, puntaje })
   }

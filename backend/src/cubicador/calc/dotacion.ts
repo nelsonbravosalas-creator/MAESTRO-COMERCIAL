@@ -68,13 +68,14 @@ export function sugerirDotacion(input: EntradaDotacion, params: Parametros): Res
   } else {
     // Se redondea la razón a 6 decimales para que el punto flotante no sume un día de más.
     const razon = Math.round((input.hh / (personas * horas_jornada * eficiencia)) * 1e6) / 1e6
+    // Mínimo 1 día: aun con 0 HH la visita se cotiza como una jornada.
     dias = Math.max(1, Math.ceil(razon))
     hhCotizadas = input.hh
   }
   const holgura = Math.round((hhCotizadas - input.hh) * 100) / 100
   if (holgura < 0) {
     advertencias.push(
-      `Las ${dias} jornada(s) fijada(s) no alcanzan: faltan ${fmt(-holgura)} HH respecto de lo calculado.`
+      `${dias === 1 ? 'La jornada fijada no alcanza' : `Las ${dias} jornadas fijadas no alcanzan`}: faltan ${fmt(-holgura)} HH respecto de lo calculado.`
     )
   }
   return {

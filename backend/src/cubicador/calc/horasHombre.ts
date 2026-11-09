@@ -1,6 +1,6 @@
 // Horas-hombre por actividad. El LLM nunca calcula cantidades.
 import { httpError } from '../../utils/httpError'
-import type { Parametros } from '../params'
+import type { Parametros, TareaParam } from '../params'
 
 export interface DatosHH {
   actividad: string
@@ -35,6 +35,8 @@ function noNegativo(valor: unknown, etiqueta: string, genero: 'f' | 'mp' = 'mp')
 }
 
 const redondear1 = (n: number) => Math.round(n * 10) / 10
+const redondear2 = (n: number) => Math.round(n * 100) / 100
+const POR_VALIDOS: readonly string[] = ['interior', 'exterior', 'metro_linea']
 
 export function listaTareas(datos: DatosHH, params: Parametros): TareaHH[] {
   const tareas = params.hh.tareas
@@ -48,26 +50,63 @@ export function listaTareas(datos: DatosHH, params: Parametros): TareaHH[] {
       422
     )
   }
-  const cantidades = {
+  const cantidades: Record<string, number> = {
     interior: noNegativo(datos.unidades_interiores, 'Las unidades interiores'),
     exterior: noNegativo(datos.unidades_exteriores, 'Las unidades exteriores'),
     metro_linea: noNegativo(datos.largo_linea_m, 'El largo de la línea', 'f'),
   }
   const barridos = noNegativo(datos.barridos, 'Los barridos')
 
+  const lista: unknown = tareas[datos.actividad]
+  if (!Array.isArray(lista)) {
+    throw httpError(
+      `Los parámetros de horas-hombre de "${datos.actividad}" no son válidos: la lista de tareas debe ser una lista.`,
+      422
+    )
+  }
+
   const filas: TareaHH[] = []
-  for (const t of tareas[datos.actividad]) {
-    if (t.por === undefined) {
-      filas.push({ descripcion: t.descripcion, hh: t.hh })
+  for (const [i, t] of (lista as unknown[]).entries()) {
+    const fila = t as Partial<TareaParam> | null
+    const donde = `La tarea ${i + 1} de "${datos.actividad}"`
+    if (typeof fila !== 'object' || fila === null) {
+      throw httpError(`${donde} no es válida.`, 422)
+    }
+    if (typeof fila.descripcion !== 'string' || fila.descripcion.trim() === '') {
+      throw httpError(`${donde} no tiene una descripción válida.`, 422)
+    }
+    if (typeof fila.hh !== 'number' || !Number.isFinite(fila.hh) || fila.hh < 0) {
+      throw httpError(
+        `${donde} ("${fila.descripcion}") tiene horas-hombre inválidas: deben ser un número no negativo.`,
+        422
+      )
+    }
+    if (fila.por === undefined) {
+      filas.push({ descripcion: fila.descripcion, hh: redondear2(fila.hh) })
       continue
     }
-    const cantidad = cantidades[t.por]
-    if (cantidad > 0) filas.push({ descripcion: t.descripcion, hh: t.hh * cantidad, cantidad })
+    if (!POR_VALIDOS.includes(fila.por)) {
+      throw httpError(
+        `${donde} ("${fila.descripcion}") tiene una unidad "${String(fila.por)}" no válida. Unidades válidas: ${POR_VALIDOS.join(', ')}.`,
+        422
+      )
+    }
+    const cantidad = cantidades[fila.por]
+    if (cantidad > 0) {
+      filas.push({ descripcion: fila.descripcion, hh: redondear2(fila.hh * cantidad), cantidad })
+    }
   }
   if (barridos > 0) {
+    const hhBarrido = params.hh.hh_barrido
+    if (typeof hhBarrido !== 'number' || !Number.isFinite(hhBarrido) || hhBarrido < 0) {
+      throw httpError(
+        'Los parámetros de horas-hombre no son válidos: las HH por barrido deben ser un número no negativo.',
+        422
+      )
+    }
     filas.push({
       descripcion: 'Barridos de flushing',
-      hh: barridos * params.hh.hh_barrido,
+      hh: redondear2(barridos * hhBarrido),
       cantidad: barridos,
     })
   }
@@ -80,5 +119,9 @@ export function calcularHH(tareas: TareaHH[], factor = 1): { filas: TareaHH[]; t
   }
   if (factor <= 0) throw httpError('El factor de dificultad debe ser mayor que cero.', 422)
   const suma = tareas.reduce((acc, t) => acc + t.hh, 0)
-  return { filas: tareas, total: redondear1(suma * factor) }
+  const total = redondear1(suma * factor)
+  if (!Number.isFinite(total)) {
+    throw httpError('El total de horas-hombre no es un número válido.', 422)
+  }
+  return { filas: tareas, total }
 }

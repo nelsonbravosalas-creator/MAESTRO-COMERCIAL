@@ -104,8 +104,10 @@ describe('cubicar hvac', () => {
     expect(e.message).toContain('cubicar_especificacion_hvac')
   })
 
-  it('cierre_metalico aún no está implementado: 422', () => {
-    expect(fallo(() => cubicar('cierre_metalico', ficha({}), p)).status).toBe(422)
+  it('cierre_metalico se despacha a su propio motor, no al HVAC', () => {
+    const r = cubicar('cierre_metalico', ficha({}), p)
+    expect(r.items).toHaveLength(0)
+    expect(r.supuestos.some(x => x.clave === 'medidas' && x.critico)).toBe(true)
   })
 
   it('compresor quemado: flushing agrega aceite y filtros y reutilizable queda en 0', () => {

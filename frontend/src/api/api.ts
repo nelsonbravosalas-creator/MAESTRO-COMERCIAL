@@ -667,6 +667,63 @@ export interface ImportQuotationResult {
   reporte_importacion: ImportQuotationReport
 }
 
+// ── Cubicador (espejo de backend/src/cubicador/types.ts y ejecutar.ts) ──
+export interface CubicadorSupuesto {
+  clave: string
+  texto: string
+  critico: boolean
+}
+
+export type CubicadorCategoria = 'mo' | 'log' | 'mat' | 'rep' | 'ins' | 'mec' | 'ele'
+
+export interface CubicadorItem {
+  id: string
+  categoria: CubicadorCategoria
+  descripcion: string
+  unidad: string
+  cantidad: number
+  dias: number
+  formula: string
+  precio_unitario: number | null
+  fuente: 'catalogo' | 'cache' | 'tienda' | null
+  tienda?: string
+  fuente_url?: string
+  estado_precio: 'pendiente' | 'con_precio' | 'sin_precio'
+}
+
+export interface CubicadorResultado {
+  items: CubicadorItem[]
+  supuestos: CubicadorSupuesto[]
+  advertencias: string[]
+  dotacion: {
+    personas: number
+    dias: number
+    hh_calculadas: number
+    hh_cotizadas: number
+    holgura_hh: number
+  } | null
+}
+
+export interface CubicadorCompuerta {
+  respondidas: number
+  requeridas: number
+  habilitado: boolean
+  faltantes: string[]
+  siguientes: string[]
+  motivo?: string
+}
+
+export interface EstadoCubicador {
+  borrador_id: string
+  perfil: 'hvac' | 'cierre_metalico'
+  estado: 'entrevista' | 'cubicado' | 'ingresado' | 'cancelado'
+  compuerta: CubicadorCompuerta
+  datos_completos: number
+  datos_totales: number
+  resultado: CubicadorResultado | null
+  precios_pendientes: number
+}
+
 // ── Chatbot ───────────────────────────────────────────────────
 export interface ChatbotRule {
   id: string
@@ -703,6 +760,7 @@ export interface ChatMessageResponse {
   precio_medio?: number
   muestras?: Array<{ precio: number; fuente_url: string; tienda: string }>
   advertencia?: string | null
+  cubicador?: EstadoCubicador
 }
 
 export interface ChatActionResponse {
@@ -1101,6 +1159,10 @@ export const api = {
   },
   cancelChatbotAction: (id: string) =>
     post<ChatActionResponse>(`/api/chatbot/actions/${id}/cancel`, {}),
+
+  // Botón «Cubicar»: sin LLM; la compuerta la decide el servidor (422 si sigue cerrada).
+  cubicarBorrador: (id: string): Promise<EstadoCubicador> =>
+    post<EstadoCubicador>(`/api/chatbot/cubicador/${id}/cubicar`, {}),
 
   getChatbotRules: (): Promise<{ rules: ChatbotRule[] }> => get('/api/chatbot/rules'),
   getCommercialBriefing: (): Promise<CommercialBriefingResponse> => get('/api/chatbot/briefing'),

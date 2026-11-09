@@ -27,6 +27,7 @@ import { createQuotationsRouter } from './api/quotations'
 import { createProjectsRouter } from './api/projects'
 import { createInvoicesRouter } from './api/invoices'
 import { createDashboardRouter } from './api/dashboard'
+import { createCubicadorRouter } from './api/cubicador'
 import { createChatbotRouter } from './api/chatbot'
 
 dotenv.config()
@@ -183,6 +184,8 @@ app.use('/api/quotations', createQuotationsRouter(pool))
 app.use('/api/projects', createProjectsRouter(pool))
 app.use('/api/invoices', createInvoicesRouter(pool))
 app.use('/api/dashboard', createDashboardRouter(pool))
+// Antes de /api/chatbot: si no, el router del chatbot se tragaría esta ruta.
+app.use('/api/chatbot/cubicador', createCubicadorRouter(pool))
 app.use('/api/chatbot', createChatbotRouter(pool))
 
 // 404: rutas no encontradas. Debe ir antes del manejador de errores (Express solo

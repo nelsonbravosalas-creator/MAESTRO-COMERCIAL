@@ -204,3 +204,54 @@ export async function loadCommercialBriefing() {
     }))
   }
 }
+
+// Borradores con una cubicación en curso: ignora el segundo clic del botón.
+const cubicando = new Set<string>()
+
+/** Mensaje en español con lo que falta, a partir del cuerpo del 422 del servidor. */
+function mensajeCompuertaCerrada(error: ApiError): string {
+  const data = (error.data ?? {}) as { faltantes?: unknown; siguientes?: unknown; motivo?: unknown }
+  const comoTextos = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  const siguientes = comoTextos(data.siguientes)
+  const detalle = siguientes.length ? siguientes : comoTextos(data.faltantes)
+  const motivo = typeof data.motivo === 'string' ? data.motivo : error.message
+  return detalle.length
+    ? `${motivo}\nFalta responder:\n${detalle.map(d => `• ${d}`).join('\n')}`
+    : motivo
+}
+
+/**
+ * Botón «Cubicar» de la tarjeta del chat: llama al servidor (sin LLM) y agrega
+ * el listado como mensaje de bot. `_quotationId` se acepta por simetría con
+ * sendChatMessage; el ingreso a una cotización es un paso posterior.
+ */
+export async function cubicarDesdeBoton(borradorId: string, _quotationId?: string | null) {
+  if (cubicando.has(borradorId)) return
+  cubicando.add(borradorId)
+  useChatStore.setState({ isSending: true })
+  try {
+    const cubicador = await api.cubicarBorrador(borradorId)
+    const reply = 'Listado de cubicación generado. Revise los supuestos antes de usarlo.'
+    useChatStore.setState(s => ({
+      isSending: false,
+      messages: [
+        ...s.messages,
+        { id: ++nextMessageId, role: 'bot', text: reply, data: { reply, cubicador } },
+      ],
+    }))
+  } catch (error) {
+    const message =
+      error instanceof ApiError && error.status === 422
+        ? mensajeCompuertaCerrada(error)
+        : error instanceof ApiError && error.status === 404
+          ? 'El borrador de cubicación ya no está disponible. Empiece de nuevo.'
+          : 'No se pudo cubicar. Intente de nuevo.'
+    useChatStore.setState(s => ({
+      isSending: false,
+      messages: [...s.messages, { id: ++nextMessageId, role: 'error', text: message }],
+    }))
+  } finally {
+    cubicando.delete(borradorId)
+  }
+}

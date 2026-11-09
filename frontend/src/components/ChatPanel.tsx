@@ -7,8 +7,10 @@ import {
   toggleAgentMode,
   loadCommercialBriefing,
   resolveChatAction,
+  cubicarDesdeBoton,
   type PendingActionState,
 } from '../stores/chatStore'
+import { CubicadorCard } from './CubicadorCard'
 import { useActiveQuotation } from '../stores/maestro-store'
 import '../styles/ChatPanel.css'
 
@@ -241,6 +243,15 @@ export function ChatPanel() {
                   ))}
                 </ul>
               </details>
+            )}
+            {m.data?.cubicador && (
+              <CubicadorCard
+                estado={m.data.cubicador}
+                busy={isSending}
+                onCubicar={() =>
+                  void cubicarDesdeBoton(m.data!.cubicador!.borrador_id, activeQuotationId)
+                }
+              />
             )}
             {m.data?.notas && m.data.notas.length > 0 && (
               <ul className="chat-msg-notes">

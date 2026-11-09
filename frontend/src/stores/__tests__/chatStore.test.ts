@@ -3,25 +3,30 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // vi.mock() se hoistea al tope del archivo, asi que cualquier variable que
 // use la factory debe declararse con vi.hoisted() para no romper por orden
 // (mismo patron que maestro-store.test.ts).
-const { MockApiError, sendChatMessageMock, confirmActionMock, cancelActionMock } = vi.hoisted(
-  () => {
-    class MockApiError extends Error {
-      status: number
-      data?: unknown
-      constructor(status: number, message: string, data?: unknown) {
-        super(message)
-        this.status = status
-        this.data = data
-      }
-    }
-    return {
-      MockApiError,
-      sendChatMessageMock: vi.fn(),
-      confirmActionMock: vi.fn(),
-      cancelActionMock: vi.fn(),
+const {
+  MockApiError,
+  sendChatMessageMock,
+  confirmActionMock,
+  cancelActionMock,
+  cubicarBorradorMock,
+} = vi.hoisted(() => {
+  class MockApiError extends Error {
+    status: number
+    data?: unknown
+    constructor(status: number, message: string, data?: unknown) {
+      super(message)
+      this.status = status
+      this.data = data
     }
   }
-)
+  return {
+    MockApiError,
+    sendChatMessageMock: vi.fn(),
+    confirmActionMock: vi.fn(),
+    cancelActionMock: vi.fn(),
+    cubicarBorradorMock: vi.fn(),
+  }
+})
 
 vi.mock('../../api/api', () => ({
   ApiError: MockApiError,
@@ -29,17 +34,26 @@ vi.mock('../../api/api', () => ({
     sendChatMessage: sendChatMessageMock,
     confirmChatbotAction: confirmActionMock,
     cancelChatbotAction: cancelActionMock,
+    cubicarBorrador: cubicarBorradorMock,
   },
   default: { sendChatMessage: sendChatMessageMock },
 }))
 
-import { useChatStore, sendChatMessage, clearChat, resolveChatAction } from '../chatStore'
+import {
+  useChatStore,
+  sendChatMessage,
+  clearChat,
+  resolveChatAction,
+  cubicarDesdeBoton,
+} from '../chatStore'
+import type { EstadoCubicador } from '../../api/api'
 
 beforeEach(() => {
   clearChat()
   sendChatMessageMock.mockReset()
   confirmActionMock.mockReset()
   cancelActionMock.mockReset()
+  cubicarBorradorMock.mockReset()
   useChatStore.setState({ actionStates: {} })
 })
 
@@ -166,5 +180,73 @@ describe('sendChatMessage — memoria corta de la conversacion', () => {
       { role: 'user', text: 'hola' },
       { role: 'bot', text: 'hola, como ayudo' },
     ])
+  })
+})
+
+describe('cubicarDesdeBoton', () => {
+  const estado: EstadoCubicador = {
+    borrador_id: 'b-1',
+    perfil: 'hvac',
+    estado: 'cubicado',
+    compuerta: { respondidas: 3, requeridas: 3, habilitado: true, faltantes: [], siguientes: [] },
+    datos_completos: 3,
+    datos_totales: 5,
+    resultado: { items: [], supuestos: [], advertencias: [], dotacion: null },
+    precios_pendientes: 0,
+  }
+
+  it('cubicarDesdeBoton agrega el listado', async () => {
+    cubicarBorradorMock.mockResolvedValue(estado)
+
+    await cubicarDesdeBoton('b-1', null)
+
+    const msgs = useChatStore.getState().messages
+    expect(msgs).toHaveLength(1)
+    expect(msgs[0].role).toBe('bot')
+    expect(msgs[0].data?.cubicador).toEqual(estado)
+    expect(useChatStore.getState().isSending).toBe(false)
+  })
+
+  it('no manda dos veces con doble clic', async () => {
+    let resolver: (e: EstadoCubicador) => void = () => {}
+    cubicarBorradorMock.mockReturnValue(new Promise<EstadoCubicador>(r => (resolver = r)))
+
+    const primera = cubicarDesdeBoton('b-1')
+    const segunda = cubicarDesdeBoton('b-1')
+    resolver(estado)
+    await Promise.all([primera, segunda])
+
+    expect(cubicarBorradorMock).toHaveBeenCalledTimes(1)
+    expect(useChatStore.getState().messages).toHaveLength(1)
+  })
+
+  it('error 422 se muestra como mensaje con lo que falta', async () => {
+    cubicarBorradorMock.mockRejectedValue(
+      new MockApiError(422, 'Faltan datos para cubicar.', {
+        faltantes: ['potencia'],
+        siguientes: ['¿Qué potencia tiene el equipo?'],
+        motivo: 'Faltan datos para cubicar.',
+      })
+    )
+
+    await cubicarDesdeBoton('b-1')
+
+    const msgs = useChatStore.getState().messages
+    expect(msgs).toHaveLength(1)
+    expect(msgs[0].role).toBe('error')
+    expect(msgs[0].text).toContain('Faltan datos para cubicar.')
+    expect(msgs[0].text).toContain('¿Qué potencia tiene el equipo?')
+    // tras el error se puede reintentar
+    cubicarBorradorMock.mockResolvedValue(estado)
+    await cubicarDesdeBoton('b-1')
+    expect(cubicarBorradorMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('otros errores muestran un mensaje genérico en español', async () => {
+    cubicarBorradorMock.mockRejectedValue(new Error('boom interno'))
+    await cubicarDesdeBoton('b-1')
+    const m = useChatStore.getState().messages[0]
+    expect(m.role).toBe('error')
+    expect(m.text).toBe('No se pudo cubicar. Intente de nuevo.')
   })
 })

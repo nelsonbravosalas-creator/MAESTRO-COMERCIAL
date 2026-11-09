@@ -257,6 +257,121 @@
   border: 1px solid var(--danger);
 }
 
+/* Tarjeta del cubicador: el contenido ancho (tablas) se desplaza dentro de
+   su propio contenedor, nunca ensancha el panel ni la página. */
+.chat-msg--bot:has(.cubicador-card) {
+  align-self: stretch;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+}
+
+.cubicador-card {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 0.8rem;
+}
+
+.cubicador-contador {
+  margin: 8px 0 6px;
+  font-weight: 600;
+}
+
+.cubicador-boton[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cubicador-faltan {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.cubicador-faltan p,
+.cubicador-faltan ul {
+  margin: 0 0 4px;
+}
+
+.cubicador-faltan ul {
+  padding-left: 16px;
+}
+
+.cubicador-resultado h4 {
+  margin: 10px 0 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.cubicador-tabla-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.cubicador-tabla {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+}
+
+.cubicador-tabla th,
+.cubicador-tabla td {
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cubicador-tabla th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cubicador-tabla a {
+  color: var(--primary-text);
+}
+
+.cubicador-tabla .cubicador-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cubicador-formula summary {
+  cursor: pointer;
+  color: var(--primary-text);
+}
+
+.cubicador-formula p {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+}
+
+.cubicador-dotacion {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+.cubicador-supuestos ul,
+.cubicador-advertencias ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.cubicador-supuesto--critico {
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.cubicador-advertencias {
+  color: var(--warning-text);
+}
+
 .chat-panel-form {
   display: flex;
   gap: 8px;

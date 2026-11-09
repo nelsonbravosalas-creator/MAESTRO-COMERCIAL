@@ -48,6 +48,8 @@ export interface Parametros {
   bombeo: { tramo: number; merma: number; holgura: number }
   nitrogeno: Nitrogeno
   hh: HorasHombre
+  /** Carga de placa supuesta (kg) cuando no se conoce; se registra como supuesto crítico. */
+  placa_supuesta_kg: number
 }
 
 export const PARAMETROS_BASE: Parametros = {
@@ -65,6 +67,7 @@ export const PARAMETROS_BASE: Parametros = {
     'R-22': { densidad_liquido_kg_l: 1.19, kg_cilindro: 13.6 },
   },
   merma_pct: 5,
+  placa_supuesta_kg: 4.0,
   bombeo: { tramo: 0.2, merma: 0.3, holgura: 0.5 },
   nitrogeno: {
     caudal_lpm: 3,

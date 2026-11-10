@@ -86,7 +86,7 @@ const mtcConsumableRowSchema = z.object({
 })
 
 const mtcSystemSchema = z.object({
-  id: z.string().min(1).max(100),
+  id: z.string().min(1).max(120),
   name: z.string().trim().min(1).max(120),
   frequency: z.enum(FREQUENCIES),
   special_months: z.number().int().min(1).max(12).nullable(),

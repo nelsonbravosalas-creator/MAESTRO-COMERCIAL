@@ -974,7 +974,7 @@ app.put('/api/quotations/:id', requireAuth, (req: AuthReq, res: Response) => {
     show_uf_equivalent: Boolean(show_uf_equivalent),
     show_usd_equivalent: Boolean(show_usd_equivalent),
     usd_value: usd_value ?? q.usd_value ?? null,
-    mtc_config: 'mtc_config' in req.body ? (mtc_config ?? null) : (q.mtc_config ?? null),
+    mtc_config: 'mtc_config' in req.body ? req.body.mtc_config : (q.mtc_config ?? null),
   })
 
   // Reemplazar categorías si vienen en el body

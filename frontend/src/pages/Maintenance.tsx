@@ -3,6 +3,7 @@ import '../styles/Quotations.css'
 import '../styles/Maintenance.css'
 import { MtcSystemsPanel } from './maintenance/MtcSystemsPanel'
 import { MtcSystemTabs } from './maintenance/MtcSystemTabs'
+import { MtcValuationSection } from './maintenance/MtcValuationSection'
 import { visitsFor } from '../utils/mtcSystems'
 import { LOCKED_STATUSES } from './Quotations'
 import {
@@ -10,7 +11,6 @@ import {
   useActiveQuotation,
   calcTotals,
   fmtCLP,
-  fmtDecimal,
   VISITS_PER_YEAR,
   FREQUENCY_LABELS,
   generateVersionCorrelative,
@@ -30,11 +30,9 @@ import {
 import { usePermissions } from '../hooks/usePermissions'
 // docx/html2canvas/jsPDF son pesados y solo hacen falta al exportar: se cargan
 // bajo demanda en cada handler (fase F7), no junto con el resto de la pantalla.
-import { buildQuotationValuationRows } from '../utils/quotationRows'
 import { ApiError, api } from '../api/api'
 import { primaryContact, quotationContact } from '../utils/contacts'
 import { showToast } from '../stores/uiStore'
-import { getCurrencyInfo, convertAmount, formatCurrency } from '../utils/currencyHelper'
 
 // ── Master List ────────────────────────────────────────────────────────────────
 
@@ -683,23 +681,10 @@ function TabDocumentoMtc() {
 
   // "Costeo" siempre calcula el valor de UNA visita — el total anual es esa
   // cifra multiplicada por la frecuencia contratada (ver decisión del plan).
-  const totals = calcTotals(q)
-  const ivaVisita = totals.venta * (q.iva / 100)
-  const totalVisitaConIva = totals.venta + ivaVisita
 
   const visits = q.visits_per_year ?? (q.frequency ? VISITS_PER_YEAR[q.frequency] : 0)
-  const netoAnual = totals.venta * visits
-  const ivaAnual = netoAnual * (q.iva / 100)
-  const totalAnualConIva = netoAnual + ivaAnual
-  const enUF = q.uf > 0 ? totalAnualConIva / q.uf : 0
-  const enUSD = q.usd > 0 ? totalAnualConIva / q.usd : 0
 
   // Soporte para moneda de visualización
-  const currencyInfo = getCurrencyInfo(q, q.display_currency)
-  const displayTotalVisitaConIva = convertAmount(totalVisitaConIva, currencyInfo.rate)
-  const displayNetoAnual = convertAmount(netoAnual, currencyInfo.rate)
-  const displayIvaAnual = convertAmount(ivaAnual, currencyInfo.rate)
-  const displayTotalAnualConIva = convertAmount(totalAnualConIva, currencyInfo.rate)
 
   const handleSave = async () => {
     setSaving(true)
@@ -923,141 +908,7 @@ function TabDocumentoMtc() {
 
         <div className="doc-section">
           <div className="doc-section-title">IV. VALORIZACIÓN</div>
-
-          <div className="doc-group-title">Valor por visita</div>
-          <table className="doc-valuation">
-            <thead>
-              <tr>
-                <th className="val-expand no-print" />
-                <th className="val-num">N°</th>
-                <th>Descripción</th>
-                <th className="text-right">Valor Neto ({currencyInfo.displaySymbol})</th>
-              </tr>
-            </thead>
-            <tbody>
-              {buildQuotationValuationRows(q, expandedCats).map(row => {
-                const items = (q.items[row.cat.id] || []).filter(it => it.cant > 0 && it.desc)
-                const isOpen = row.details.length > 0
-                const displayRowVenta = convertAmount(row.venta, currencyInfo.rate)
-                return (
-                  <React.Fragment key={row.cat.id}>
-                    <tr className={`doc-valuation-row ${isOpen ? 'doc-row-expanded' : ''}`}>
-                      <td className="val-expand no-print">
-                        {items.length > 0 && (
-                          <label
-                            className="doc-expand-toggle"
-                            title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={expandedCats.has(row.cat.id)}
-                              onChange={() => toggleCat(row.cat.id)}
-                            />
-                            <span className="doc-expand-icon">{isOpen ? '▾' : '▸'}</span>
-                          </label>
-                        )}
-                      </td>
-                      <td className="val-num">{row.rowNumber}</td>
-                      <td>{row.cat.label}</td>
-                      <td className="text-right mono">
-                        {currencyInfo.currency === 'CLP'
-                          ? fmtCLP.format(displayRowVenta)
-                          : formatCurrency(displayRowVenta, currencyInfo.currency, 2)}
-                      </td>
-                    </tr>
-                    {row.details.map(({ item, meta }) => (
-                      <tr key={item.id} className="doc-detail-row no-print-detail">
-                        <td className="doc-detail-indent" colSpan={2} />
-                        <td className="doc-detail-desc" colSpan={2}>
-                          <span className="doc-detail-bullet">·</span>
-                          <span className="doc-detail-name">{item.desc}</span>
-                          <span className="doc-detail-meta">{meta}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </React.Fragment>
-                )
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="doc-subtotal">
-                <td colSpan={3}>Subtotal Neto por Visita</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(totals.venta)
-                    : formatCurrency(
-                        convertAmount(totals.venta, currencyInfo.rate),
-                        currencyInfo.currency,
-                        2
-                      )}
-                </td>
-              </tr>
-              <tr className="doc-iva-row">
-                <td colSpan={3}>IVA ({q.iva}%)</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(ivaVisita)
-                    : formatCurrency(
-                        convertAmount(ivaVisita, currencyInfo.rate),
-                        currencyInfo.currency,
-                        2
-                      )}
-                </td>
-              </tr>
-              <tr className="doc-total">
-                <td colSpan={3}>TOTAL POR VISITA CON IVA</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(displayTotalVisitaConIva)
-                    : formatCurrency(displayTotalVisitaConIva, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-
-          <div className="doc-group-title mtc-annual-title">
-            Valor anual estimado ({visits || 0} visitas/año)
-          </div>
-          <table className="doc-valuation">
-            <tfoot>
-              <tr className="doc-subtotal">
-                <td colSpan={3}>Subtotal Neto Anual</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(netoAnual)
-                    : formatCurrency(displayNetoAnual, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-              <tr className="doc-iva-row">
-                <td colSpan={3}>IVA ({q.iva}%)</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(ivaAnual)
-                    : formatCurrency(displayIvaAnual, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-              <tr className="doc-total">
-                <td colSpan={3}>TOTAL ANUAL CON IVA</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(totalAnualConIva)
-                    : formatCurrency(displayTotalAnualConIva, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-              {currencyInfo.currency !== 'UF' && q.uf > 0 && (
-                <tr className="doc-uf">
-                  <td colSpan={3}>Equivalente en UF (ref. {fmtCLP.format(q.uf)}/UF)</td>
-                  <td className="text-right mono">{enUF.toFixed(2)} UF</td>
-                </tr>
-              )}
-              {currencyInfo.currency !== 'USD' && q.usd > 0 && (
-                <tr className="doc-usd">
-                  <td colSpan={3}>Equivalente en USD (ref. {fmtCLP.format(q.usd)}/USD)</td>
-                  <td className="text-right mono">US$ {fmtDecimal.format(enUSD)}</td>
-                </tr>
-              )}
-            </tfoot>
-          </table>
+          <MtcValuationSection expandedCats={expandedCats} onToggleCat={toggleCat} />
         </div>
 
         <div className="doc-section">

@@ -255,6 +255,20 @@ describe('selectMtcSystem / toPersistedQuotation', () => {
   })
 })
 
+describe('inmutabilidad', () => {
+  it('selectMtcSystem y toPersistedQuotation no mutan la entrada', () => {
+    const q = twoSystemQ()
+    const snapshot = structuredClone(q)
+    const sel = selectMtcSystem(q, 1)
+    expect(q).toEqual(snapshot)
+    const selSnapshot = structuredClone(sel)
+    toPersistedQuotation(sel)
+    expect(sel).toEqual(selSnapshot)
+    toPersistedQuotation(q)
+    expect(q).toEqual(snapshot)
+  })
+})
+
 describe('syncPrimaryMirror', () => {
   it('copia régimen y moneda del sistema 1', () => {
     const q = twoSystemQ()

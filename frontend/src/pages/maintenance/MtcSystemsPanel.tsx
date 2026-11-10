@@ -155,7 +155,12 @@ export function MtcSystemsPanel({ disabled }: { disabled: boolean }) {
                     patchMtcConsumables(index, { margin: Number(event.target.value) })
                   }
                 />
-                <MtcConsumablesEditor systemIndex={index} disabled={disabled} />
+                <fieldset
+                  disabled={disabled}
+                  style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+                >
+                  <MtcConsumablesEditor systemIndex={index} disabled={disabled} />
+                </fieldset>
               </div>
             )}
           </article>

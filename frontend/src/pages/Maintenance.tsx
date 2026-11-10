@@ -3,6 +3,8 @@ import '../styles/Quotations.css'
 import '../styles/Maintenance.css'
 import { MtcSystemsPanel } from './maintenance/MtcSystemsPanel'
 import { MtcSystemTabs } from './maintenance/MtcSystemTabs'
+import { visitsFor } from '../utils/mtcSystems'
+import { LOCKED_STATUSES } from './Quotations'
 import {
   useMaestro,
   useActiveQuotation,
@@ -45,8 +47,8 @@ function pendingPeriods(q: {
   visits_per_year: number | null
   invoice_count: number
 }): number | null {
-  if (!q.contract_start_date || !q.frequency) return null
-  const periodMonths = 12 / (q.visits_per_year || VISITS_PER_YEAR[q.frequency])
+  if (!q.contract_start_date || !q.frequency || q.frequency === 'unico') return null
+  const periodMonths = 12 / (q.visits_per_year || visitsFor(q.frequency, null))
   const start = new Date(`${q.contract_start_date}T00:00:00`)
   const now = new Date()
   const monthsElapsed =
@@ -416,8 +418,10 @@ function MaintenanceList({
 function TabBaseMtc() {
   const { clients, patchActive, saveActive, reloadActive } = useMaestro()
   const q = useActiveQuotation()
+  const { role } = usePermissions()
   const [saving, setSaving] = useState(false)
   if (!q) return null
+  const isLocked = LOCKED_STATUSES.includes(q.status) && role !== 'admin'
 
   const patch = (fields: Partial<typeof q>) => patchActive(fields)
 
@@ -556,7 +560,7 @@ function TabBaseMtc() {
               className="base-input"
             />
           </div>
-          <MtcSystemsPanel disabled={false} />
+          <MtcSystemsPanel disabled={isLocked} />
         </div>
 
         <div className="base-card">

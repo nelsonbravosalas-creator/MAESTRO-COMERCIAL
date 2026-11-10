@@ -401,6 +401,7 @@ function makeFakeDb(seed: Partial<State> = {}) {
         version: q.version + 1,
         updated_at: '2026-01-02T00:00:00Z',
       })
+      if (params[23] === true) q.mtc_config = params[24]
       return { rows: [q] }
     }
     if (s.startsWith('SELECT version FROM quotations WHERE id')) {
@@ -954,6 +955,145 @@ describe('POST /api/chatbot', () => {
       .getState()
       .quotations.find(q => q.id === '123e4567-e89b-12d3-a456-426614174000')
     expect(quotation.version).toBe(2)
+  })
+
+  it('modificar_cotizacion conserva mtc_config de una cotizacion de mantencion', async () => {
+    const config = {
+      v: 1,
+      summary_mode: false,
+      show_summary_table: false,
+      systems: [
+        {
+          id: 'system-sin-detalle',
+          name: 'Sistema sin detalle',
+          categories: null,
+          items: null,
+        },
+        {
+          id: 'system-climatizacion',
+          name: 'Sistema de climatizacion',
+          categories: [
+            {
+              id: 'category-filtros',
+              name: 'Filtros',
+            },
+          ],
+          items: [
+            {
+              id: 'item-filtro',
+              category_id: 'category-filtros',
+              name: 'Cambio de filtro',
+              quantity: 2,
+            },
+          ],
+        },
+      ],
+    }
+    const db = makeFakeDb({
+      clients: [
+        {
+          id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+          name: 'MANTENCIONES ANDINAS SPA',
+          rut: '76.492.184-7',
+          activity: null,
+          address: null,
+          city: null,
+          deleted_at: null,
+        },
+      ],
+      quotations: [
+        {
+          id: '223e4567-e89b-12d3-a456-426614174000',
+          correlative: 'MTC-001-01-2026',
+          client_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+          contact_id: null,
+          enduser: null,
+          ref: 'Mantencion original',
+          date: new Date('2026-01-01T00:00:00Z'),
+          valid_until: null,
+          status: 'Borrador',
+          oper_state: null,
+          uf_value: 39500,
+          iva_pct: 19,
+          notes: null,
+          kind: 'maintenance',
+          equipment_count: null,
+          equipment_description: null,
+          frequency: null,
+          visits_per_year: null,
+          contract_start_date: null,
+          show_uf_equivalent: false,
+          show_usd_equivalent: false,
+          usd_value: null,
+          mtc_config: config,
+          version: 1,
+          deleted_at: null,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+      lineItems: [
+        {
+          id: 'line-mtc-orig',
+          quotation_id: '223e4567-e89b-12d3-a456-426614174000',
+          category_id: 'mat',
+          catalog_item_id: null,
+          description: 'Item original de mantencion',
+          unit_name: 'Und',
+          quantity: 1,
+          days: 1,
+          unit_price: 10000,
+          sort_order: 0,
+        },
+      ],
+      rules: [
+        {
+          id: 'r1',
+          rule_key: 'tarifa_colacion_diaria',
+          value: 6000,
+          unit: 'CLP/persona/dia',
+          notes: null,
+          created_at: '2026-01-01T00:00:00Z',
+          superseded_at: null,
+        },
+      ],
+    })
+    mockedCallLlm.mockResolvedValueOnce(
+      JSON.stringify({
+        intent: 'modificar_cotizacion',
+        dias: 3,
+        dotacion: 4,
+        comuna: null,
+        cliente_nombre: null,
+        descripcion_trabajo: null,
+        items_mencionados: null,
+        regla_key: null,
+        regla_valor: null,
+        material_consultado: null,
+        respuesta_conversacional: null,
+      })
+    )
+
+    const res = await request(buildApp(db))
+      .post('/api/chatbot')
+      .set('Authorization', authHeader())
+      .send({
+        instruction: 'agrega colacion para 4 personas x 3 dias',
+        quotation_id: '223e4567-e89b-12d3-a456-426614174000',
+      })
+
+    expect(res.status).toBe(200)
+    const lines = db
+      .getState()
+      .lineItems.filter(l => l.quotation_id === '223e4567-e89b-12d3-a456-426614174000')
+    expect(lines).toHaveLength(2)
+    expect(lines.some(l => l.description === 'Item original de mantencion')).toBe(true)
+    expect(lines.some(l => l.description.includes('Colacion'))).toBe(true)
+    const quotation = db
+      .getState()
+      .quotations.find(q => q.id === '223e4567-e89b-12d3-a456-426614174000')
+    expect(quotation.version).toBe(2)
+    expect(JSON.parse(quotation.mtc_config)).toEqual(config)
   })
 
   it('modificar_cotizacion responde 404 si la cotizacion no existe', async () => {

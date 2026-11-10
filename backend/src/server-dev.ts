@@ -779,6 +779,7 @@ app.post('/api/quotations', requireAuth, (req: AuthReq, res: Response) => {
       show_uf_equivalent,
       show_usd_equivalent,
       usd_value,
+      mtc_config,
     } = req.body
 
     if (!client_id) return res.status(400).json({ error: 'client_id es requerido' })
@@ -816,6 +817,7 @@ app.post('/api/quotations', requireAuth, (req: AuthReq, res: Response) => {
       contract_start_date: contract_start_date || null,
       show_uf_equivalent: Boolean(show_uf_equivalent),
       show_usd_equivalent: Boolean(show_usd_equivalent),
+      mtc_config: mtc_config ?? null,
       usd_value: Number(usd_value) || Number(cfg('dolar_value')) || 950,
       // OC (Orden de Compra) / aceptación del cliente: se completa después,
       // vía PATCH /api/quotations/:id/oc — nunca al crear.
@@ -945,6 +947,7 @@ app.put('/api/quotations/:id', requireAuth, (req: AuthReq, res: Response) => {
     show_uf_equivalent,
     show_usd_equivalent,
     usd_value,
+    mtc_config,
   } = req.body
 
   Object.assign(q, {
@@ -971,6 +974,7 @@ app.put('/api/quotations/:id', requireAuth, (req: AuthReq, res: Response) => {
     show_uf_equivalent: Boolean(show_uf_equivalent),
     show_usd_equivalent: Boolean(show_usd_equivalent),
     usd_value: usd_value ?? q.usd_value ?? null,
+    mtc_config: 'mtc_config' in req.body ? (mtc_config ?? null) : (q.mtc_config ?? null),
   })
 
   // Reemplazar categorías si vienen en el body

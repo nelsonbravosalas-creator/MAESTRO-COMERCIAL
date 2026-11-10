@@ -628,6 +628,7 @@ export async function addLinesToQuotationOp(
     show_uf_equivalent: existing.show_uf_equivalent,
     show_usd_equivalent: existing.show_usd_equivalent,
     usd_value: existing.usd_value,
+    mtc_config: existing.mtc_config,
     version: existing.version,
     // Las categorías existentes se conservan; las que falten para las líneas
     // nuevas reciben su fila por defecto (margen 30 %) para no quedar en 0 % (F2).

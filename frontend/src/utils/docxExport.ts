@@ -17,6 +17,8 @@ import { calcTotals, fmtCLP, VISITS_PER_YEAR, FREQUENCY_LABELS } from '../stores
 import type { MasterClient, MasterQuotation } from '../types'
 import { buildQuotationValuationRows } from './quotationRows'
 import { quotationContact } from './contacts'
+import { buildMtcValuationChildren } from './mtcDocx'
+import { buildMtcDocument } from './mtcDocument'
 import { getCurrencyInfo, convertAmount, formatCurrency } from './currencyHelper'
 
 const C = {
@@ -69,12 +71,6 @@ const sectionTitle = (num: string, title: string): Paragraph =>
     border: { left: { color: C.NAVY, style: BorderStyle.SINGLE, size: 24, space: 10 } },
     indent: { left: mm(4) },
     spacing: { before: 280, after: 160 },
-  })
-
-const groupLabel = (text: string): Paragraph =>
-  new Paragraph({
-    children: [new TextRun({ text, bold: true, size: 15, color: C.NAVY, allCaps: true })],
-    spacing: { before: 160, after: 80 },
   })
 
 const listItem = (i: number, text: string): Paragraph =>
@@ -373,25 +369,7 @@ export async function downloadDocx(params: {
     // ── Mantención: valor por visita + valor anual, con equivalentes UF/USD
     //    controlados por checkbox (no automáticos como en cotizaciones de
     //    proyecto) ──
-    const ivaVisita = totals.venta * (q.iva / 100)
-    const totalVisitaConIva = totals.venta + ivaVisita
     const visits = q.visits_per_year ?? (q.frequency ? VISITS_PER_YEAR[q.frequency] : 0)
-    const netoAnual = totals.venta * visits
-    const ivaAnual = netoAnual * (q.iva / 100)
-    const totalAnualConIva = netoAnual + ivaAnual
-    const enUF = q.uf > 0 ? totalAnualConIva / q.uf : 0
-    const enUSD = q.usd > 0 ? totalAnualConIva / q.usd : 0
-
-    // Conversión a moneda seleccionada
-    const displayTotalVisitaConIva = convertAmount(totalVisitaConIva, currencyInfo.rate)
-    const displayNetoAnual = convertAmount(netoAnual, currencyInfo.rate)
-    const displayIvaAnual = convertAmount(ivaAnual, currencyInfo.rate)
-    const displayTotalAnualConIva = convertAmount(totalAnualConIva, currencyInfo.rate)
-    const formatCLP = (amt: number) =>
-      currencyInfo.currency === 'CLP'
-        ? fmtCLP.format(amt)
-        : formatCurrency(amt, currencyInfo.currency, 2)
-
     const equiposTable = new Table({
       ...tableDefaults,
       borders: {
@@ -432,54 +410,6 @@ export async function downloadDocx(params: {
       ],
     })
 
-    const visitaTable = new Table({
-      ...tableDefaults,
-      rows: [
-        valuationHeader,
-        ...valRows,
-        sumRow(
-          'Subtotal Neto por Visita',
-          formatCLP(convertAmount(totals.venta, currencyInfo.rate)),
-          C.LGRAY,
-          true,
-          C.NAVY
-        ),
-        sumRow(
-          `IVA (${q.iva}%)`,
-          formatCLP(convertAmount(ivaVisita, currencyInfo.rate)),
-          C.LGRAY,
-          false,
-          C.GRAY
-        ),
-        totalRow('TOTAL POR VISITA CON IVA', formatCLP(displayTotalVisitaConIva)),
-      ],
-    })
-
-    const anualTable = new Table({
-      ...tableDefaults,
-      rows: [
-        sumRow('Subtotal Neto Anual', formatCLP(displayNetoAnual), C.LGRAY, true, C.NAVY),
-        sumRow(`IVA (${q.iva}%)`, formatCLP(displayIvaAnual), C.LGRAY, false, C.GRAY),
-        totalRow('TOTAL ANUAL CON IVA', formatCLP(displayTotalAnualConIva)),
-        ...(q.show_uf_equivalent && q.uf > 0
-          ? [
-              equivalentRow(
-                `Equivalente en UF (ref. ${fmtCLP.format(q.uf)}/UF)`,
-                `${enUF.toFixed(2)} UF`
-              ),
-            ]
-          : []),
-        ...(q.show_usd_equivalent && q.usd > 0
-          ? [
-              equivalentRow(
-                `Equivalente en USD (ref. ${fmtCLP.format(q.usd)}/USD)`,
-                `US$ ${enUSD.toFixed(2)}`
-              ),
-            ]
-          : []),
-      ],
-    })
-
     children = [
       ...letterhead,
       sectionTitle('', 'DATOS DEL CLIENTE'),
@@ -495,10 +425,7 @@ export async function downloadDocx(params: {
       planTable,
       blank(),
       sectionTitle('IV.', 'VALORIZACIÓN'),
-      groupLabel('Valor por visita'),
-      visitaTable,
-      groupLabel(`Valor anual estimado (${visits || 0} visitas/año)`),
-      anualTable,
+      ...buildMtcValuationChildren(buildMtcDocument(q, expandedCategoryIds)),
       blank(),
       sectionTitle('V.', 'EXCLUSIONES'),
       ...q.exclusions.map((item, i) => listItem(i + 1, item)),

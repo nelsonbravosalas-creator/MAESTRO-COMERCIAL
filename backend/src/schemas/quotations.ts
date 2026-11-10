@@ -15,7 +15,17 @@ const STATUSES = [
 const OPER_STATES = ['Pendiente de ejecución', 'En ejecución', 'Terminada'] as const
 const TERM_TYPES = ['scope', 'exclusion', 'commercial'] as const
 const KINDS = ['project', 'maintenance'] as const
-const FREQUENCIES = ['mensual', 'trimestral', 'semestral', 'anual'] as const
+const FREQUENCIES = [
+  'mensual',
+  'bimestral',
+  'trimestral',
+  'cuatrimestral',
+  'semestral',
+  'anual',
+  'especial',
+  'unico',
+] as const
+const MTC_SCHEDULES = ['habil', 'inhabil', 'continuo'] as const
 
 const categoryInputSchema = z.object({
   category_id: z.enum(CATEGORY_IDS),
@@ -36,6 +46,86 @@ const lineItemInputSchema = z.object({
   unit_price: money.default(0),
   sort_order: z.coerce.number().int().min(0).max(9999).nullish(),
 })
+
+// ── Mantención: presentación por subsistemas (mtc_config) ───────────
+// Forma del frontend (MtcConfig). Las claves van en el mismo orden que el
+// tipo para que JSON.stringify del cuerpo parseado sea estable.
+const finiteNonNeg = z.number().finite().min(0)
+
+const mtcCategorySchema = z.object({
+  id: z.enum(CATEGORY_IDS),
+  label: z.string().max(200),
+  margin: z.number().finite().min(0).max(99.99),
+  color: z.string().max(20),
+  showDetails: z.boolean(),
+  showValues: z.boolean(),
+  note: z.string().max(1000),
+  collapsed: z.boolean(),
+})
+
+// desc puede estar vacío: el costeo por defecto trae filas en blanco.
+const mtcItemSchema = z.object({
+  id: z.string().max(100),
+  desc: z.string().max(500),
+  unidad: z.string().max(50),
+  cant: z.number().finite(),
+  unit: z.number().finite(),
+  days: z.number().finite().optional(),
+  puntoA: z.string().max(300).optional(),
+  puntoB: z.string().max(300).optional(),
+})
+
+const mtcConsumableRowSchema = z.object({
+  id: z.string().max(100),
+  desc: z.string().max(300),
+  unidad: z.string().max(20),
+  per_module: finiteNonNeg,
+  modules: finiteNonNeg,
+  changes_per_year: finiteNonNeg,
+  cost: finiteNonNeg,
+})
+
+const mtcSystemSchema = z.object({
+  id: z.string().min(1).max(120),
+  name: z.string().trim().min(1).max(120),
+  frequency: z.enum(FREQUENCIES),
+  special_months: z.number().int().min(1).max(12).nullable(),
+  schedule: z.enum(MTC_SCHEDULES),
+  currency: z.enum(['CLP', 'UF', 'USD']),
+  summary_text: z.string().max(4000).nullable(),
+  consumables: z.object({
+    enabled: z.boolean(),
+    margin: z.number().finite().min(0).max(90),
+    rows: z.array(mtcConsumableRowSchema).max(100),
+  }),
+  categories: z.array(mtcCategorySchema).max(10).nullable(),
+  items: z
+    .record(z.string(), z.array(mtcItemSchema))
+    .refine(
+      items => Object.values(items).reduce((n, list) => n + list.length, 0) <= 500,
+      'Máximo 500 ítems por sistema'
+    )
+    .nullable(),
+})
+
+export const mtcConfigSchema = z
+  .object({
+    v: z.literal(1),
+    summary_mode: z.boolean().default(false),
+    show_summary_table: z.boolean().default(false),
+    systems: z.array(mtcSystemSchema).min(1).max(12),
+  })
+  .superRefine((cfg, ctx) => {
+    const first = cfg.systems[0]
+    // El costeo del Sistema 1 vive en quotation_categories / quotation_line_items.
+    if (first && (first.categories !== null || first.items !== null)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['systems', 0],
+        message: 'El primer sistema no lleva categories ni items (su costeo vive en la cotización)',
+      })
+    }
+  })
 
 const termInputSchema = z.object({
   term_type: z.enum(TERM_TYPES),
@@ -72,6 +162,7 @@ const quotationBodyBase = {
   show_usd_equivalent: z.boolean().nullish(),
   usd_value: money.nullish(),
   display_currency: z.enum(['CLP', 'UF', 'USD']).default('CLP').nullish(),
+  mtc_config: mtcConfigSchema.nullish(),
 }
 
 export const quotationCreateSchema = z.object({

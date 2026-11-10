@@ -8,6 +8,14 @@
 :root,
 [data-theme='dark'] {
   --primary: #2563eb;
+  --mtcd-c-0f2440: #0f2440;
+  --mtcd-c-1c2533: #1c2533;
+  --mtcd-c-6b5a22: #6b5a22;
+  --mtcd-c-b9c4d6: #b9c4d6;
+  --mtcd-c-c9a94f: #c9a94f;
+  --mtcd-c-e3cf8f: #e3cf8f;
+  --mtcd-c-eef1f6: #eef1f6;
+  --mtcd-c-ffffff: #ffffff;
   --primary-dark: #1e40af;
   --primary-rgb: 37, 99, 235;
   --secondary: #64748b;

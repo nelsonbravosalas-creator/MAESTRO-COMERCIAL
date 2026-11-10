@@ -32,6 +32,7 @@ import type {
   QuoteStatus,
   OperState,
   QuotationKind,
+  MtcConfig,
   MtcFrequency,
   TermType,
 } from '../types'
@@ -239,6 +240,7 @@ export interface RawQuotation {
   show_uf_equivalent?: boolean
   show_usd_equivalent?: boolean
   display_currency?: 'CLP' | 'UF' | 'USD' | null
+  mtc_config?: MtcConfig | null
   invoice_count?: number
   invoice_count_max?: number
   total_con_iva?: number
@@ -547,6 +549,8 @@ function toMasterQuotation(q: RawQuotation): MasterQuotation {
     show_uf_equivalent: Boolean(q.show_uf_equivalent),
     show_usd_equivalent: Boolean(q.show_usd_equivalent),
     display_currency: q.display_currency ?? 'CLP',
+    mtc_config: q.mtc_config ?? null,
+    mtc_active_system: 0,
     invoice_count: Number(q.invoice_count) || 0,
     invoice_count_max: Number(q.invoice_count_max) || 1,
     total_con_iva: Number(q.total_con_iva) || 0,
@@ -650,6 +654,7 @@ function fromMasterQuotation(q: MasterQuotation) {
     show_uf_equivalent: Boolean(q.show_uf_equivalent),
     show_usd_equivalent: Boolean(q.show_usd_equivalent),
     display_currency: q.display_currency,
+    mtc_config: q.kind === 'maintenance' ? (q.mtc_config ?? null) : null,
   }
 }
 

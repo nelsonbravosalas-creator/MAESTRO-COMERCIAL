@@ -703,6 +703,7 @@ export const createChatbotRouter = (pool: Pool) => {
               show_uf_equivalent: existing.show_uf_equivalent,
               show_usd_equivalent: existing.show_usd_equivalent,
               usd_value: existing.usd_value,
+              mtc_config: existing.mtc_config,
               version: existing.version,
               // categories y terms quedan intactas: solo se agregan line_items.
               categories: existing.categories,

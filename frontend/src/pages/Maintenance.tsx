@@ -1,12 +1,19 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react'
 import '../styles/Quotations.css'
 import '../styles/Maintenance.css'
+import '../styles/MtcDocument.css'
+import { MtcSystemsPanel } from './maintenance/MtcSystemsPanel'
+import { MtcSystemTabs } from './maintenance/MtcSystemTabs'
+import { MtcValuationSection } from './maintenance/MtcValuationSection'
+import { MtcDocumentSide } from './maintenance/MtcDocumentSide'
+import { MtcDocumentToolbar } from './maintenance/MtcDocumentToolbar'
+import { ensureMtcConfig, MTC_FREQUENCY_LABELS, systemTotals, visitsFor } from '../utils/mtcSystems'
+import { LOCKED_STATUSES } from './Quotations'
 import {
   useMaestro,
   useActiveQuotation,
   calcTotals,
   fmtCLP,
-  fmtDecimal,
   VISITS_PER_YEAR,
   FREQUENCY_LABELS,
   generateVersionCorrelative,
@@ -26,11 +33,9 @@ import {
 import { usePermissions } from '../hooks/usePermissions'
 // docx/html2canvas/jsPDF son pesados y solo hacen falta al exportar: se cargan
 // bajo demanda en cada handler (fase F7), no junto con el resto de la pantalla.
-import { buildQuotationValuationRows } from '../utils/quotationRows'
 import { ApiError, api } from '../api/api'
 import { primaryContact, quotationContact } from '../utils/contacts'
 import { showToast } from '../stores/uiStore'
-import { getCurrencyInfo, convertAmount, formatCurrency } from '../utils/currencyHelper'
 
 // ── Master List ────────────────────────────────────────────────────────────────
 
@@ -43,8 +48,8 @@ function pendingPeriods(q: {
   visits_per_year: number | null
   invoice_count: number
 }): number | null {
-  if (!q.contract_start_date || !q.frequency) return null
-  const periodMonths = 12 / (q.visits_per_year || VISITS_PER_YEAR[q.frequency])
+  if (!q.contract_start_date || !q.frequency || q.frequency === 'unico') return null
+  const periodMonths = 12 / (q.visits_per_year || visitsFor(q.frequency, null))
   const start = new Date(`${q.contract_start_date}T00:00:00`)
   const now = new Date()
   const monthsElapsed =
@@ -414,8 +419,10 @@ function MaintenanceList({
 function TabBaseMtc() {
   const { clients, patchActive, saveActive, reloadActive } = useMaestro()
   const q = useActiveQuotation()
+  const { role } = usePermissions()
   const [saving, setSaving] = useState(false)
   if (!q) return null
+  const isLocked = LOCKED_STATUSES.includes(q.status) && role !== 'admin'
 
   const patch = (fields: Partial<typeof q>) => patchActive(fields)
 
@@ -429,8 +436,6 @@ function TabBaseMtc() {
       setSaving(false)
     }
   }
-
-  const visits = q.frequency ? VISITS_PER_YEAR[q.frequency] : (q.visits_per_year ?? 0)
 
   return (
     <div className="tab-base">
@@ -556,28 +561,7 @@ function TabBaseMtc() {
               className="base-input"
             />
           </div>
-          <div className="base-row">
-            <label>Frecuencia</label>
-            <select
-              value={q.frequency ?? ''}
-              className="base-input"
-              onChange={e => {
-                const freq = (e.target.value || null) as MtcFrequency | null
-                patch({ frequency: freq, visits_per_year: freq ? VISITS_PER_YEAR[freq] : null })
-              }}
-            >
-              <option value="">— Seleccionar —</option>
-              {(Object.keys(FREQUENCY_LABELS) as MtcFrequency[]).map(f => (
-                <option key={f} value={f}>
-                  {FREQUENCY_LABELS[f]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="base-row">
-            <label>Visitas / año</label>
-            <span className="base-rut">{visits || '—'}</span>
-          </div>
+          <MtcSystemsPanel disabled={isLocked} />
         </div>
 
         <div className="base-card">
@@ -669,9 +653,10 @@ function TabBaseMtc() {
 
 // ── Tab Documento ──────────────────────────────────────────────────────────────
 
-function TabDocumentoMtc() {
+export function TabDocumentoMtc() {
   const q = useActiveQuotation()
-  const { clients, saveActive, reloadActive, patchActive } = useMaestro()
+  const { clients, saveActive, reloadActive } = useMaestro()
+  const { role } = usePermissions()
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -695,28 +680,17 @@ function TabDocumentoMtc() {
 
   if (!q) return null
 
+  const isLocked = LOCKED_STATUSES.includes(q.status) && role !== 'admin'
   const client = clients.find(c => c.id === q.client_id)
   const contact = quotationContact(q, client)
 
   // "Costeo" siempre calcula el valor de UNA visita — el total anual es esa
   // cifra multiplicada por la frecuencia contratada (ver decisión del plan).
-  const totals = calcTotals(q)
-  const ivaVisita = totals.venta * (q.iva / 100)
-  const totalVisitaConIva = totals.venta + ivaVisita
 
   const visits = q.visits_per_year ?? (q.frequency ? VISITS_PER_YEAR[q.frequency] : 0)
-  const netoAnual = totals.venta * visits
-  const ivaAnual = netoAnual * (q.iva / 100)
-  const totalAnualConIva = netoAnual + ivaAnual
-  const enUF = q.uf > 0 ? totalAnualConIva / q.uf : 0
-  const enUSD = q.usd > 0 ? totalAnualConIva / q.usd : 0
+  const mtcSystems = ensureMtcConfig(q).systems
 
   // Soporte para moneda de visualización
-  const currencyInfo = getCurrencyInfo(q, q.display_currency)
-  const displayTotalVisitaConIva = convertAmount(totalVisitaConIva, currencyInfo.rate)
-  const displayNetoAnual = convertAmount(netoAnual, currencyInfo.rate)
-  const displayIvaAnual = convertAmount(ivaAnual, currencyInfo.rate)
-  const displayTotalAnualConIva = convertAmount(totalAnualConIva, currencyInfo.rate)
 
   const handleSave = async () => {
     setSaving(true)
@@ -814,291 +788,126 @@ function TabDocumentoMtc() {
           {loadingPdf ? 'Generando...' : 'Descargar PDF'}
         </button>
         <div className="coti-toolbar-sep" />
-        <label className="mtc-currency-toggle">
-          <input
-            type="checkbox"
-            checked={q.show_uf_equivalent}
-            onChange={e => patchActive({ show_uf_equivalent: e.target.checked })}
-          />
-          Mostrar UF
-        </label>
-        <label className="mtc-currency-toggle">
-          <input
-            type="checkbox"
-            checked={q.show_usd_equivalent}
-            onChange={e => patchActive({ show_usd_equivalent: e.target.checked })}
-          />
-          Mostrar USD
-        </label>
-        {q.show_usd_equivalent && (
-          <div className="mtc-usd-input">
-            <span>USD ref. $</span>
-            <input
-              type="number"
-              min="0"
-              value={q.usd || ''}
-              onChange={e => patchActive({ usd: parseFloat(e.target.value) || 0 })}
-            />
-          </div>
-        )}
+        <MtcDocumentToolbar disabled={isLocked} />
       </div>
 
-      <div className="coti-doc" ref={docRef}>
-        <div className="doc-letterhead">
-          <div className="doc-lh-brand">
-            <img src="/logo-nbyb.svg" alt="NβyB" className="doc-logo" />
-          </div>
-          <div className="doc-lh-docinfo">
-            <div className="doc-doctype">Cotización de Mantención</div>
-            <div className="doc-docnum">{q.correlative}</div>
-            <div className="doc-docdate">Fecha: {fmtDateLong(q.date)}</div>
-          </div>
-        </div>
-        <div className="doc-accent-rule" />
-
-        <div className="doc-section-group">
-          <div className="doc-group-title">Datos del Cliente</div>
-          <table className="doc-client-table">
-            <tbody>
-              <tr>
-                <th>Empresa</th>
-                <td>{q.client_name || '—'}</td>
-                <th>RUT</th>
-                <td>{client?.rut || '—'}</td>
-              </tr>
-              <tr>
-                <th>Contacto</th>
-                <td>{contact.name || '—'}</td>
-                <th>Cargo</th>
-                <td>{contact.cargo || '—'}</td>
-              </tr>
-              <tr>
-                <th>Correo</th>
-                <td colSpan={3}>{contact.email || '—'}</td>
-              </tr>
-              <tr>
-                <th>Referencia</th>
-                <td colSpan={3}>{q.ref || '—'}</td>
-              </tr>
-              {q.enduser && (
+      <div className="coti-doc mtcd-doc" ref={docRef}>
+        <div className="mtcd-wrap">
+          <MtcDocumentSide contactName={contact.name} />
+          <div className="mtcd-main">
+            <table className="doc-client-table">
+              <tbody>
                 <tr>
-                  <th>Usuario Final</th>
-                  <td colSpan={3}>{q.enduser}</td>
+                  <th>RUT</th>
+                  <td>{client?.rut || '—'}</td>
+                  <th>Cargo</th>
+                  <td>{contact.cargo || '—'}</td>
                 </tr>
-              )}
-              <tr className="doc-row-elaborado">
-                <th>Elaborado por</th>
-                <td colSpan={3}>{sessionUser?.name || '—'}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                <tr>
+                  <th>Correo</th>
+                  <td colSpan={3}>{contact.email || '—'}</td>
+                </tr>
+                {q.enduser && (
+                  <tr>
+                    <th>Usuario final</th>
+                    <td colSpan={3}>{q.enduser}</td>
+                  </tr>
+                )}
+                <tr className="doc-row-elaborado">
+                  <th>Elaborado por</th>
+                  <td colSpan={3}>{sessionUser?.name || '—'}</td>
+                </tr>
+              </tbody>
+            </table>
 
-        <div className="doc-section">
-          <div className="doc-section-title">I. ALCANCE DEL SERVICIO DE MANTENCIÓN</div>
-          <EditableList items={q.scope} listKey="scope" />
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">I. ALCANCE DEL SERVICIO DE MANTENCIÓN</div>
+              <EditableList items={q.scope} listKey="scope" />
+            </div>
 
-        <div className="doc-section">
-          <div className="doc-section-title">II. EQUIPOS CUBIERTOS</div>
-          <table className="doc-client-table">
-            <tbody>
-              <tr>
-                <th>N° de equipos</th>
-                <td colSpan={3}>{q.equipment_count ?? '—'}</td>
-              </tr>
-              <tr>
-                <th>Descripción</th>
-                <td colSpan={3}>{q.equipment_description || '—'}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">II. EQUIPOS CUBIERTOS</div>
+              <table className="doc-client-table">
+                <tbody>
+                  <tr>
+                    <th>N° de equipos</th>
+                    <td colSpan={3}>{q.equipment_count ?? '—'}</td>
+                  </tr>
+                  <tr>
+                    <th>Descripción</th>
+                    <td colSpan={3}>{q.equipment_description || '—'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-        <div className="doc-section">
-          <div className="doc-section-title">III. PLAN DE VISITAS</div>
-          <table className="doc-client-table">
-            <tbody>
-              <tr>
-                <th>Frecuencia</th>
-                <td>{q.frequency ? FREQUENCY_LABELS[q.frequency] : '—'}</td>
-                <th>Visitas / año</th>
-                <td>{visits || '—'}</td>
-              </tr>
-              <tr>
-                <th>Vigencia</th>
-                <td colSpan={3}>
-                  {q.contract_start_date
-                    ? `Desde ${fmtDateLong(q.contract_start_date)}`
-                    : 'A definir'}{' '}
-                  · indefinida, con renovación automática salvo aviso de término
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div className="doc-section">
-          <div className="doc-section-title">IV. VALORIZACIÓN</div>
-
-          <div className="doc-group-title">Valor por visita</div>
-          <table className="doc-valuation">
-            <thead>
-              <tr>
-                <th className="val-expand no-print" />
-                <th className="val-num">N°</th>
-                <th>Descripción</th>
-                <th className="text-right">Valor Neto ({currencyInfo.displaySymbol})</th>
-              </tr>
-            </thead>
-            <tbody>
-              {buildQuotationValuationRows(q, expandedCats).map(row => {
-                const items = (q.items[row.cat.id] || []).filter(it => it.cant > 0 && it.desc)
-                const isOpen = row.details.length > 0
-                const displayRowVenta = convertAmount(row.venta, currencyInfo.rate)
-                return (
-                  <React.Fragment key={row.cat.id}>
-                    <tr className={`doc-valuation-row ${isOpen ? 'doc-row-expanded' : ''}`}>
-                      <td className="val-expand no-print">
-                        {items.length > 0 && (
-                          <label
-                            className="doc-expand-toggle"
-                            title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={expandedCats.has(row.cat.id)}
-                              onChange={() => toggleCat(row.cat.id)}
-                            />
-                            <span className="doc-expand-icon">{isOpen ? '▾' : '▸'}</span>
-                          </label>
-                        )}
-                      </td>
-                      <td className="val-num">{row.rowNumber}</td>
-                      <td>{row.cat.label}</td>
-                      <td className="text-right mono">
-                        {currencyInfo.currency === 'CLP'
-                          ? fmtCLP.format(displayRowVenta)
-                          : formatCurrency(displayRowVenta, currencyInfo.currency, 2)}
-                      </td>
-                    </tr>
-                    {row.details.map(({ item, meta }) => (
-                      <tr key={item.id} className="doc-detail-row no-print-detail">
-                        <td className="doc-detail-indent" colSpan={2} />
-                        <td className="doc-detail-desc" colSpan={2}>
-                          <span className="doc-detail-bullet">·</span>
-                          <span className="doc-detail-name">{item.desc}</span>
-                          <span className="doc-detail-meta">{meta}</span>
-                        </td>
+            <div className="doc-section">
+              <div className="doc-section-title">III. PLAN DE VISITAS</div>
+              <table className="doc-client-table">
+                <tbody>
+                  {mtcSystems.length > 1 ? (
+                    mtcSystems.map((sys, i) => (
+                      <tr key={i}>
+                        <th>{sys.name || `Sistema ${i + 1}`}</th>
+                        <td>{MTC_FREQUENCY_LABELS[sys.frequency]}</td>
+                        <th>Visitas / año</th>
+                        <td>{systemTotals(q, i).visits}</td>
                       </tr>
-                    ))}
-                  </React.Fragment>
-                )
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="doc-subtotal">
-                <td colSpan={3}>Subtotal Neto por Visita</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(totals.venta)
-                    : formatCurrency(
-                        convertAmount(totals.venta, currencyInfo.rate),
-                        currencyInfo.currency,
-                        2
-                      )}
-                </td>
-              </tr>
-              <tr className="doc-iva-row">
-                <td colSpan={3}>IVA ({q.iva}%)</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(ivaVisita)
-                    : formatCurrency(
-                        convertAmount(ivaVisita, currencyInfo.rate),
-                        currencyInfo.currency,
-                        2
-                      )}
-                </td>
-              </tr>
-              <tr className="doc-total">
-                <td colSpan={3}>TOTAL POR VISITA CON IVA</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(displayTotalVisitaConIva)
-                    : formatCurrency(displayTotalVisitaConIva, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+                    ))
+                  ) : (
+                    <tr>
+                      <th>Frecuencia</th>
+                      <td>{q.frequency ? FREQUENCY_LABELS[q.frequency] : '—'}</td>
+                      <th>Visitas / año</th>
+                      <td>{visits || '—'}</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <th>Vigencia</th>
+                    <td colSpan={3}>
+                      {q.contract_start_date
+                        ? `Desde ${fmtDateLong(q.contract_start_date)}`
+                        : 'A definir'}{' '}
+                      · indefinida, con renovación automática salvo aviso de término
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-          <div className="doc-group-title mtc-annual-title">
-            Valor anual estimado ({visits || 0} visitas/año)
-          </div>
-          <table className="doc-valuation">
-            <tfoot>
-              <tr className="doc-subtotal">
-                <td colSpan={3}>Subtotal Neto Anual</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(netoAnual)
-                    : formatCurrency(displayNetoAnual, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-              <tr className="doc-iva-row">
-                <td colSpan={3}>IVA ({q.iva}%)</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(ivaAnual)
-                    : formatCurrency(displayIvaAnual, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-              <tr className="doc-total">
-                <td colSpan={3}>TOTAL ANUAL CON IVA</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(totalAnualConIva)
-                    : formatCurrency(displayTotalAnualConIva, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-              {currencyInfo.currency !== 'UF' && q.uf > 0 && (
-                <tr className="doc-uf">
-                  <td colSpan={3}>Equivalente en UF (ref. {fmtCLP.format(q.uf)}/UF)</td>
-                  <td className="text-right mono">{enUF.toFixed(2)} UF</td>
-                </tr>
-              )}
-              {currencyInfo.currency !== 'USD' && q.usd > 0 && (
-                <tr className="doc-usd">
-                  <td colSpan={3}>Equivalente en USD (ref. {fmtCLP.format(q.usd)}/USD)</td>
-                  <td className="text-right mono">US$ {fmtDecimal.format(enUSD)}</td>
-                </tr>
-              )}
-            </tfoot>
-          </table>
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">IV. VALORIZACIÓN</div>
+              <MtcValuationSection
+                expandedCats={expandedCats}
+                onToggleCat={toggleCat}
+                disabled={isLocked}
+              />
+            </div>
 
-        <div className="doc-section">
-          <div className="doc-section-title">V. EXCLUSIONES</div>
-          <EditableList items={q.exclusions} listKey="exclusions" />
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">V. EXCLUSIONES</div>
+              <EditableList items={q.exclusions} listKey="exclusions" />
+            </div>
 
-        <div className="doc-section">
-          <div className="doc-section-title">VI. CONDICIONES COMERCIALES</div>
-          <EditableList items={q.commercial} listKey="commercial" />
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">VI. CONDICIONES COMERCIALES</div>
+              <EditableList items={q.commercial} listKey="commercial" />
+            </div>
 
-        <div className="doc-footer">
-          <div className="doc-footer-text">
-            <p>Esta cotización es válida según las condiciones indicadas en el punto VI.</p>
-            <p>
-              Ingeniería y Servicios Bravo SPA &nbsp;·&nbsp; RUT: 77.175.319-1 &nbsp;·&nbsp; Tel.
-              +56 (9) 90943080
-            </p>
-          </div>
-          <div className="doc-footer-stamp">
-            <div className="doc-footer-stamp-line" />
-            <p>Firma y Timbre</p>
-            <p>Representante Autorizado</p>
+            <div className="doc-footer">
+              <div className="doc-footer-text">
+                <p>Esta cotización es válida según las condiciones indicadas en el punto VI.</p>
+                <p>
+                  Ingeniería y Servicios Bravo SPA &nbsp;·&nbsp; RUT: 77.175.319-1 &nbsp;·&nbsp;
+                  Tel. +56 (9) 90943080
+                </p>
+              </div>
+              <div className="doc-footer-stamp">
+                <div className="doc-footer-stamp-line" />
+                <p>Firma y Timbre</p>
+                <p>Representante Autorizado</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1217,7 +1026,12 @@ export const Maintenance: React.FC<{ onNavigateToInvoices?: (quotationId: string
 
           <div className="q-tab-content">
             {activeTab === 'base' && <TabBaseMtc />}
-            {activeTab === 'costeo' && <TabCosteo />}
+            {activeTab === 'costeo' && (
+              <>
+                <MtcSystemTabs />
+                <TabCosteo />
+              </>
+            )}
             {activeTab === 'doc' && <TabDocumentoMtc />}
           </div>
         </div>

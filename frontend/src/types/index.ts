@@ -15,7 +15,16 @@ export type PaymentCond = 'cash' | 'credit' | 'partial'
 export type TermType = 'scope' | 'exclusion' | 'commercial'
 export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE'
 export type QuotationKind = 'project' | 'maintenance'
-export type MtcFrequency = 'mensual' | 'trimestral' | 'semestral' | 'anual'
+export type MtcFrequency =
+  | 'mensual'
+  | 'bimestral'
+  | 'trimestral'
+  | 'cuatrimestral'
+  | 'semestral'
+  | 'anual'
+  | 'especial'
+  | 'unico'
+export type MtcSchedule = 'habil' | 'inhabil' | 'continuo'
 
 // ── Auth ──────────────────────────────────────────────────────
 export interface User {
@@ -125,6 +134,7 @@ export interface Quotation {
   show_uf_equivalent: boolean
   show_usd_equivalent: boolean
   usd_value: number | null
+  mtc_config?: MtcConfig | null
 }
 
 export interface QuotationCategory {
@@ -373,6 +383,42 @@ export interface CostItem {
   puntoB?: string // Cálculo de Distancias
 }
 
+export interface MtcConsumableRow {
+  id: string
+  desc: string
+  unidad: string
+  per_module: number
+  modules: number
+  changes_per_year: number
+  cost: number // costo unitario CLP
+}
+
+export interface MtcConsumables {
+  enabled: boolean
+  margin: number
+  rows: MtcConsumableRow[]
+}
+
+export interface MtcSystem {
+  id: string
+  name: string
+  frequency: MtcFrequency
+  special_months: number | null
+  schedule: MtcSchedule
+  currency: 'CLP' | 'UF' | 'USD'
+  summary_text: string | null // null = texto generado
+  consumables: MtcConsumables
+  categories: CostCategory[] | null // null en el sistema cuyo costeo vive en la cotización
+  items: Record<CategoryId, CostItem[]> | null
+}
+
+export interface MtcConfig {
+  v: 1
+  summary_mode: boolean
+  show_summary_table: boolean
+  systems: MtcSystem[] // 1 a 12
+}
+
 // Cotización completa tal como la maneja el store
 export interface MasterQuotation {
   id: string
@@ -415,6 +461,9 @@ export interface MasterQuotation {
   invoice_count_max: number
   total_con_iva: number
   invoiced_total: number
+  // Mantención: valorizaciones (null = una sola, presentación detallada, sin consumibles)
+  mtc_config: MtcConfig | null
+  mtc_active_system: number // solo local, no se persiste
   // OC (Orden de Compra) u otro medio de aceptación formal del cliente
   oc_number: string | null
   oc_date: string | null

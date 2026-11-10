@@ -15,6 +15,7 @@ import {
 } from '../types'
 import api, { ApiError } from '../api/api'
 import type { ImportQuotationResult } from '../api/api'
+import { calcCat, calcTotals } from '../utils/costeoMath'
 
 // ── Defaults ──────────────────────────────────────────────────
 
@@ -212,45 +213,29 @@ export const DEFAULT_COMMERCIAL_MAINTENANCE = [
 // N° de visitas/año derivado de la frecuencia — de solo lectura en la UI.
 export const VISITS_PER_YEAR: Record<MtcFrequency, number> = {
   mensual: 12,
+  bimestral: 6,
   trimestral: 4,
+  cuatrimestral: 3,
   semestral: 2,
   anual: 1,
+  especial: 1,
+  unico: 1,
 }
 
 export const FREQUENCY_LABELS: Record<MtcFrequency, string> = {
   mensual: 'Mensual',
+  bimestral: 'Bimestral',
   trimestral: 'Trimestral',
+  cuatrimestral: 'Cuatrimestral',
   semestral: 'Semestral',
   anual: 'Anual',
+  especial: 'Especial',
+  unico: 'Único',
 }
 
 // ── Calculation helpers ────────────────────────────────────────
 
-export function calcCat(
-  catId: CategoryId,
-  categories: CostCategory[],
-  items: Record<CategoryId, CostItem[]>
-) {
-  const cat = categories.find(c => c.id === catId)!
-  const costo = (items[catId] || []).reduce((a, i) => a + i.cant * (i.days ?? 1) * i.unit, 0)
-  const margin = Math.max(0, Math.min(99.9, cat.margin))
-  const venta = margin === 100 ? costo : costo / (1 - margin / 100)
-  return { costo, venta, beneficio: venta - costo, margin }
-}
-
-export function calcTotals(q: MasterQuotation) {
-  return q.categories.reduce(
-    (acc, cat) => {
-      const r = calcCat(cat.id, q.categories, q.items)
-      return {
-        costo: acc.costo + r.costo,
-        venta: acc.venta + r.venta,
-        beneficio: acc.beneficio + r.beneficio,
-      }
-    },
-    { costo: 0, venta: 0, beneficio: 0 }
-  )
-}
+export { calcCat, calcTotals }
 
 export const fmtCLP = new Intl.NumberFormat('es-CL', {
   style: 'currency',
@@ -657,6 +642,8 @@ export const useMaestro = create<MaestroState>()(
           show_uf_equivalent: false,
           show_usd_equivalent: false,
           display_currency: 'CLP',
+          mtc_config: null,
+          mtc_active_system: 0,
           invoice_count: 0,
           invoice_count_max: 1,
           total_con_iva: 0,

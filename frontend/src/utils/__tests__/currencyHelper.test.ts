@@ -42,6 +42,8 @@ const quotation = (over: Partial<MasterQuotation>): MasterQuotation => ({
   show_usd_equivalent: false,
   usd: 0,
   display_currency: 'CLP',
+  mtc_config: null,
+  mtc_active_system: 0,
   invoice_count: 0,
   invoice_count_max: 1,
   total_con_iva: 0,

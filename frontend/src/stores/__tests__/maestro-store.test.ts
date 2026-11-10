@@ -101,6 +101,8 @@ function makeQuotation(overrides: Partial<MasterQuotation> = {}): MasterQuotatio
     show_uf_equivalent: false,
     show_usd_equivalent: false,
     display_currency: 'CLP',
+    mtc_config: null,
+    mtc_active_system: 0,
     invoice_count: 0,
     invoice_count_max: 1,
     total_con_iva: 0,

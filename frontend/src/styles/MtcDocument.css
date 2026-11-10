@@ -1,0 +1,135 @@
+.mtcd-wrap {
+  display: grid;
+  grid-template-columns: 28% minmax(0, 1fr);
+  min-height: 100%;
+}
+
+.mtcd-side {
+  background: var(--mtcd-c-0f2440);
+  color: var(--mtcd-c-ffffff);
+  padding: 48px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  box-sizing: border-box;
+}
+
+.mtcd-side .mtcd-lab {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mtcd-c-b9c4d6);
+}
+
+.mtcd-side .mtcd-brand {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mtcd-c-e3cf8f);
+}
+
+.mtcd-side .mtcd-title {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.12;
+  margin: 0;
+}
+
+.mtcd-side .mtcd-total {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.12;
+}
+
+.mtcd-side .mtcd-meta,
+.mtcd-side .mtcd-side-total {
+  border-top: 1px solid var(--mtcd-c-c9a94f);
+  padding-top: 20px;
+}
+
+.mtcd-side .mtcd-meta {
+  display: grid;
+  gap: 16px;
+}
+
+.mtcd-side .mtcd-field {
+  display: grid;
+  gap: 4px;
+}
+
+.mtcd-side .mtcd-value {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.mtcd-side .mtcd-side-total {
+  margin-top: auto;
+  display: grid;
+  gap: 8px;
+}
+
+.mtcd-main {
+  padding: 48px 36px;
+  box-sizing: border-box;
+  color: var(--mtcd-c-1c2533);
+  font-family: 'Source Sans 3', 'Segoe UI', Arial, sans-serif;
+  background: var(--mtcd-c-ffffff);
+  min-width: 0;
+}
+
+.mtcd-main table thead th,
+.mtcd-main .doc-valuation thead th {
+  background: var(--mtcd-c-0f2440);
+  color: var(--mtcd-c-ffffff);
+}
+
+.mtcd-main tr.tot td {
+  background: var(--mtcd-c-0f2440);
+  color: var(--mtcd-c-ffffff);
+  font-weight: 700;
+}
+
+.mtcd-main tr.sub td {
+  background: var(--mtcd-c-eef1f6);
+  font-weight: 700;
+  color: var(--mtcd-c-0f2440);
+}
+
+.mtcd-main .doc-section-title {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-weight: 600;
+  color: var(--mtcd-c-0f2440);
+  border-bottom: 2px solid var(--mtcd-c-0f2440);
+}
+
+.mtcd-main .doc-group-title {
+  color: var(--mtcd-c-6b5a22);
+  font-weight: 700;
+}
+
+.mtcd-main .scroll-x {
+  overflow-x: auto;
+}
+
+.mtcd-doc {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.pdf-exporting .mtcd-wrap {
+  grid-template-columns: 28% minmax(0, 1fr) !important;
+}
+
+@media (max-width: 720px) {
+  .mtcd-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mtcd-main {
+    padding: 24px 16px;
+  }
+}

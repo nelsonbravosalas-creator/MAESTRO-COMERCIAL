@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react'
 import '../styles/Quotations.css'
 import '../styles/Maintenance.css'
+import '../styles/MtcDocument.css'
 import { MtcSystemsPanel } from './maintenance/MtcSystemsPanel'
 import { MtcSystemTabs } from './maintenance/MtcSystemTabs'
 import { MtcValuationSection } from './maintenance/MtcValuationSection'
+import { MtcDocumentSide } from './maintenance/MtcDocumentSide'
 import { visitsFor } from '../utils/mtcSystems'
 import { LOCKED_STATUSES } from './Quotations'
 import {
@@ -811,128 +813,133 @@ function TabDocumentoMtc() {
         )}
       </div>
 
-      <div className="coti-doc" ref={docRef}>
-        <div className="doc-letterhead">
-          <div className="doc-lh-brand">
-            <img src="/logo-nbyb.svg" alt="NβyB" className="doc-logo" />
-          </div>
-          <div className="doc-lh-docinfo">
-            <div className="doc-doctype">Cotización de Mantención</div>
-            <div className="doc-docnum">{q.correlative}</div>
-            <div className="doc-docdate">Fecha: {fmtDateLong(q.date)}</div>
-          </div>
-        </div>
-        <div className="doc-accent-rule" />
+      <div className="coti-doc mtcd-doc" ref={docRef}>
+        <div className="mtcd-wrap">
+          <MtcDocumentSide />
+          <div className="mtcd-main">
+            <div className="doc-letterhead">
+              <div className="doc-lh-brand">
+                <img src="/logo-nbyb.svg" alt="NβyB" className="doc-logo" />
+              </div>
+              <div className="doc-lh-docinfo">
+                <div className="doc-doctype">Cotización de Mantención</div>
+                <div className="doc-docnum">{q.correlative}</div>
+                <div className="doc-docdate">Fecha: {fmtDateLong(q.date)}</div>
+              </div>
+            </div>
+            <div className="doc-accent-rule" />
 
-        <div className="doc-section-group">
-          <div className="doc-group-title">Datos del Cliente</div>
-          <table className="doc-client-table">
-            <tbody>
-              <tr>
-                <th>Empresa</th>
-                <td>{q.client_name || '—'}</td>
-                <th>RUT</th>
-                <td>{client?.rut || '—'}</td>
-              </tr>
-              <tr>
-                <th>Contacto</th>
-                <td>{contact.name || '—'}</td>
-                <th>Cargo</th>
-                <td>{contact.cargo || '—'}</td>
-              </tr>
-              <tr>
-                <th>Correo</th>
-                <td colSpan={3}>{contact.email || '—'}</td>
-              </tr>
-              <tr>
-                <th>Referencia</th>
-                <td colSpan={3}>{q.ref || '—'}</td>
-              </tr>
-              {q.enduser && (
-                <tr>
-                  <th>Usuario Final</th>
-                  <td colSpan={3}>{q.enduser}</td>
-                </tr>
-              )}
-              <tr className="doc-row-elaborado">
-                <th>Elaborado por</th>
-                <td colSpan={3}>{sessionUser?.name || '—'}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            <div className="doc-section-group">
+              <div className="doc-group-title">Datos del Cliente</div>
+              <table className="doc-client-table">
+                <tbody>
+                  <tr>
+                    <th>Empresa</th>
+                    <td>{q.client_name || '—'}</td>
+                    <th>RUT</th>
+                    <td>{client?.rut || '—'}</td>
+                  </tr>
+                  <tr>
+                    <th>Contacto</th>
+                    <td>{contact.name || '—'}</td>
+                    <th>Cargo</th>
+                    <td>{contact.cargo || '—'}</td>
+                  </tr>
+                  <tr>
+                    <th>Correo</th>
+                    <td colSpan={3}>{contact.email || '—'}</td>
+                  </tr>
+                  <tr>
+                    <th>Referencia</th>
+                    <td colSpan={3}>{q.ref || '—'}</td>
+                  </tr>
+                  {q.enduser && (
+                    <tr>
+                      <th>Usuario Final</th>
+                      <td colSpan={3}>{q.enduser}</td>
+                    </tr>
+                  )}
+                  <tr className="doc-row-elaborado">
+                    <th>Elaborado por</th>
+                    <td colSpan={3}>{sessionUser?.name || '—'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-        <div className="doc-section">
-          <div className="doc-section-title">I. ALCANCE DEL SERVICIO DE MANTENCIÓN</div>
-          <EditableList items={q.scope} listKey="scope" />
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">I. ALCANCE DEL SERVICIO DE MANTENCIÓN</div>
+              <EditableList items={q.scope} listKey="scope" />
+            </div>
 
-        <div className="doc-section">
-          <div className="doc-section-title">II. EQUIPOS CUBIERTOS</div>
-          <table className="doc-client-table">
-            <tbody>
-              <tr>
-                <th>N° de equipos</th>
-                <td colSpan={3}>{q.equipment_count ?? '—'}</td>
-              </tr>
-              <tr>
-                <th>Descripción</th>
-                <td colSpan={3}>{q.equipment_description || '—'}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">II. EQUIPOS CUBIERTOS</div>
+              <table className="doc-client-table">
+                <tbody>
+                  <tr>
+                    <th>N° de equipos</th>
+                    <td colSpan={3}>{q.equipment_count ?? '—'}</td>
+                  </tr>
+                  <tr>
+                    <th>Descripción</th>
+                    <td colSpan={3}>{q.equipment_description || '—'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-        <div className="doc-section">
-          <div className="doc-section-title">III. PLAN DE VISITAS</div>
-          <table className="doc-client-table">
-            <tbody>
-              <tr>
-                <th>Frecuencia</th>
-                <td>{q.frequency ? FREQUENCY_LABELS[q.frequency] : '—'}</td>
-                <th>Visitas / año</th>
-                <td>{visits || '—'}</td>
-              </tr>
-              <tr>
-                <th>Vigencia</th>
-                <td colSpan={3}>
-                  {q.contract_start_date
-                    ? `Desde ${fmtDateLong(q.contract_start_date)}`
-                    : 'A definir'}{' '}
-                  · indefinida, con renovación automática salvo aviso de término
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">III. PLAN DE VISITAS</div>
+              <table className="doc-client-table">
+                <tbody>
+                  <tr>
+                    <th>Frecuencia</th>
+                    <td>{q.frequency ? FREQUENCY_LABELS[q.frequency] : '—'}</td>
+                    <th>Visitas / año</th>
+                    <td>{visits || '—'}</td>
+                  </tr>
+                  <tr>
+                    <th>Vigencia</th>
+                    <td colSpan={3}>
+                      {q.contract_start_date
+                        ? `Desde ${fmtDateLong(q.contract_start_date)}`
+                        : 'A definir'}{' '}
+                      · indefinida, con renovación automática salvo aviso de término
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-        <div className="doc-section">
-          <div className="doc-section-title">IV. VALORIZACIÓN</div>
-          <MtcValuationSection expandedCats={expandedCats} onToggleCat={toggleCat} />
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">IV. VALORIZACIÓN</div>
+              <MtcValuationSection expandedCats={expandedCats} onToggleCat={toggleCat} />
+            </div>
 
-        <div className="doc-section">
-          <div className="doc-section-title">V. EXCLUSIONES</div>
-          <EditableList items={q.exclusions} listKey="exclusions" />
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">V. EXCLUSIONES</div>
+              <EditableList items={q.exclusions} listKey="exclusions" />
+            </div>
 
-        <div className="doc-section">
-          <div className="doc-section-title">VI. CONDICIONES COMERCIALES</div>
-          <EditableList items={q.commercial} listKey="commercial" />
-        </div>
+            <div className="doc-section">
+              <div className="doc-section-title">VI. CONDICIONES COMERCIALES</div>
+              <EditableList items={q.commercial} listKey="commercial" />
+            </div>
 
-        <div className="doc-footer">
-          <div className="doc-footer-text">
-            <p>Esta cotización es válida según las condiciones indicadas en el punto VI.</p>
-            <p>
-              Ingeniería y Servicios Bravo SPA &nbsp;·&nbsp; RUT: 77.175.319-1 &nbsp;·&nbsp; Tel.
-              +56 (9) 90943080
-            </p>
-          </div>
-          <div className="doc-footer-stamp">
-            <div className="doc-footer-stamp-line" />
-            <p>Firma y Timbre</p>
-            <p>Representante Autorizado</p>
+            <div className="doc-footer">
+              <div className="doc-footer-text">
+                <p>Esta cotización es válida según las condiciones indicadas en el punto VI.</p>
+                <p>
+                  Ingeniería y Servicios Bravo SPA &nbsp;·&nbsp; RUT: 77.175.319-1 &nbsp;·&nbsp;
+                  Tel. +56 (9) 90943080
+                </p>
+              </div>
+              <div className="doc-footer-stamp">
+                <div className="doc-footer-stamp-line" />
+                <p>Firma y Timbre</p>
+                <p>Representante Autorizado</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

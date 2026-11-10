@@ -73,7 +73,16 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 const VALID_KINDS = ['project', 'maintenance']
-const VALID_FREQUENCIES = ['mensual', 'trimestral', 'semestral', 'anual']
+const VALID_FREQUENCIES = [
+  'mensual',
+  'bimestral',
+  'trimestral',
+  'cuatrimestral',
+  'semestral',
+  'anual',
+  'especial',
+  'unico',
+]
 
 const normalizeStatus = (status: string | undefined) =>
   VALID_STATUSES.includes(status ?? '') ? status : 'Borrador'
@@ -720,6 +729,7 @@ export const applyQuotationUpdate = async (
             show_uf_equivalent = $19,
             show_usd_equivalent = $20,
             usd_value = $21,
+            mtc_config = CASE WHEN $24::boolean THEN $25::jsonb ELSE mtc_config END,
             version = version + 1,
             updated_at = NOW()
       WHERE id = $22
@@ -750,6 +760,10 @@ export const applyQuotationUpdate = async (
         body.usd_value ?? null,
         quotationId,
         expectedVersion,
+        // $24/$25: solo se reescribe mtc_config si el cuerpo trae la clave
+        // (null = borrarlo); los clientes que no la conocen no lo pisan.
+        'mtc_config' in body,
+        body.mtc_config ? JSON.stringify(body.mtc_config) : null,
       ]
     )
 
@@ -888,9 +902,10 @@ export const createQuotationsRouter = (pool: Pool) => {
           (correlative, client_id, contact_id, enduser, ref, date, valid_until,
            status, oper_state, uf_value, iva_pct, notes, created_by,
            kind, equipment_count, equipment_description, frequency, visits_per_year,
-           contract_start_date, show_uf_equivalent, show_usd_equivalent, usd_value)
+           contract_start_date, show_uf_equivalent, show_usd_equivalent, usd_value,
+           mtc_config)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-                 $14, $15, $16, $17, $18, $19, $20, $21, $22)
+                 $14, $15, $16, $17, $18, $19, $20, $21, $22, $23::jsonb)
          RETURNING *`,
         [
           body.correlative,
@@ -915,6 +930,7 @@ export const createQuotationsRouter = (pool: Pool) => {
           Boolean(body.show_uf_equivalent),
           Boolean(body.show_usd_equivalent),
           body.usd_value ?? null,
+          body.mtc_config ? JSON.stringify(body.mtc_config) : null,
         ]
       )
 
@@ -1400,9 +1416,9 @@ export const createQuotationsRouter = (pool: Pool) => {
            status, oper_state, uf_value, iva_pct, notes, version, created_by,
            kind, equipment_count, equipment_description, frequency, visits_per_year,
            contract_start_date, show_uf_equivalent, show_usd_equivalent, usd_value,
-           version_reason, parent_version_id)
+           version_reason, parent_version_id, mtc_config)
          VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10, $11, $12, $13,
-                 $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+                 $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25::jsonb)
          RETURNING *`,
           [
             req.body.correlative,
@@ -1432,6 +1448,7 @@ export const createQuotationsRouter = (pool: Pool) => {
             source.usd_value,
             req.body.version_reason ?? null,
             isNewVersion ? quotationId : null,
+            source.mtc_config ? JSON.stringify(source.mtc_config) : null,
           ]
         )
 

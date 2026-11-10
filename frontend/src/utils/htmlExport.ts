@@ -1,12 +1,7 @@
-import {
-  calcTotals,
-  fmtCLP,
-  fmtDecimal,
-  VISITS_PER_YEAR,
-  FREQUENCY_LABELS,
-} from '../stores/maestro-store'
+import { calcTotals, fmtCLP, VISITS_PER_YEAR, FREQUENCY_LABELS } from '../stores/maestro-store'
 import type { MasterClient, MasterQuotation } from '../types'
 import { buildQuotationValuationRows } from './quotationRows'
+import { mtcValuationHtml } from './mtcHtml'
 import { quotationContact } from './contacts'
 import { getCurrencyInfo, convertAmount, formatCurrency } from './currencyHelper'
 
@@ -162,14 +157,8 @@ ${listRows(q.scope)}
   let body: string
 
   if (isMtc) {
-    const ivaVisita = totals.venta * (q.iva / 100)
-    const totalVisitaConIva = totals.venta + ivaVisita
     const visits = q.visits_per_year ?? (q.frequency ? VISITS_PER_YEAR[q.frequency] : 0)
     const netoAnual = totals.venta * visits
-    const ivaAnual = netoAnual * (q.iva / 100)
-    const totalAnualConIva = netoAnual + ivaAnual
-    const enUF = q.uf > 0 ? totalAnualConIva / q.uf : 0
-    const enUSD = q.usd > 0 ? totalAnualConIva / q.usd : 0
 
     body = `
   <div class="lh">
@@ -212,28 +201,7 @@ ${scopeBlock('I. Alcance del Servicio de Mantención')}
 
   <div class="sec">
     <div class="st">IV. Valorización</div>
-
-    <div class="gt2">Valor por visita</div>
-    <table class="vt">
-      <thead><tr><th class="cn">N°</th><th>Descripción</th><th class="cm">Valor Neto ${currencyLabel}</th></tr></thead>
-      <tbody>
-${valRows}
-        <tr class="sub"><td colspan="2" style="text-align:right">Subtotal Neto por Visita</td><td class="cm">${fmtCLP.format(totals.venta)}</td></tr>
-        <tr class="riv"><td colspan="2" style="text-align:right">IVA (${q.iva}%)</td><td class="cm">${fmtCLP.format(ivaVisita)}</td></tr>
-        <tr class="tot"><td colspan="2" style="text-align:right">TOTAL POR VISITA CON IVA</td><td class="cm">${fmtCLP.format(totalVisitaConIva)}</td></tr>
-      </tbody>
-    </table>
-
-    <div class="gt2">Valor anual estimado (${visits || 0} visitas/año)</div>
-    <table class="vt">
-      <tbody>
-        <tr class="sub"><td colspan="2" style="text-align:right">Subtotal Neto Anual</td><td class="cm">${fmtCLP.format(netoAnual)}</td></tr>
-        <tr class="riv"><td colspan="2" style="text-align:right">IVA (${q.iva}%)</td><td class="cm">${fmtCLP.format(ivaAnual)}</td></tr>
-        <tr class="tot"><td colspan="2" style="text-align:right">TOTAL ANUAL CON IVA</td><td class="cm">${fmtCLP.format(totalAnualConIva)}</td></tr>
-        ${q.show_uf_equivalent && q.uf > 0 ? `<tr class="ruf"><td colspan="2" style="text-align:right">Equivalente en UF (ref. ${fmtCLP.format(q.uf)}/UF)</td><td class="cm">${enUF.toFixed(2)} UF</td></tr>` : ''}
-        ${q.show_usd_equivalent && q.usd > 0 ? `<tr class="ruf"><td colspan="2" style="text-align:right">Equivalente en USD (ref. ${fmtCLP.format(q.usd)}/USD)</td><td class="cm">US$ ${fmtDecimal.format(enUSD)}</td></tr>` : ''}
-      </tbody>
-    </table>
+${mtcValuationHtml(q, expandedCategoryIds, esc)}
   </div>
 
   <div class="sec">

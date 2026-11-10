@@ -904,7 +904,9 @@ export const useMaestro = create<MaestroState>()(
         // misma cotización — si mientras tanto abrió otra, un guardado tardío
         // de esta no debe pisar el estado de la que está viendo ahora.
         set(s => ({
-          quotations: s.quotations.map(x => (x.id === activeId ? updated : x)),
+          quotations: s.quotations.map(x =>
+            x.id === activeId ? { ...q, total: totals.venta, updated_at: updated.updated_at } : x
+          ),
         }))
         const isLocal = activeId.startsWith('q-')
         if (isLocal) {

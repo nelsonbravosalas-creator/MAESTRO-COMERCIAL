@@ -1,11 +1,16 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react-dom/test-utils'
 import { createRoot, type Root } from 'react-dom/client'
+import { TabDocumentoMtc } from '../Maintenance'
 import { MtcDocumentToolbar } from '../maintenance/MtcDocumentToolbar'
 import { MtcValuationSection } from '../maintenance/MtcValuationSection'
 import { useMaestro } from '../../stores/maestro-store'
 import { defaultSummaryText } from '../../utils/mtcSystems'
 import type { MasterQuotation } from '../../types'
+
+vi.mock('../../hooks/usePermissions', () => ({
+  usePermissions: () => ({ role: 'admin' }),
+}))
 
 let root: Root | undefined
 let container: HTMLDivElement | undefined
@@ -279,5 +284,74 @@ describe('MtcValuationSection', () => {
 
     expect(host.textContent).not.toContain('Equivalente en UF')
     expect(host.textContent).not.toContain('Equivalente en USD')
+  })
+})
+
+describe('TabDocumentoMtc estructura C1', () => {
+  function mountDoc(systems: number) {
+    const q = valuationQuotation(
+      {
+        client_id: 'c1',
+        client_name: 'Cliente SA',
+        contact_id: null,
+        contact: 'Ana Pérez',
+        enduser: 'Usuario Final SA',
+        ref: 'Ref',
+        correlative: 'MTC-1',
+        date: '2026-11-09',
+        status: 'Borrador',
+        scope: [],
+        exclusions: [],
+        commercial: [],
+        contract_start_date: null,
+      },
+      {},
+      systems
+    )
+    setActive(q)
+    useMaestro.setState({
+      clients: [
+        {
+          id: 'c1',
+          name: 'Cliente SA',
+          rut: '76.111.222-3',
+          contact: 'Ana Pérez',
+          cargo: 'Gerente',
+          email: 'ana@cliente.cl',
+          contacts: [],
+        },
+      ] as never,
+    })
+    return render(<TabDocumentoMtc />)
+  }
+
+  it('no muestra el membrete ni el titulo Datos del Cliente', () => {
+    const host = mountDoc(1)
+    const main = host.querySelector('.mtcd-main')!
+    expect(main.querySelector('.doc-letterhead')).toBeNull()
+    expect(main.textContent).not.toContain('Datos del Cliente')
+  })
+
+  it('muestra una tabla compacta con RUT, Cargo, Correo, Usuario final y Elaborado por', () => {
+    const host = mountDoc(1)
+    const table = host.querySelector('.mtcd-main table.doc-client-table')!
+    const heads = [...table.querySelectorAll('th')].map(th => th.textContent)
+    expect(heads).toEqual(
+      expect.arrayContaining(['RUT', 'Cargo', 'Correo', 'Usuario final', 'Elaborado por'])
+    )
+    expect(table.textContent).toContain('76.111.222-3')
+  })
+
+  it('la seccion III tiene una fila por sistema cuando hay mas de uno', () => {
+    const host = mountDoc(2)
+    const section = [...host.querySelectorAll('.doc-section')].find(s =>
+      s.textContent?.includes('III. PLAN DE VISITAS')
+    )!
+    const rows = [...section.querySelectorAll('tr')].map(tr => tr.textContent ?? '')
+    expect(
+      rows.some(r => r.includes('Sistema 1') && r.includes('Mensual') && r.includes('12'))
+    ).toBe(true)
+    expect(rows.some(r => r.includes('Sistema 2') && r.includes('Mensual'))).toBe(true)
+    expect(rows.some(r => r.includes('Vigencia'))).toBe(true)
   })
 })

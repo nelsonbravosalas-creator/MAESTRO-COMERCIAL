@@ -155,3 +155,117 @@
     display: none;
   }
 }
+
+/* ── Columna marina: resumen anual y atención ── */
+.mtcd-side .mtcd-sum {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.mtcd-side .mtcd-sum-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--mtcd-c-b9c4d6);
+}
+
+.mtcd-side .mtcd-num,
+.mtcd-main .doc-valuation td:not(:first-child),
+.mtcd-main .mtcd-totals td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tabla compacta de cliente y rótulos ── */
+.mtcd-main .doc-client-table th,
+.mtcd-main .doc-valuation thead th {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ── Totales: tabla de 300 px a la derecha, sin sombras ni esquinas redondeadas ── */
+.mtcd-main .mtcd-totals {
+  width: 300px;
+  max-width: 100%;
+  margin-left: auto;
+}
+
+.mtcd-main .mtcd-totals tr:last-child td,
+.mtcd-main .mtcd-totals tr:last-child th {
+  background: var(--mtcd-c-eef1f6);
+}
+
+.mtcd-main table,
+.mtcd-main td,
+.mtcd-main th,
+.mtcd-side {
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* ── Controles de la pantalla de base (sistemas y consumibles) ── */
+.mtc-system-fields > div,
+.mtc-consumables-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.mtc-system-fields label,
+.mtc-consumables-section > label,
+.mtc-consumables-toggle label {
+  width: 130px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.mtc-system-fields input:not([type='checkbox']),
+.mtc-system-fields select,
+.mtc-consumables-section input:not([type='checkbox']),
+.mtc-consumables-editor input:not([type='checkbox']) {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--text);
+  background: var(--surface-muted);
+}
+
+.mtc-consumables-editor {
+  overflow-x: auto;
+}
+
+.mtc-consumables-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.mtc-consumables-editor th,
+.mtc-consumables-editor td {
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.mtc-system-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.mtc-consumables-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}

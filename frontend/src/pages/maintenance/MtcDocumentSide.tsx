@@ -3,7 +3,11 @@ import { useActiveQuotation } from '../../stores/maestro-store'
 import { formatMtcMoney } from '../../utils/mtcMoney'
 import { grandSummary } from '../../utils/mtcSystems'
 
-export function MtcDocumentSide(): React.ReactElement | null {
+export function MtcDocumentSide({
+  contactName,
+}: {
+  contactName: string
+}): React.ReactElement | null {
   const q = useActiveQuotation()
 
   if (!q) {
@@ -33,12 +37,29 @@ export function MtcDocumentSide(): React.ReactElement | null {
           <span className="mtcd-value">{q.client_name || '—'}</span>
         </div>
         <div className="mtcd-field">
+          <span className="mtcd-lab">Atención</span>
+          <span className="mtcd-value">{contactName || '—'}</span>
+        </div>
+        <div className="mtcd-field">
           <span className="mtcd-lab">Referencia</span>
           <span className="mtcd-value">{q.ref || '—'}</span>
         </div>
       </div>
 
       <div className="mtcd-side-total">
+        <span className="mtcd-lab">Resumen anual</span>
+        <div className="mtcd-sum">
+          {summary.rows.map(row => (
+            <div className="mtcd-sum-line" key={row.label}>
+              <span>{row.label}</span>
+              <span className="mtcd-num">{formatMtcMoney(row.net, moneyContext, 'CLP')}</span>
+            </div>
+          ))}
+          <div className="mtcd-sum-line">
+            <span>IVA ({q.iva}%)</span>
+            <span className="mtcd-num">{formatMtcMoney(summary.iva, moneyContext, 'CLP')}</span>
+          </div>
+        </div>
         <span className="mtcd-lab">Total anual con IVA</span>
         <span className="mtcd-total">{formatMtcMoney(summary.total, moneyContext, 'CLP')}</span>
       </div>

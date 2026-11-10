@@ -220,7 +220,7 @@ export function MtcValuationSection({
       {model.grand !== null && (
         <section>
           <div className="doc-group-title">Resumen de valores anuales</div>
-          <table className="doc-valuation">
+          <table className="doc-valuation mtcd-totals">
             <tbody>
               {model.grand.rows.map(row => (
                 <tr key={row.label}>

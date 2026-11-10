@@ -7,7 +7,7 @@ import { MtcSystemTabs } from './maintenance/MtcSystemTabs'
 import { MtcValuationSection } from './maintenance/MtcValuationSection'
 import { MtcDocumentSide } from './maintenance/MtcDocumentSide'
 import { MtcDocumentToolbar } from './maintenance/MtcDocumentToolbar'
-import { visitsFor } from '../utils/mtcSystems'
+import { ensureMtcConfig, MTC_FREQUENCY_LABELS, systemTotals, visitsFor } from '../utils/mtcSystems'
 import { LOCKED_STATUSES } from './Quotations'
 import {
   useMaestro,
@@ -653,7 +653,7 @@ function TabBaseMtc() {
 
 // ── Tab Documento ──────────────────────────────────────────────────────────────
 
-function TabDocumentoMtc() {
+export function TabDocumentoMtc() {
   const q = useActiveQuotation()
   const { clients, saveActive, reloadActive } = useMaestro()
   const { role } = usePermissions()
@@ -688,6 +688,7 @@ function TabDocumentoMtc() {
   // cifra multiplicada por la frecuencia contratada (ver decisión del plan).
 
   const visits = q.visits_per_year ?? (q.frequency ? VISITS_PER_YEAR[q.frequency] : 0)
+  const mtcSystems = ensureMtcConfig(q).systems
 
   // Soporte para moneda de visualización
 
@@ -792,57 +793,32 @@ function TabDocumentoMtc() {
 
       <div className="coti-doc mtcd-doc" ref={docRef}>
         <div className="mtcd-wrap">
-          <MtcDocumentSide />
+          <MtcDocumentSide contactName={contact.name} />
           <div className="mtcd-main">
-            <div className="doc-letterhead">
-              <div className="doc-lh-brand">
-                <img src="/logo-nbyb.svg" alt="NβyB" className="doc-logo" />
-              </div>
-              <div className="doc-lh-docinfo">
-                <div className="doc-doctype">Cotización de Mantención</div>
-                <div className="doc-docnum">{q.correlative}</div>
-                <div className="doc-docdate">Fecha: {fmtDateLong(q.date)}</div>
-              </div>
-            </div>
-            <div className="doc-accent-rule" />
-
-            <div className="doc-section-group">
-              <div className="doc-group-title">Datos del Cliente</div>
-              <table className="doc-client-table">
-                <tbody>
+            <table className="doc-client-table">
+              <tbody>
+                <tr>
+                  <th>RUT</th>
+                  <td>{client?.rut || '—'}</td>
+                  <th>Cargo</th>
+                  <td>{contact.cargo || '—'}</td>
+                </tr>
+                <tr>
+                  <th>Correo</th>
+                  <td colSpan={3}>{contact.email || '—'}</td>
+                </tr>
+                {q.enduser && (
                   <tr>
-                    <th>Empresa</th>
-                    <td>{q.client_name || '—'}</td>
-                    <th>RUT</th>
-                    <td>{client?.rut || '—'}</td>
+                    <th>Usuario final</th>
+                    <td colSpan={3}>{q.enduser}</td>
                   </tr>
-                  <tr>
-                    <th>Contacto</th>
-                    <td>{contact.name || '—'}</td>
-                    <th>Cargo</th>
-                    <td>{contact.cargo || '—'}</td>
-                  </tr>
-                  <tr>
-                    <th>Correo</th>
-                    <td colSpan={3}>{contact.email || '—'}</td>
-                  </tr>
-                  <tr>
-                    <th>Referencia</th>
-                    <td colSpan={3}>{q.ref || '—'}</td>
-                  </tr>
-                  {q.enduser && (
-                    <tr>
-                      <th>Usuario Final</th>
-                      <td colSpan={3}>{q.enduser}</td>
-                    </tr>
-                  )}
-                  <tr className="doc-row-elaborado">
-                    <th>Elaborado por</th>
-                    <td colSpan={3}>{sessionUser?.name || '—'}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                )}
+                <tr className="doc-row-elaborado">
+                  <th>Elaborado por</th>
+                  <td colSpan={3}>{sessionUser?.name || '—'}</td>
+                </tr>
+              </tbody>
+            </table>
 
             <div className="doc-section">
               <div className="doc-section-title">I. ALCANCE DEL SERVICIO DE MANTENCIÓN</div>
@@ -869,12 +845,23 @@ function TabDocumentoMtc() {
               <div className="doc-section-title">III. PLAN DE VISITAS</div>
               <table className="doc-client-table">
                 <tbody>
-                  <tr>
-                    <th>Frecuencia</th>
-                    <td>{q.frequency ? FREQUENCY_LABELS[q.frequency] : '—'}</td>
-                    <th>Visitas / año</th>
-                    <td>{visits || '—'}</td>
-                  </tr>
+                  {mtcSystems.length > 1 ? (
+                    mtcSystems.map((sys, i) => (
+                      <tr key={i}>
+                        <th>{sys.name || `Sistema ${i + 1}`}</th>
+                        <td>{MTC_FREQUENCY_LABELS[sys.frequency]}</td>
+                        <th>Visitas / año</th>
+                        <td>{systemTotals(q, i).visits}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <th>Frecuencia</th>
+                      <td>{q.frequency ? FREQUENCY_LABELS[q.frequency] : '—'}</td>
+                      <th>Visitas / año</th>
+                      <td>{visits || '—'}</td>
+                    </tr>
+                  )}
                   <tr>
                     <th>Vigencia</th>
                     <td colSpan={3}>

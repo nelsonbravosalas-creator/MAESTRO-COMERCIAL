@@ -1,11 +1,15 @@
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 
-export async function downloadPdfFromElement(element: HTMLElement, fileName: string): Promise<void> {
+export async function downloadPdfFromElement(
+  element: HTMLElement,
+  fileName: string
+): Promise<void> {
   element.classList.add('pdf-exporting')
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 
   try {
+    await document.fonts.ready
     const canvas = await html2canvas(element, {
       backgroundColor: '#ffffff',
       scale: 2,

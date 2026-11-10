@@ -654,6 +654,7 @@ function fromMasterQuotation(q: MasterQuotation) {
     show_uf_equivalent: Boolean(q.show_uf_equivalent),
     show_usd_equivalent: Boolean(q.show_usd_equivalent),
     display_currency: q.display_currency,
+    mtc_config: q.mtc_config ?? null,
   }
 }
 

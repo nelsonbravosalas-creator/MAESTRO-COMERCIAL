@@ -16,6 +16,21 @@ import {
 import api, { ApiError } from '../api/api'
 import type { ImportQuotationResult } from '../api/api'
 import { calcCat, calcTotals } from '../utils/costeoMath'
+import {
+  addMtcSystemQ,
+  removeMtcSystemQ,
+  patchMtcSystemQ,
+  patchMtcConfigQ,
+  patchMtcConsumablesQ,
+  addMtcConsumableRowQ,
+  patchMtcConsumableRowQ,
+  removeMtcConsumableRowQ,
+} from '../utils/mtcActions'
+import {
+  selectMtcSystem as selectSystemQ,
+  newMtcSystem,
+  toPersistedQuotation,
+} from '../utils/mtcSystems'
 
 // ── Defaults ──────────────────────────────────────────────────
 
@@ -157,6 +172,18 @@ const DEFAULT_ITEMS: Record<CategoryId, CostItem[]> = {
   mec: [{ id: 'i6', desc: '', unidad: 'Und', cant: 0, unit: 0 }],
   ele: [{ id: 'i7', desc: '', unidad: 'Und', cant: 0, unit: 0 }],
 }
+
+export function defaultCosteo(): {
+  categories: CostCategory[]
+  items: Record<CategoryId, CostItem[]>
+} {
+  return { categories: structuredClone(DEFAULT_CATEGORIES), items: structuredClone(DEFAULT_ITEMS) }
+}
+
+const onActive = (fn: (q: MasterQuotation) => MasterQuotation) => (s: MaestroState) => ({
+  quotations: s.quotations.map(q => (q.id === s.activeId ? { ...fn(q) } : q)),
+  unsaved: true,
+})
 
 const DEFAULT_SCOPE = [
   'Suministro e instalación de equipos.',
@@ -368,6 +395,19 @@ interface MaestroState {
   setCatMargin: (catId: CategoryId, margin: number) => void
   toggleCat: (catId: CategoryId, field: 'collapsed' | 'showDetails' | 'showValues') => void
   setCatLabel: (catId: CategoryId, label: string) => void
+  addMtcSystem: () => void
+  removeMtcSystem: (index: number) => void
+  selectMtcSystem: (index: number) => void
+  patchMtc: (fields: Parameters<typeof patchMtcConfigQ>[1]) => void
+  patchMtcSystem: (index: number, fields: Parameters<typeof patchMtcSystemQ>[2]) => void
+  patchMtcConsumables: (index: number, fields: Parameters<typeof patchMtcConsumablesQ>[2]) => void
+  addMtcConsumableRow: (index: number, seed?: Parameters<typeof addMtcConsumableRowQ>[2]) => void
+  patchMtcConsumableRow: (
+    index: number,
+    rowId: string,
+    fields: Parameters<typeof patchMtcConsumableRowQ>[3]
+  ) => void
+  removeMtcConsumableRow: (index: number, rowId: string) => void
 
   // Lists
   addListItem: (key: 'scope' | 'exclusions' | 'commercial') => void
@@ -500,7 +540,10 @@ export const useMaestro = create<MaestroState>()(
                 if (hasLocalItems || hasLocalTerms) {
                   return {
                     ...serverQ,
-                    items: localQ.items,
+                    items: toPersistedQuotation(localQ).items,
+                    categories: toPersistedQuotation(localQ).categories,
+                    mtc_config: toPersistedQuotation(localQ).mtc_config,
+                    mtc_active_system: 0,
                     scope: localQ.scope,
                     exclusions: localQ.exclusions,
                     commercial: localQ.commercial,
@@ -642,7 +685,14 @@ export const useMaestro = create<MaestroState>()(
           show_uf_equivalent: false,
           show_usd_equivalent: false,
           display_currency: 'CLP',
-          mtc_config: null,
+          mtc_config: isMtc
+            ? {
+                v: 1,
+                summary_mode: false,
+                show_summary_table: false,
+                systems: [newMtcSystem(1, null)],
+              }
+            : null,
           mtc_active_system: 0,
           invoice_count: 0,
           invoice_count_max: 1,
@@ -817,6 +867,23 @@ export const useMaestro = create<MaestroState>()(
           }
         }),
 
+      addMtcSystem: () => set(onActive(q => addMtcSystemQ(q, defaultCosteo()))),
+      removeMtcSystem: index => set(onActive(q => removeMtcSystemQ(q, index))),
+      selectMtcSystem: index =>
+        set(s => ({
+          quotations: s.quotations.map(q => (q.id === s.activeId ? selectSystemQ(q, index) : q)),
+        })),
+      patchMtc: fields => set(onActive(q => patchMtcConfigQ(q, fields))),
+      patchMtcSystem: (index, fields) => set(onActive(q => patchMtcSystemQ(q, index, fields))),
+      patchMtcConsumables: (index, fields) =>
+        set(onActive(q => patchMtcConsumablesQ(q, index, fields))),
+      addMtcConsumableRow: (index, seed) =>
+        set(onActive(q => addMtcConsumableRowQ(q, index, seed))),
+      patchMtcConsumableRow: (index, rowId, fields) =>
+        set(onActive(q => patchMtcConsumableRowQ(q, index, rowId, fields))),
+      removeMtcConsumableRow: (index, rowId) =>
+        set(onActive(q => removeMtcConsumableRowQ(q, index, rowId))),
+
       saveActive: async () => {
         const { activeId, quotations } = get()
         if (!activeId) return
@@ -825,9 +892,10 @@ export const useMaestro = create<MaestroState>()(
         if (!q.client_id) {
           throw new Error('Selecciona un cliente antes de guardar la cotización')
         }
-        const totals = calcTotals(q)
+        const persisted = toPersistedQuotation(q)
+        const totals = calcTotals(persisted)
         const updated = {
-          ...q,
+          ...persisted,
           total: totals.venta,
           updated_at: new Date().toISOString().slice(0, 10),
         }
@@ -840,7 +908,10 @@ export const useMaestro = create<MaestroState>()(
         }))
         const isLocal = activeId.startsWith('q-')
         if (isLocal) {
-          const saved = await createQuotationWithRetry(set, activeId, updated)
+          const saved = selectSystemQ(
+            await createQuotationWithRetry(set, activeId, updated),
+            q.mtc_active_system
+          )
           set(s =>
             s.activeId === activeId
               ? {
@@ -851,7 +922,7 @@ export const useMaestro = create<MaestroState>()(
               : { quotations: s.quotations.map(x => (x.id === activeId ? saved : x)) }
           )
         } else {
-          const saved = await api.updateQuotation(updated)
+          const saved = selectSystemQ(await api.updateQuotation(updated), q.mtc_active_system)
           set(s =>
             s.activeId === activeId
               ? {

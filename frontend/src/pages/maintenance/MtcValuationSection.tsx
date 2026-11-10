@@ -1,12 +1,15 @@
 import { useActiveQuotation, useMaestro } from '../../stores/maestro-store'
 import { buildMtcDocument } from '../../utils/mtcDocument'
+import { systemTotals } from '../../utils/mtcSystems'
 
 export function MtcValuationSection({
   expandedCats,
   onToggleCat,
+  disabled = false,
 }: {
   expandedCats: Set<string>
   onToggleCat: (catId: string) => void
+  disabled?: boolean
 }) {
   const q = useActiveQuotation()
   const { patchMtcSystem } = useMaestro()
@@ -16,6 +19,41 @@ export function MtcValuationSection({
   }
 
   const model = buildMtcDocument(q, expandedCats)
+  const single = model.blocks.length === 1 ? model.blocks[0] : null
+  const yearTotalClp = (() => {
+    const yearNet = single && !single.isUnique ? systemTotals(q, 0).yearNet : 0
+    const net = Number.isFinite(yearNet) ? yearNet : 0
+    const iva = Number.isFinite(q.iva) ? q.iva : 0
+    return net + (net * iva) / 100
+  })()
+  const refClp = (value: number) => Math.round(value).toLocaleString('es-CL')
+  const equivalentRows = (colSpan: number) => {
+    if (!single || single.isUnique) return null
+    const showUf = q.show_uf_equivalent && q.uf > 0 && single.currencyCode !== 'UF'
+    const showUsd = q.show_usd_equivalent && q.usd > 0 && single.currencyCode !== 'USD'
+    return (
+      <>
+        {showUf && (
+          <tr className="doc-uf">
+            <td colSpan={colSpan}>Equivalente en UF (ref. ${refClp(q.uf)}/UF)</td>
+            <td>{(yearTotalClp / q.uf).toFixed(2)} UF</td>
+          </tr>
+        )}
+        {showUsd && (
+          <tr className="doc-usd">
+            <td colSpan={colSpan}>Equivalente en USD (ref. ${refClp(q.usd)}/USD)</td>
+            <td>
+              US${' '}
+              {(yearTotalClp / q.usd).toLocaleString('es-CL', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </td>
+          </tr>
+        )}
+      </>
+    )
+  }
   const totalClass = (index: number) => {
     if (index === 0) return 'doc-subtotal'
     if (index === 1) return 'doc-iva-row'
@@ -58,6 +96,7 @@ export function MtcValuationSection({
                       <td>{row.amount}</td>
                     </tr>
                   ))}
+                {equivalentRows(2)}
               </tbody>
             </table>
           ) : (
@@ -77,7 +116,9 @@ export function MtcValuationSection({
                   <td>{block.summaryRow.qty}</td>
                   <td>
                     <textarea
+                      className="mtc-summary-input"
                       aria-label="Texto de la descripción del servicio"
+                      disabled={disabled}
                       value={block.summaryRow.text}
                       onChange={e =>
                         patchMtcSystem(block.index, {
@@ -86,9 +127,13 @@ export function MtcValuationSection({
                       }
                       rows={6}
                     />
+                    <div className="print-only" style={{ whiteSpace: 'pre-line' }}>
+                      {block.summaryRow.text}
+                    </div>
                     {block.summaryRow.edited && (
                       <button
                         type="button"
+                        disabled={disabled}
                         onClick={() => patchMtcSystem(block.index, { summary_text: null })}
                       >
                         Restablecer texto
@@ -104,6 +149,7 @@ export function MtcValuationSection({
                     <td>{row.amount}</td>
                   </tr>
                 ))}
+                {equivalentRows(4)}
               </tbody>
             </table>
           )}

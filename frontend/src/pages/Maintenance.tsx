@@ -890,7 +890,11 @@ function TabDocumentoMtc() {
 
             <div className="doc-section">
               <div className="doc-section-title">IV. VALORIZACIÓN</div>
-              <MtcValuationSection expandedCats={expandedCats} onToggleCat={toggleCat} />
+              <MtcValuationSection
+                expandedCats={expandedCats}
+                onToggleCat={toggleCat}
+                disabled={isLocked}
+              />
             </div>
 
             <div className="doc-section">

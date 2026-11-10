@@ -133,3 +133,25 @@
     padding: 24px 16px;
   }
 }
+
+.print-only {
+  display: none;
+}
+
+.pdf-exporting .print-only {
+  display: block;
+}
+
+.pdf-exporting .mtc-summary-input {
+  display: none;
+}
+
+@media print {
+  .print-only {
+    display: block;
+  }
+
+  .mtc-summary-input {
+    display: none;
+  }
+}

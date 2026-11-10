@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react'
 import '../styles/Quotations.css'
 import '../styles/Maintenance.css'
+import { MtcSystemsPanel } from './maintenance/MtcSystemsPanel'
+import { MtcSystemTabs } from './maintenance/MtcSystemTabs'
 import {
   useMaestro,
   useActiveQuotation,
@@ -430,8 +432,6 @@ function TabBaseMtc() {
     }
   }
 
-  const visits = q.frequency ? VISITS_PER_YEAR[q.frequency] : (q.visits_per_year ?? 0)
-
   return (
     <div className="tab-base">
       <div className="base-grid">
@@ -556,28 +556,7 @@ function TabBaseMtc() {
               className="base-input"
             />
           </div>
-          <div className="base-row">
-            <label>Frecuencia</label>
-            <select
-              value={q.frequency ?? ''}
-              className="base-input"
-              onChange={e => {
-                const freq = (e.target.value || null) as MtcFrequency | null
-                patch({ frequency: freq, visits_per_year: freq ? VISITS_PER_YEAR[freq] : null })
-              }}
-            >
-              <option value="">— Seleccionar —</option>
-              {(Object.keys(FREQUENCY_LABELS) as MtcFrequency[]).map(f => (
-                <option key={f} value={f}>
-                  {FREQUENCY_LABELS[f]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="base-row">
-            <label>Visitas / año</label>
-            <span className="base-rut">{visits || '—'}</span>
-          </div>
+          <MtcSystemsPanel disabled={false} />
         </div>
 
         <div className="base-card">
@@ -1217,7 +1196,12 @@ export const Maintenance: React.FC<{ onNavigateToInvoices?: (quotationId: string
 
           <div className="q-tab-content">
             {activeTab === 'base' && <TabBaseMtc />}
-            {activeTab === 'costeo' && <TabCosteo />}
+            {activeTab === 'costeo' && (
+              <>
+                <MtcSystemTabs />
+                <TabCosteo />
+              </>
+            )}
             {activeTab === 'doc' && <TabDocumentoMtc />}
           </div>
         </div>

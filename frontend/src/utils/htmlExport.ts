@@ -158,7 +158,6 @@ ${listRows(q.scope)}
 
   if (isMtc) {
     const visits = q.visits_per_year ?? (q.frequency ? VISITS_PER_YEAR[q.frequency] : 0)
-    const netoAnual = totals.venta * visits
 
     body = `
   <div class="lh">

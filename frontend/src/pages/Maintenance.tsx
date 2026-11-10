@@ -6,6 +6,7 @@ import { MtcSystemsPanel } from './maintenance/MtcSystemsPanel'
 import { MtcSystemTabs } from './maintenance/MtcSystemTabs'
 import { MtcValuationSection } from './maintenance/MtcValuationSection'
 import { MtcDocumentSide } from './maintenance/MtcDocumentSide'
+import { MtcDocumentToolbar } from './maintenance/MtcDocumentToolbar'
 import { visitsFor } from '../utils/mtcSystems'
 import { LOCKED_STATUSES } from './Quotations'
 import {
@@ -654,7 +655,8 @@ function TabBaseMtc() {
 
 function TabDocumentoMtc() {
   const q = useActiveQuotation()
-  const { clients, saveActive, reloadActive, patchActive } = useMaestro()
+  const { clients, saveActive, reloadActive } = useMaestro()
+  const { role } = usePermissions()
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -678,6 +680,7 @@ function TabDocumentoMtc() {
 
   if (!q) return null
 
+  const isLocked = LOCKED_STATUSES.includes(q.status) && role !== 'admin'
   const client = clients.find(c => c.id === q.client_id)
   const contact = quotationContact(q, client)
 
@@ -784,33 +787,7 @@ function TabDocumentoMtc() {
           {loadingPdf ? 'Generando...' : 'Descargar PDF'}
         </button>
         <div className="coti-toolbar-sep" />
-        <label className="mtc-currency-toggle">
-          <input
-            type="checkbox"
-            checked={q.show_uf_equivalent}
-            onChange={e => patchActive({ show_uf_equivalent: e.target.checked })}
-          />
-          Mostrar UF
-        </label>
-        <label className="mtc-currency-toggle">
-          <input
-            type="checkbox"
-            checked={q.show_usd_equivalent}
-            onChange={e => patchActive({ show_usd_equivalent: e.target.checked })}
-          />
-          Mostrar USD
-        </label>
-        {q.show_usd_equivalent && (
-          <div className="mtc-usd-input">
-            <span>USD ref. $</span>
-            <input
-              type="number"
-              min="0"
-              value={q.usd || ''}
-              onChange={e => patchActive({ usd: parseFloat(e.target.value) || 0 })}
-            />
-          </div>
-        )}
+        <MtcDocumentToolbar disabled={isLocked} />
       </div>
 
       <div className="coti-doc mtcd-doc" ref={docRef}>

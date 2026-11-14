@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { Pool } from 'pg'
-import { authMiddleware, roleMiddleware } from '../middleware/auth'
+import { authMiddleware, roleMiddleware, type AuthRequest } from '../middleware/auth'
 import { logger } from '../utils/logger'
 import { validate } from '../middleware/validate'
 import {
@@ -30,7 +30,7 @@ export const createConfigRouter = (pool: Pool) => {
     '/logo',
     roleMiddleware('admin'),
     validate({ body: companyLogoBodySchema }),
-    async (req: any, res) => {
+    async (req: AuthRequest, res) => {
       try {
         await pool.query(
           `INSERT INTO app_config (key, value, updated_by)
@@ -43,7 +43,7 @@ export const createConfigRouter = (pool: Pool) => {
         )
         return res.json({ key: COMPANY_LOGO_KEY, value: req.body.dataUrl })
       } catch (error: any) {
-        logger.error('Update logo error', { error: error.message })
+        logger.error('Update logo error', { error: String(error) })
         return res.status(500).json({ error: 'Failed to update logo' })
       }
     }
@@ -53,8 +53,8 @@ export const createConfigRouter = (pool: Pool) => {
     try {
       await pool.query('DELETE FROM app_config WHERE key = $1', [COMPANY_LOGO_KEY])
       return res.json({ key: COMPANY_LOGO_KEY, deleted: true })
-    } catch (error: any) {
-      logger.error('Delete logo error', { error: error.message })
+    } catch (error) {
+      logger.error('Delete logo error', { error: String(error) })
       return res.status(500).json({ error: 'Failed to delete logo' })
     }
   })

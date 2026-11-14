@@ -1,17 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import express from 'express'
+import express, { type NextFunction, type Request, type Response } from 'express'
 import request from 'supertest'
 
 // Auth real requiere JWT; en la prueba el rol llega en la cabecera x-test-role.
 vi.mock('../../middleware/auth', () => ({
-  authMiddleware: (req: any, _res: any, next: any) => {
-    req.user = { id: 'user-1', role: req.headers['x-test-role'] ?? 'user' }
+  authMiddleware: (
+    req: Request & { user?: { id: string; role: string } },
+    _res: Response,
+    next: NextFunction
+  ) => {
+    req.user = { id: 'user-1', role: String(req.headers['x-test-role'] ?? 'user') }
     next()
   },
   roleMiddleware:
     (...roles: string[]) =>
-    (req: any, res: any, next: any) =>
-      roles.includes(req.user?.role) ? next() : res.status(403).json({ error: 'Forbidden' }),
+    (req: Request & { user?: { role: string } }, res: Response, next: NextFunction) =>
+      roles.includes(req.user?.role ?? '') ? next() : res.status(403).json({ error: 'Forbidden' }),
 }))
 
 import { createConfigRouter } from '../config'

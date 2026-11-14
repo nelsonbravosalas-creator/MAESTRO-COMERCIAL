@@ -22,6 +22,9 @@ import { primaryContact, quotationContact } from '../utils/contacts'
 import { CatalogAutocomplete } from '../components/CatalogAutocomplete'
 import { VersionReasonModal } from '../components/VersionReasonModal'
 import { usePermissions } from '../hooks/usePermissions'
+import DocLogo from '../components/DocLogo'
+import LogoUploadButton from '../components/LogoUploadButton'
+import { useCompanyLogo } from '../stores/companyLogoStore'
 import { ApiError, api } from '../api/api'
 import { getErrorMessage } from '../utils/apiError'
 // docx/html2canvas/jsPDF son pesados y solo hacen falta al exportar: se cargan
@@ -2116,6 +2119,7 @@ function TabCotizacion() {
   const [loadingDocx, setLoadingDocx] = useState(false)
   const [loadingPdf, setLoadingPdf] = useState(false)
   const docRef = useRef<HTMLDivElement>(null)
+  const logo = useCompanyLogo(s => s.logo)
 
   const sessionUser = useMemo(() => {
     try {
@@ -2169,6 +2173,7 @@ function TabCotizacion() {
         client,
         sessionUserName: sessionUser?.name || '\u2014',
         expandedCategoryIds: expandedCats,
+        logoDataUrl: logo,
       })
       showToast('Documento DOCX generado')
     } catch {
@@ -2186,6 +2191,7 @@ function TabCotizacion() {
         client,
         sessionUserName: sessionUser?.name || '\u2014',
         expandedCategoryIds: expandedCats,
+        logoDataUrl: logo,
       })
       showToast('Documento HTML generado')
     } catch {
@@ -2255,6 +2261,7 @@ function TabCotizacion() {
           <span>🖨</span>
           {loadingPdf ? 'Generando...' : 'Descargar PDF'}
         </button>
+        <LogoUploadButton onMessage={showToast} />
       </div>
 
       {/* ── Document (letter format) ── */}
@@ -2262,7 +2269,7 @@ function TabCotizacion() {
         {/* Letterhead */}
         <div className="doc-letterhead">
           <div className="doc-lh-brand">
-            <img src="/logo-nbyb.svg" alt="NβyB" className="doc-logo" />
+            <DocLogo />
           </div>
           <div className="doc-lh-docinfo">
             <div className="doc-doctype">Cotización de Servicios</div>

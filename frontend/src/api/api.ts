@@ -962,6 +962,9 @@ export const api = {
 
   // ── Config ──────────────────────────────────────────────────
   getConfig: () => get<Record<string, string>>('/api/config'),
+  setCompanyLogo: (dataUrl: string) =>
+    put<{ key: string; value: string }>('/api/config/logo', { dataUrl }),
+  deleteCompanyLogo: () => del<{ key: string; deleted: boolean }>('/api/config/logo'),
 
   // ── Catálogo ────────────────────────────────────────────────
   getCatalog: async (): Promise<CatalogsUI> => {

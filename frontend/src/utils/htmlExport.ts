@@ -24,8 +24,12 @@ export function downloadHtml(params: {
   client: MasterClient | undefined
   sessionUserName: string
   expandedCategoryIds?: Iterable<string>
+  logoDataUrl?: string | null
 }): void {
-  const { q, client, sessionUserName, expandedCategoryIds } = params
+  const { q, client, sessionUserName, expandedCategoryIds, logoDataUrl } = params
+  const brandHtml = logoDataUrl
+    ? `<img src="${esc(logoDataUrl)}" alt="NβyB" style="max-width:152px;max-height:64px;object-fit:contain;display:block"/>`
+    : '<div class="co">N&beta;yB</div>'
   const isMtc = q.kind === 'maintenance'
   const totals = calcTotals(q)
   const currencyInfo = getCurrencyInfo(q, q.display_currency)
@@ -162,7 +166,7 @@ ${listRows(q.scope)}
     body = `
   <div class="lh">
     <div class="lh-l">
-      <div class="co">N&beta;yB</div>
+      ${brandHtml}
       <div class="cs"><strong>Ingeniería y Servicios Bravo SPA</strong></div>
       <div class="cs">RUT: 77.175.319-1 &nbsp;·&nbsp; Tel. +56 (9) 90943080</div>
     </div>
@@ -226,7 +230,7 @@ ${footerBlock('VI')}`
     body = `
   <div class="lh">
     <div class="lh-l">
-      <div class="co">N&beta;yB</div>
+      ${brandHtml}
       <div class="cs"><strong>Ingeniería y Servicios Bravo SPA</strong></div>
       <div class="cs">RUT: 77.175.319-1 &nbsp;·&nbsp; Tel. +56 (9) 90943080</div>
     </div>

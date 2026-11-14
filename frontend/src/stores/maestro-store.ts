@@ -15,6 +15,7 @@ import {
 } from '../types'
 import api, { ApiError } from '../api/api'
 import type { ImportQuotationResult } from '../api/api'
+import { useCompanyLogo } from './companyLogoStore'
 import { calcCat, calcTotals } from '../utils/costeoMath'
 import {
   addMtcSystemQ,
@@ -519,6 +520,7 @@ export const useMaestro = create<MaestroState>()(
           // "Materiales Eléctricos" vive en su propia tabla — no viene en
           // GET /api/catalog, se mergea acá al mismo shape que el resto.
           catalogsFromAPI.ele = electricalItems
+          useCompanyLogo.getState().setLogo(config.company_logo || null)
           set(s => {
             // El endpoint GET /api/quotations es liviano (sin line_items ni terms).
             // Mergeamos preservando los datos locales ya cargados en el store.

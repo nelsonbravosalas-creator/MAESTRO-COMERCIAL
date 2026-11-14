@@ -1059,6 +1059,13 @@
   display: none !important;
 }
 
+/* Los márgenes superior e inferior los aplica el PDF en cada página */
+.coti-doc.pdf-exporting {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 0 !important;
+}
+
 .coti-doc.pdf-exporting .doc-list-textarea {
   border: none !important;
   background: transparent !important;
@@ -1081,8 +1088,11 @@
 }
 
 .doc-logo {
-  width: 152px;
+  max-width: 152px;
+  max-height: 64px;
+  width: auto;
   height: auto;
+  object-fit: contain;
   display: block;
 }
 

@@ -31,6 +31,8 @@ import {
   ContactPicker,
 } from './Quotations'
 import { usePermissions } from '../hooks/usePermissions'
+import LogoUploadButton from '../components/LogoUploadButton'
+import { useCompanyLogo } from '../stores/companyLogoStore'
 // docx/html2canvas/jsPDF son pesados y solo hacen falta al exportar: se cargan
 // bajo demanda en cada handler (fase F7), no junto con el resto de la pantalla.
 import { ApiError, api } from '../api/api'
@@ -662,6 +664,7 @@ export function TabDocumentoMtc() {
   const [saving, setSaving] = useState(false)
   const [loadingDocx, setLoadingDocx] = useState(false)
   const [loadingPdf, setLoadingPdf] = useState(false)
+  const logo = useCompanyLogo(s => s.logo)
   const docRef = useRef<HTMLDivElement>(null)
 
   const sessionUser = useMemo(() => {
@@ -714,6 +717,7 @@ export function TabDocumentoMtc() {
         client,
         sessionUserName: sessionUser?.name || '—',
         expandedCategoryIds: expandedCats,
+        logoDataUrl: logo,
       })
       showToast('Documento DOCX generado')
     } catch {
@@ -731,6 +735,7 @@ export function TabDocumentoMtc() {
         client,
         sessionUserName: sessionUser?.name || '—',
         expandedCategoryIds: expandedCats,
+        logoDataUrl: logo,
       })
       showToast('Documento HTML generado')
     } catch {
@@ -787,6 +792,7 @@ export function TabDocumentoMtc() {
           <span>🖨</span>
           {loadingPdf ? 'Generando...' : 'Descargar PDF'}
         </button>
+        <LogoUploadButton onMessage={showToast} />
         <div className="coti-toolbar-sep" />
         <MtcDocumentToolbar disabled={isLocked} />
       </div>

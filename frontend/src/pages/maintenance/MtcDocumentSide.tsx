@@ -1,4 +1,5 @@
 import type React from 'react'
+import DocLogo from '../../components/DocLogo'
 import { useActiveQuotation } from '../../stores/maestro-store'
 import { formatMtcMoney } from '../../utils/mtcMoney'
 import { grandSummary } from '../../utils/mtcSystems'
@@ -19,6 +20,7 @@ export function MtcDocumentSide({
 
   return (
     <aside className="mtcd-side">
+      <DocLogo />
       <div className="mtcd-brand">Ingeniería y Servicios Bravo SpA</div>
 
       <h1 className="mtcd-title">Cotización de Mantención</h1>

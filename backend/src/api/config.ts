@@ -3,7 +3,12 @@ import { Pool } from 'pg'
 import { authMiddleware, roleMiddleware } from '../middleware/auth'
 import { logger } from '../utils/logger'
 import { validate } from '../middleware/validate'
-import { configKeyParamSchema, configValueSchema } from '../schemas/config'
+import {
+  COMPANY_LOGO_KEY,
+  companyLogoBodySchema,
+  configKeyParamSchema,
+  configValueSchema,
+} from '../schemas/config'
 
 export const createConfigRouter = (pool: Pool) => {
   const router = Router()
@@ -21,6 +26,39 @@ export const createConfigRouter = (pool: Pool) => {
     }
   })
 
+  router.put(
+    '/logo',
+    roleMiddleware('admin'),
+    validate({ body: companyLogoBodySchema }),
+    async (req: any, res) => {
+      try {
+        await pool.query(
+          `INSERT INTO app_config (key, value, updated_by)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (key) DO UPDATE
+           SET value = EXCLUDED.value,
+               updated_at = NOW(),
+               updated_by = EXCLUDED.updated_by`,
+          [COMPANY_LOGO_KEY, req.body.dataUrl, req.user?.id ?? null]
+        )
+        return res.json({ key: COMPANY_LOGO_KEY, value: req.body.dataUrl })
+      } catch (error: any) {
+        logger.error('Update logo error', { error: error.message })
+        return res.status(500).json({ error: 'Failed to update logo' })
+      }
+    }
+  )
+
+  router.delete('/logo', roleMiddleware('admin'), async (_req, res) => {
+    try {
+      await pool.query('DELETE FROM app_config WHERE key = $1', [COMPANY_LOGO_KEY])
+      return res.json({ key: COMPANY_LOGO_KEY, deleted: true })
+    } catch (error: any) {
+      logger.error('Delete logo error', { error: error.message })
+      return res.status(500).json({ error: 'Failed to delete logo' })
+    }
+  })
+
   router.patch(
     '/:key',
     roleMiddleware('admin'),
@@ -29,6 +67,11 @@ export const createConfigRouter = (pool: Pool) => {
       try {
         const { key } = req.params
         const { value } = req.body
+
+        // El logo solo se cambia por PUT /logo, que valida el formato de imagen.
+        if (key === COMPANY_LOGO_KEY) {
+          return res.status(400).json({ error: 'Use PUT /api/config/logo' })
+        }
 
         const result = await pool.query(
           `INSERT INTO app_config (key, value, updated_by)

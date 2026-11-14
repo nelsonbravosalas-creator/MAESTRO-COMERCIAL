@@ -279,6 +279,43 @@ app.get('/api/config', requireAuth, (_req: Request, res: Response) => {
   res.json(config)
 })
 
+app.put('/api/config/logo', requireAuth, requireRole('admin'), (req: AuthReq, res: Response) => {
+  const dataUrl = String(req.body?.dataUrl ?? '')
+  if (
+    dataUrl.length > 200_000 ||
+    !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+=*$/.test(dataUrl)
+  ) {
+    res.status(400).json({ error: 'Logo debe ser PNG o JPEG en base64' })
+    return
+  }
+  const existing = db.app_config.find((c: any) => c.key === 'company_logo')
+  if (existing) {
+    existing.value = dataUrl
+    existing.updated_at = now()
+    existing.updated_by = req.user.id
+  } else {
+    db.app_config.push({
+      key: 'company_logo',
+      value: dataUrl,
+      updated_at: now(),
+      updated_by: req.user.id,
+    })
+  }
+  saveDB(db)
+  res.json({ key: 'company_logo', value: dataUrl })
+})
+
+app.delete(
+  '/api/config/logo',
+  requireAuth,
+  requireRole('admin'),
+  (_req: AuthReq, res: Response) => {
+    db.app_config = db.app_config.filter((c: any) => c.key !== 'company_logo')
+    saveDB(db)
+    res.json({ key: 'company_logo', deleted: true })
+  }
+)
+
 app.patch('/api/config/:key', requireAuth, requireRole('admin'), (req: AuthReq, res: Response) => {
   const { key } = req.params
   const { value } = req.body

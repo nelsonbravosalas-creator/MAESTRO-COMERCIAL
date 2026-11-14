@@ -3,6 +3,7 @@ import {
   BorderStyle,
   convertMillimetersToTwip as mm,
   Document,
+  ImageRun,
   Packer,
   Paragraph,
   ShadingType,
@@ -20,6 +21,29 @@ import { quotationContact } from './contacts'
 import { buildMtcValuationChildren } from './mtcDocx'
 import { buildMtcDocument } from './mtcDocument'
 import { getCurrencyInfo, convertAmount, formatCurrency } from './currencyHelper'
+
+// Convierte el logo cargado (data URL) en una imagen del membrete, manteniendo su proporción.
+async function buildLogoRun(dataUrl: string): Promise<ImageRun | null> {
+  try {
+    const base64 = dataUrl.split(',')[1] ?? ''
+    const bytes = Uint8Array.from(atob(base64), ch => ch.charCodeAt(0))
+    const natural = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
+      img.onerror = () => reject(new Error('logo no legible'))
+      img.src = dataUrl
+    })
+    const height = 56
+    const width = Math.max(1, Math.round((height * natural.w) / Math.max(1, natural.h)))
+    return new ImageRun({
+      type: dataUrl.startsWith('data:image/jpeg') ? 'jpg' : 'png',
+      data: bytes,
+      transformation: { width, height },
+    })
+  } catch {
+    return null
+  }
+}
 
 const C = {
   DARK: '0F172A',
@@ -208,14 +232,17 @@ export async function downloadDocx(params: {
   client: MasterClient | undefined
   sessionUserName: string
   expandedCategoryIds?: Iterable<string>
+  logoDataUrl?: string | null
 }): Promise<void> {
-  const { q, client, sessionUserName, expandedCategoryIds } = params
+  const { q, client, sessionUserName, expandedCategoryIds, logoDataUrl } = params
   const contact = quotationContact(q, client)
   const isMtc = q.kind === 'maintenance'
   const totals = calcTotals(q)
 
   // ── Letterhead ──────────────────────────────────────────────────────
+  const logoRun = logoDataUrl ? await buildLogoRun(logoDataUrl) : null
   const letterhead: Paragraph[] = [
+    ...(logoRun ? [new Paragraph({ children: [logoRun], spacing: { after: 80 } })] : []),
     para(
       [tr('INGENIERÍA Y SERVICIOS BRAVO SPA', { bold: true, sz: 14, color: C.DARK })],
       undefined,

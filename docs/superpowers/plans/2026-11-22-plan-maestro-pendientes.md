@@ -30,6 +30,15 @@
 | 0.5 | Simulacro de restauración cronometrado en una branch efímera de Neon.                                                                                                                                                                                                                                                                                           | Tiempo anotado en el runbook                                                              |
 | 0.6 | Ver qué roles usan la app y el bot en Neon: si comparten rol y permisos sobre todas las tablas, crear un rol por sistema con permisos solo sobre sus tablas.                                                                                                                                                                                                    | Roles separados o riesgo aceptado por escrito                                             |
 
+**Estado de la Fase 0 (2026-11-22):**
+
+- 0.1 hecho: Neon corre PostgreSQL 17.12, base de 11 MB y 40 tablas en `public`.
+- 0.2 hecho: el backup corre con `postgres:17-alpine`. Primer respaldo real de 216 KB en el bucket (run 45056850244).
+- 0.3 parcial: la retención funciona (daily 1/7, weekly 1/4). El cifrado en reposo del bucket hay que mirarlo en su panel.
+- 0.5 hecho para los datos: el simulacro corre en cada respaldo (40/40 tablas, ~1.569 filas, 1 s). El simulacro manual de la app queda trimestral.
+- 0.6 pendiente de decisión: la app y el bot de Subcontrataley usan el mismo rol `neondb_owner`, dueño de las 40 tablas. Separarlo exige crear un rol nuevo y cambiar la conexión del bot, que está en otro repositorio.
+- Además: el PITR de Neon es de solo 6 horas (`history_retention_seconds = 21600`).
+
 ## Fase 1 — Despejar lo que bloquea (~1 h)
 
 | #   | Tarea                                                                                                        | Hecho cuando    |

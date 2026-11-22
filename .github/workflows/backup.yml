@@ -80,9 +80,15 @@ jobs:
           STAMP=$(date -u +%Y%m%d-%H%M%S)
           DUMP_FILE="bravocrm-$STAMP.dump"
           echo "DUMP_FILE=$DUMP_FILE" >> "$GITHUB_ENV"
-          docker run --rm -e PROD_DATABASE_URL -e DUMP_FILE \
+          # El nombre del archivo va como argumento literal y la URL por
+          # variable de entorno. Si el nombre llegara vacío, pg_dump escribiría
+          # el dump en stdout, o sea en el log del job: por eso se comprueba
+          # antes y la salida estándar se descarta.
+          test -n "$DUMP_FILE"
+          docker run --rm -e PROD_DATABASE_URL \
             -v "$PWD:/w" -w /w --user "$(id -u):$(id -g)" "$PG_IMAGE" \
-            sh -c 'pg_dump --format=custom --no-owner --no-privileges --dbname="$PROD_DATABASE_URL" --file="$DUMP_FILE"'
+            sh -c 'test -n "$PROD_DATABASE_URL" && pg_dump --format=custom --no-owner --no-privileges --dbname="$PROD_DATABASE_URL" --file="$1"' \
+            sh "$DUMP_FILE" > /dev/null
           test -s "$DUMP_FILE" || { echo "::error::El dump quedó vacío."; exit 1; }
 
       # Un pg_dump truncado (conexión cortada a mitad de camino) deja un archivo

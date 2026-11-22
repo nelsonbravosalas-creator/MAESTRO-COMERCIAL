@@ -9,6 +9,23 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    env:
+      PG_IMAGE: postgres:17-alpine
+    # Base vacía y desechable para el simulacro de restauración. No toca Neon.
+    services:
+      restore-target:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: restore
+          POSTGRES_PASSWORD: restore
+          POSTGRES_DB: restore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restore"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     # No hace nada hasta que estos secrets existan en el repo (Settings → Secrets
     # → Actions). Sin PROD_DATABASE_URL el job falla rápido y con un mensaje claro
     # en vez de fallar a medias.
@@ -32,10 +49,18 @@ jobs:
           BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
           BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
 
-      - name: Instalar cliente pg_dump (Postgres 15)
+      # Las herramientas de Postgres salen de la imagen oficial, no de los
+      # paquetes del runner. Antes se instalaba postgresql-client-15 con apt y
+      # el job se rompió solo cuando ubuntu-latest pasó a 26.04 (el paquete ya
+      # no existe). Además pg_dump se niega a volcar un servidor de versión
+      # mayor que la suya, así que la versión de la imagen tiene que seguir a
+      # la de Neon: si Neon sube a 18, este job falla con un mensaje claro de
+      # pg_dump y hay que subir PG_IMAGE.
+      - name: Preparar herramientas de Postgres (imagen oficial)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client-15
+          set -euo pipefail
+          docker pull --quiet "$PG_IMAGE"
+          docker run --rm "$PG_IMAGE" pg_dump --version
 
       - name: Instalar AWS CLI
         run: |
@@ -46,11 +71,25 @@ jobs:
       - name: Volcar base de datos (formato custom, comprimido)
         env:
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        # La URL entra al contenedor por variable de entorno (-e sin valor), no
+        # como argumento: así no aparece en la línea de comandos del proceso.
+        # Alcance: se vuelca la base entera, incluidas las tablas bot_* del bot
+        # de Subcontrataley, que comparte esta base (ver docs/DR_RUNBOOK.md).
         run: |
+          set -euo pipefail
           STAMP=$(date -u +%Y%m%d-%H%M%S)
-          echo "DUMP_FILE=bravocrm-$STAMP.dump" >> "$GITHUB_ENV"
-          pg_dump --format=custom --no-owner --no-privileges \
-            --dbname="$PROD_DATABASE_URL" --file="bravocrm-$STAMP.dump"
+          DUMP_FILE="bravocrm-$STAMP.dump"
+          echo "DUMP_FILE=$DUMP_FILE" >> "$GITHUB_ENV"
+          # El nombre del archivo va como argumento literal y la URL por
+          # variable de entorno. Si el nombre llegara vacío, pg_dump escribiría
+          # el dump en stdout, o sea en el log del job: por eso se comprueba
+          # antes y la salida estándar se descarta.
+          test -n "$DUMP_FILE"
+          docker run --rm -e PROD_DATABASE_URL \
+            -v "$PWD:/w" -w /w --user "$(id -u):$(id -g)" "$PG_IMAGE" \
+            sh -c 'test -n "$PROD_DATABASE_URL" && pg_dump --format=custom --no-owner --no-privileges --dbname="$PROD_DATABASE_URL" --file="$1"' \
+            sh "$DUMP_FILE" > /dev/null
+          test -s "$DUMP_FILE" || { echo "::error::El dump quedó vacío."; exit 1; }
 
       # Un pg_dump truncado (conexión cortada a mitad de camino) deja un archivo
       # que se sube igual y se contabiliza como el respaldo del día, pero no se
@@ -60,11 +99,61 @@ jobs:
       - name: Verificar que el dump es legible
         run: |
           set -euo pipefail
-          if ! pg_restore --list "$DUMP_FILE" > /dev/null; then
+          if ! docker run --rm -v "$PWD:/w" -w /w "$PG_IMAGE" pg_restore --list "$DUMP_FILE" > dump.toc; then
             echo "::error::El dump $DUMP_FILE no es legible por pg_restore — NO se sube."
             exit 1
           fi
           echo "Dump legible por pg_restore."
+
+      # Simulacro de restauración en cada corrida, no una vez al año: restaura
+      # el dump en la base desechable del servicio restore-target y compara
+      # cuántas tablas de public trae el dump contra cuántas quedaron creadas.
+      # Los errores sueltos de pg_restore (extensiones o roles propios de Neon
+      # que no existen en un Postgres normal) se reportan como aviso; lo que
+      # hace fallar el job es que falten tablas o que no quede ninguna fila.
+      - name: Simulacro de restauración (base desechable)
+        env:
+          PGPASSWORD: restore
+        run: |
+          set -euo pipefail
+          INICIO=$(date +%s)
+          set +e
+          docker run --rm --network host -e PGPASSWORD -v "$PWD:/w" -w /w "$PG_IMAGE" \
+            pg_restore --no-owner --no-privileges -h 127.0.0.1 -U restore -d restore "$DUMP_FILE" 2> restore.err
+          CODIGO=$?
+          set -e
+          SEGUNDOS=$(( $(date +%s) - INICIO ))
+          ERRORES=$(grep -c "error:" restore.err || true)
+          if [ "$CODIGO" != "0" ]; then
+            echo "::warning::pg_restore terminó con $ERRORES error(es) no fatales (código $CODIGO):"
+            grep "error:" restore.err | head -20 || true
+          fi
+          psql_r() {
+            docker run --rm --network host -e PGPASSWORD "$PG_IMAGE" \
+              psql -h 127.0.0.1 -U restore -d restore -tAc "$1"
+          }
+          ESPERADAS=$(grep -cE '^[0-9]+; [0-9]+ [0-9]+ TABLE public ' dump.toc || true)
+          CREADAS=$(psql_r "select count(*) from pg_tables where schemaname='public'")
+          docker run --rm --network host -e PGPASSWORD "$PG_IMAGE" \
+            psql -h 127.0.0.1 -U restore -d restore -qc "analyze" > /dev/null
+          FILAS=$(psql_r "select coalesce(sum(reltuples),0)::bigint from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r'")
+          echo "Restauración: $CREADAS/$ESPERADAS tablas de public, ~$FILAS filas, $SEGUNDOS s, $ERRORES error(es) no fatales."
+          {
+            echo "### Simulacro de restauración"
+            echo ""
+            echo "- Tablas en public: $CREADAS de $ESPERADAS"
+            echo "- Filas aproximadas: $FILAS"
+            echo "- Tiempo de restauración: $SEGUNDOS s"
+            echo "- Errores no fatales de pg_restore: $ERRORES"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ESPERADAS" = "0" ] || [ "$CREADAS" -lt "$ESPERADAS" ]; then
+            echo "::error::La restauración dejó $CREADAS de $ESPERADAS tablas — el respaldo NO es restaurable. NO se sube."
+            exit 1
+          fi
+          if [ "$FILAS" -le 0 ]; then
+            echo "::error::La restauración no dejó filas — el respaldo NO es restaurable. NO se sube."
+            exit 1
+          fi
 
       - name: Subir a almacenamiento externo (fuera de Neon)
         env:

@@ -416,6 +416,7 @@ describe('POST /:id/work-context/analyze', () => {
       tipo_trabajo: tipo,
       context_sanitized: {
         ...validWc,
+        dias: { ...validWc.dias, tipo_plazo: 'habiles' as const },
         alcance,
         magnitudes: [{ clave: 'equipos', valor, unidad: 'u' }],
       },

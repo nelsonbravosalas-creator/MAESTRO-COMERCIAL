@@ -342,6 +342,35 @@ describe('loadData — no debe preservar items locales obsoletos', () => {
   })
 })
 
+describe('loadData — doc_style local vs servidor', () => {
+  beforeEach(() => {
+    ;(api.getQuotations as any).mockReset()
+  })
+  const withItems = () => ({ ...emptyItems(), mo: [makeItem({ desc: 'x' })] })
+
+  it('un Estándar (null) elegido y sin guardar no revierte al estilo del servidor', async () => {
+    const local = makeQuotation({ id: 'srv-1', version: 1, items: withItems() })
+    ;(local as any).doc_style = null
+    const server = makeQuotation({ id: 'srv-1', version: 1, items: emptyItems() })
+    ;(server as any).doc_style = 'agrupado'
+    ;(api.getQuotations as any).mockResolvedValue([server])
+    useMaestro.setState({ quotations: [local] })
+    await useMaestro.getState().loadData()
+    expect(useMaestro.getState().quotations.find(q => q.id === 'srv-1')?.doc_style).toBeNull()
+  })
+
+  it('si el local no cargó doc_style (undefined) usa el del servidor', async () => {
+    const local = makeQuotation({ id: 'srv-1', version: 1, items: withItems() })
+    delete (local as any).doc_style
+    const server = makeQuotation({ id: 'srv-1', version: 1, items: emptyItems() })
+    ;(server as any).doc_style = 'agrupado'
+    ;(api.getQuotations as any).mockResolvedValue([server])
+    useMaestro.setState({ quotations: [local] })
+    await useMaestro.getState().loadData()
+    expect(useMaestro.getState().quotations.find(q => q.id === 'srv-1')?.doc_style).toBe('agrupado')
+  })
+})
+
 describe('saveCatalogs — el error dice qué fila falló (F6)', () => {
   const vacio = () => ({ mo: [], log: [], mat: [], rep: [], ins: [], mec: [], ele: [] })
 

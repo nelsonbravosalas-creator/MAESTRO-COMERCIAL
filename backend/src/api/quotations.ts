@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, type Response } from 'express'
 import { Pool, PoolClient } from 'pg'
 import { logger } from '../utils/logger'
 import { authMiddleware, AuthRequest, roleMiddleware } from '../middleware/auth'
@@ -17,7 +17,15 @@ import {
   quotationApprovalSchema,
   quotationOcSchema,
   quotationOcDocumentSchema,
+  workContextAnalyzeSchema,
+  workContextLearnSchema,
 } from '../schemas/quotations'
+import { createAuthThrottle } from '../middleware/authThrottle'
+import {
+  analyzeWorkContext,
+  learnWorkContext,
+  parseStoredWorkContext,
+} from '../services/workContext'
 import { decodeCursor, buildPage } from '../utils/pagination'
 import { httpError, asHttpError } from '../utils/httpError'
 
@@ -730,6 +738,8 @@ export const applyQuotationUpdate = async (
             show_usd_equivalent = $20,
             usd_value = $21,
             mtc_config = CASE WHEN $24::boolean THEN $25::jsonb ELSE mtc_config END,
+            doc_style = CASE WHEN $26::boolean THEN $27::text ELSE doc_style END,
+            work_context = CASE WHEN $28::boolean THEN $29::jsonb ELSE work_context END,
             version = version + 1,
             updated_at = NOW()
       WHERE id = $22
@@ -764,6 +774,11 @@ export const applyQuotationUpdate = async (
         // (null = borrarlo); los clientes que no la conocen no lo pisan.
         'mtc_config' in body,
         body.mtc_config ? JSON.stringify(body.mtc_config) : null,
+        // $26..$29: mismo patron para doc_style y work_context.
+        'doc_style' in body,
+        body.doc_style ?? null,
+        'work_context' in body,
+        body.work_context ? JSON.stringify(body.work_context) : null,
       ]
     )
 
@@ -903,9 +918,10 @@ export const createQuotationsRouter = (pool: Pool) => {
            status, oper_state, uf_value, iva_pct, notes, created_by,
            kind, equipment_count, equipment_description, frequency, visits_per_year,
            contract_start_date, show_uf_equivalent, show_usd_equivalent, usd_value,
-           mtc_config)
+           mtc_config, doc_style, work_context)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-                 $14, $15, $16, $17, $18, $19, $20, $21, $22, $23::jsonb)
+                 $14, $15, $16, $17, $18, $19, $20, $21, $22, $23::jsonb,
+                 $24, $25::jsonb)
          RETURNING *`,
         [
           body.correlative,
@@ -931,6 +947,8 @@ export const createQuotationsRouter = (pool: Pool) => {
           Boolean(body.show_usd_equivalent),
           body.usd_value ?? null,
           body.mtc_config ? JSON.stringify(body.mtc_config) : null,
+          body.doc_style ?? null,
+          body.work_context ? JSON.stringify(body.work_context) : null,
         ]
       )
 
@@ -1416,9 +1434,10 @@ export const createQuotationsRouter = (pool: Pool) => {
            status, oper_state, uf_value, iva_pct, notes, version, created_by,
            kind, equipment_count, equipment_description, frequency, visits_per_year,
            contract_start_date, show_uf_equivalent, show_usd_equivalent, usd_value,
-           version_reason, parent_version_id, mtc_config)
+           version_reason, parent_version_id, mtc_config, doc_style, work_context)
          VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10, $11, $12, $13,
-                 $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25::jsonb)
+                 $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25::jsonb,
+                 $26, $27::jsonb)
          RETURNING *`,
           [
             req.body.correlative,
@@ -1449,6 +1468,8 @@ export const createQuotationsRouter = (pool: Pool) => {
             req.body.version_reason ?? null,
             isNewVersion ? quotationId : null,
             source.mtc_config ? JSON.stringify(source.mtc_config) : null,
+            source.doc_style ?? null,
+            source.work_context ? JSON.stringify(source.work_context) : null,
           ]
         )
 
@@ -1464,6 +1485,104 @@ export const createQuotationsRouter = (pool: Pool) => {
         return res.status(500).json({ error: 'Failed to duplicate quotation' })
       } finally {
         db.release()
+      }
+    }
+  )
+
+  // ── Contexto del trabajo ──────────────────────────────────────────────
+  // Mismo nivel de acceso que guardar la cotización (PUT /:id): cualquier
+  // usuario autenticado. Estas rutas nunca escriben en `quotations`: un fallo
+  // del LLM no puede afectar el guardado de la cotización.
+  const workContextThrottle = createAuthThrottle(pool, {
+    name: 'work-context-analyze',
+    windowMinutes: 1,
+    max: 5,
+    keyGenerator: req => (req as AuthRequest).user?.id ?? req.ip ?? 'anon',
+    countWhen: () => true,
+    message: {
+      error: 'Too many requests',
+      message: 'Demasiados análisis de contexto. Reintente en un minuto.',
+    },
+  })
+
+  const loadWorkContextRow = async (quotationId: string) => {
+    const { rows } = await pool.query(
+      'SELECT id, kind, work_context FROM quotations WHERE id = $1 AND deleted_at IS NULL',
+      [quotationId]
+    )
+    return rows[0] as { id: string; kind: string | null; work_context: unknown } | undefined
+  }
+
+  const sendWorkContextError = (
+    res: Response,
+    error: unknown,
+    quotationId: string,
+    ctx: string
+  ) => {
+    const err = asHttpError(error)
+    if (err.status && err.payload) return res.status(err.status).json(err.payload)
+    logger.error(`Work context: error ${ctx}`, { error: errorMessage(error), quotationId })
+    return res.status(500).json({
+      error: 'Work context error',
+      message: 'No se pudo procesar el contexto del trabajo. Intente de nuevo.',
+    })
+  }
+
+  router.post(
+    '/:id/work-context/analyze',
+    workContextThrottle,
+    validate({ params: uuidParams('id'), body: workContextAnalyzeSchema }),
+    async (req: AuthRequest, res) => {
+      const quotationId = paramString(req.params.id)
+      try {
+        const row = await loadWorkContextRow(quotationId)
+        if (!row) return res.status(404).json({ error: 'Quotation not found' })
+
+        // El cuerpo trae lo que el usuario tiene en pantalla (aunque no lo
+        // haya guardado); si no viene, se usa lo guardado.
+        const wc = req.body.work_context ?? parseStoredWorkContext(row.work_context)
+        if (!wc) {
+          return res.status(422).json({
+            error: 'Sin contexto',
+            message: 'Complete el contexto del trabajo antes de analizarlo.',
+          })
+        }
+        const result = await analyzeWorkContext(pool, normalizeKind(row.kind), wc)
+        return res.json(result)
+      } catch (error) {
+        return sendWorkContextError(res, error, quotationId, 'al analizar')
+      }
+    }
+  )
+
+  router.post(
+    '/:id/work-context/learn',
+    validate({ params: uuidParams('id'), body: workContextLearnSchema }),
+    async (req: AuthRequest, res) => {
+      const quotationId = paramString(req.params.id)
+      try {
+        const row = await loadWorkContextRow(quotationId)
+        if (!row) return res.status(404).json({ error: 'Quotation not found' })
+
+        const stored = parseStoredWorkContext(row.work_context)
+        if (!stored) {
+          return res.status(422).json({
+            error: 'Sin contexto',
+            message:
+              'Guarde el contexto del trabajo de la cotización antes de registrar los recursos finales.',
+          })
+        }
+        const created = await learnWorkContext(
+          pool,
+          quotationId,
+          normalizeKind(row.kind),
+          stored,
+          req.body.recursos_finales,
+          req.body.nota
+        )
+        return res.status(201).json(created)
+      } catch (error) {
+        return sendWorkContextError(res, error, quotationId, 'al registrar el aprendizaje')
       }
     }
   )

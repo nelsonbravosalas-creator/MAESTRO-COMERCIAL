@@ -26,6 +26,10 @@ import { ApiError, api } from '../api/api'
 import { getErrorMessage } from '../utils/apiError'
 // docx/html2canvas/jsPDF son pesados y solo hacen falta al exportar: se cargan
 // bajo demanda en cada handler (fase F7), no junto con el resto de la pantalla.
+import { GroupedValuation } from '../components/GroupedValuation'
+import { DocStyleSelect } from '../components/DocStyleSelect'
+import { WorkContextCard } from '../components/WorkContextCard'
+import { isGroupedStyle } from '../utils/groupedUnitPrice'
 import { buildQuotationValuationRows } from '../utils/quotationRows'
 import { useCityDistances } from '../hooks/useCityDistances'
 import { confirmDialog, showToast } from '../stores/uiStore'
@@ -1645,6 +1649,7 @@ function TabBase() {
           {saving ? 'Guardando…' : 'Guardar encabezado'}
         </button>
       </div>
+      <WorkContextCard />
     </div>
   )
 }
@@ -2108,7 +2113,7 @@ export const fmtDateLong = (d: string) =>
 
 function TabCotizacion() {
   const q = useActiveQuotation()
-  const { clients, saveActive, reloadActive } = useMaestro()
+  const { clients, saveActive, reloadActive, patchActive } = useMaestro()
   const { role } = usePermissions()
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
@@ -2255,6 +2260,12 @@ function TabCotizacion() {
           <span>🖨</span>
           {loadingPdf ? 'Generando...' : 'Descargar PDF'}
         </button>
+        <div className="coti-toolbar-sep" />
+        <DocStyleSelect
+          value={q.doc_style}
+          disabled={isLocked}
+          onChange={doc_style => patchActive({ doc_style })}
+        />
       </div>
 
       {/* ── Document (letter format) ── */}
@@ -2318,101 +2329,105 @@ function TabCotizacion() {
         {/* II. Valuation */}
         <div className="doc-section">
           <div className="doc-section-title">II. VALORIZACIÓN DE TRABAJOS</div>
-          <table className="doc-valuation">
-            <thead>
-              <tr>
-                <th className="val-expand no-print" />
-                <th className="val-num">N°</th>
-                <th>Descripción</th>
-                <th className="text-right">Valor Neto ({currencyInfo.displaySymbol})</th>
-              </tr>
-            </thead>
-            <tbody>
-              {buildQuotationValuationRows(q, expandedCats).map(row => {
-                const items = (q.items[row.cat.id] || []).filter(it => it.cant > 0 && it.desc)
-                const isOpen = row.details.length > 0
-                const displayRowVenta = convertAmount(row.venta, currencyInfo.rate)
-                return (
-                  <React.Fragment key={row.cat.id}>
-                    <tr className={`doc-valuation-row ${isOpen ? 'doc-row-expanded' : ''}`}>
-                      <td className="val-expand no-print">
-                        {items.length > 0 && (
-                          <label
-                            className="doc-expand-toggle"
-                            title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={expandedCats.has(row.cat.id)}
-                              onChange={() => toggleCat(row.cat.id)}
-                            />
-                            <span className="doc-expand-icon">{isOpen ? '▾' : '▸'}</span>
-                          </label>
-                        )}
-                      </td>
-                      <td className="val-num">{row.rowNumber}</td>
-                      <td>{row.cat.label}</td>
-                      <td className="text-right mono">
-                        {currencyInfo.currency === 'CLP'
-                          ? fmtCLP.format(displayRowVenta)
-                          : formatCurrency(displayRowVenta, currencyInfo.currency, 2)}
-                      </td>
-                    </tr>
-                    {/* Detalle expandido: solo descripción, cantidad y unidad —
-                        sin valores unitarios ni totales de línea. */}
-                    {row.details.map(({ item, meta }) => (
-                      <tr key={item.id} className="doc-detail-row no-print-detail">
-                        <td className="doc-detail-indent" colSpan={2} />
-                        <td className="doc-detail-desc" colSpan={2}>
-                          <span className="doc-detail-bullet">·</span>
-                          <span className="doc-detail-name">{item.desc}</span>
-                          <span className="doc-detail-meta">{meta}</span>
+          {isGroupedStyle(q) ? (
+            <GroupedValuation q={q} mode="quotation" />
+          ) : (
+            <table className="doc-valuation">
+              <thead>
+                <tr>
+                  <th className="val-expand no-print" />
+                  <th className="val-num">N°</th>
+                  <th>Descripción</th>
+                  <th className="text-right">Valor Neto ({currencyInfo.displaySymbol})</th>
+                </tr>
+              </thead>
+              <tbody>
+                {buildQuotationValuationRows(q, expandedCats).map(row => {
+                  const items = (q.items[row.cat.id] || []).filter(it => it.cant > 0 && it.desc)
+                  const isOpen = row.details.length > 0
+                  const displayRowVenta = convertAmount(row.venta, currencyInfo.rate)
+                  return (
+                    <React.Fragment key={row.cat.id}>
+                      <tr className={`doc-valuation-row ${isOpen ? 'doc-row-expanded' : ''}`}>
+                        <td className="val-expand no-print">
+                          {items.length > 0 && (
+                            <label
+                              className="doc-expand-toggle"
+                              title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={expandedCats.has(row.cat.id)}
+                                onChange={() => toggleCat(row.cat.id)}
+                              />
+                              <span className="doc-expand-icon">{isOpen ? '▾' : '▸'}</span>
+                            </label>
+                          )}
+                        </td>
+                        <td className="val-num">{row.rowNumber}</td>
+                        <td>{row.cat.label}</td>
+                        <td className="text-right mono">
+                          {currencyInfo.currency === 'CLP'
+                            ? fmtCLP.format(displayRowVenta)
+                            : formatCurrency(displayRowVenta, currencyInfo.currency, 2)}
                         </td>
                       </tr>
-                    ))}
-                  </React.Fragment>
-                )
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="doc-subtotal">
-                <td colSpan={3}>Subtotal Neto</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(displayVenta)
-                    : formatCurrency(displayVenta, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-              <tr className="doc-iva-row">
-                <td colSpan={3}>IVA ({q.iva}%)</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(displayIva)
-                    : formatCurrency(displayIva, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-              <tr className="doc-total">
-                <td colSpan={3}>TOTAL CON IVA</td>
-                <td className="text-right mono">
-                  {currencyInfo.currency === 'CLP'
-                    ? fmtCLP.format(displayConIva)
-                    : formatCurrency(displayConIva, currencyInfo.currency, 2)}
-                </td>
-              </tr>
-              {q.uf > 0 && currencyInfo.currency !== 'UF' && (
-                <tr className="doc-uf">
-                  <td colSpan={3}>Equivalente en UF (ref. {fmtCLP.format(q.uf)}/UF)</td>
-                  <td className="text-right mono">{enUF.toFixed(2)} UF</td>
+                      {/* Detalle expandido: solo descripción, cantidad y unidad —
+                        sin valores unitarios ni totales de línea. */}
+                      {row.details.map(({ item, meta }) => (
+                        <tr key={item.id} className="doc-detail-row no-print-detail">
+                          <td className="doc-detail-indent" colSpan={2} />
+                          <td className="doc-detail-desc" colSpan={2}>
+                            <span className="doc-detail-bullet">·</span>
+                            <span className="doc-detail-name">{item.desc}</span>
+                            <span className="doc-detail-meta">{meta}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="doc-subtotal">
+                  <td colSpan={3}>Subtotal Neto</td>
+                  <td className="text-right mono">
+                    {currencyInfo.currency === 'CLP'
+                      ? fmtCLP.format(displayVenta)
+                      : formatCurrency(displayVenta, currencyInfo.currency, 2)}
+                  </td>
                 </tr>
-              )}
-              {q.usd > 0 && currencyInfo.currency !== 'USD' && (
-                <tr className="doc-usd">
-                  <td colSpan={3}>Equivalente en USD (ref. {fmtCLP.format(q.usd)}/USD)</td>
-                  <td className="text-right mono">{(conIva / q.usd).toFixed(2)} USD$</td>
+                <tr className="doc-iva-row">
+                  <td colSpan={3}>IVA ({q.iva}%)</td>
+                  <td className="text-right mono">
+                    {currencyInfo.currency === 'CLP'
+                      ? fmtCLP.format(displayIva)
+                      : formatCurrency(displayIva, currencyInfo.currency, 2)}
+                  </td>
                 </tr>
-              )}
-            </tfoot>
-          </table>
+                <tr className="doc-total">
+                  <td colSpan={3}>TOTAL CON IVA</td>
+                  <td className="text-right mono">
+                    {currencyInfo.currency === 'CLP'
+                      ? fmtCLP.format(displayConIva)
+                      : formatCurrency(displayConIva, currencyInfo.currency, 2)}
+                  </td>
+                </tr>
+                {q.uf > 0 && currencyInfo.currency !== 'UF' && (
+                  <tr className="doc-uf">
+                    <td colSpan={3}>Equivalente en UF (ref. {fmtCLP.format(q.uf)}/UF)</td>
+                    <td className="text-right mono">{enUF.toFixed(2)} UF</td>
+                  </tr>
+                )}
+                {q.usd > 0 && currencyInfo.currency !== 'USD' && (
+                  <tr className="doc-usd">
+                    <td colSpan={3}>Equivalente en USD (ref. {fmtCLP.format(q.usd)}/USD)</td>
+                    <td className="text-right mono">{(conIva / q.usd).toFixed(2)} USD$</td>
+                  </tr>
+                )}
+              </tfoot>
+            </table>
+          )}
         </div>
 
         {/* III. Exclusions */}

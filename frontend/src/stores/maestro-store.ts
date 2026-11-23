@@ -543,6 +543,12 @@ export const useMaestro = create<MaestroState>()(
                     items: toPersistedQuotation(localQ).items,
                     categories: toPersistedQuotation(localQ).categories,
                     mtc_config: toPersistedQuotation(localQ).mtc_config,
+                    // null explícito (Estándar sin guardar) no es "no cargado" (undefined).
+                    doc_style:
+                      localQ.doc_style !== undefined
+                        ? localQ.doc_style
+                        : (serverQ.doc_style ?? null),
+                    work_context: localQ.work_context ?? serverQ.work_context ?? null,
                     mtc_active_system: 0,
                     scope: localQ.scope,
                     exclusions: localQ.exclusions,

@@ -1,4 +1,5 @@
 import { useActiveQuotation, useMaestro } from '../../stores/maestro-store'
+import { DocStyleSelect } from '../../components/DocStyleSelect'
 import { ensureMtcConfig } from '../../utils/mtcSystems'
 
 export function MtcDocumentToolbar({ disabled }: { disabled: boolean }) {
@@ -12,6 +13,11 @@ export function MtcDocumentToolbar({ disabled }: { disabled: boolean }) {
 
   return (
     <>
+      <DocStyleSelect
+        value={q.doc_style}
+        disabled={disabled}
+        onChange={doc_style => patchActive({ doc_style })}
+      />
       <label className="mtc-currency-toggle">
         <input
           type="checkbox"

@@ -15,6 +15,38 @@ export type PaymentCond = 'cash' | 'credit' | 'partial'
 export type TermType = 'scope' | 'exclusion' | 'commercial'
 export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE'
 export type QuotationKind = 'project' | 'maintenance'
+// Estilo del documento imprimible. null/ausente = estándar.
+export type DocStyle = 'default' | 'grouped_unit_price'
+// Contexto del trabajo (contrato del backend: WorkContext, v:1).
+export type WorkTipo = 'correctivo' | 'preventivo' | 'instalacion' | 'mantencion_contrato' | 'otro'
+export interface WorkMagnitud {
+  clave: string
+  valor: number
+  unidad: string
+}
+export interface WorkRecursos {
+  dotacion: { rol: string; cantidad: number }[]
+  horas: number
+  materiales: { desc: string; cantidad: number; unidad: string }[]
+  subcontratos: { desc: string; monto_estimado?: number }[]
+}
+export interface WorkProyeccion {
+  generada_en: string
+  recursos: WorkRecursos
+  justificacion: string
+}
+export interface WorkContext {
+  v: 1
+  tipo: WorkTipo
+  tipo_otro?: string
+  alcance: string
+  magnitudes: WorkMagnitud[]
+  dias: { plazo: number | null; tipo_plazo: 'corridos' | 'habiles'; terreno: number | null }
+  supuestos?: string
+  proyeccion?: WorkProyeccion
+  recursos_finales?: WorkRecursos
+  nota?: string
+}
 export type MtcFrequency =
   | 'mensual'
   | 'bimestral'
@@ -135,6 +167,8 @@ export interface Quotation {
   show_usd_equivalent: boolean
   usd_value: number | null
   mtc_config?: MtcConfig | null
+  doc_style?: DocStyle | null
+  work_context?: WorkContext | null
 }
 
 export interface QuotationCategory {
@@ -463,6 +497,8 @@ export interface MasterQuotation {
   invoiced_total: number
   // Mantención: valorizaciones (null = una sola, presentación detallada, sin consumibles)
   mtc_config: MtcConfig | null
+  doc_style?: DocStyle | null
+  work_context?: WorkContext | null
   mtc_active_system: number // solo local, no se persiste
   // OC (Orden de Compra) u otro medio de aceptación formal del cliente
   oc_number: string | null

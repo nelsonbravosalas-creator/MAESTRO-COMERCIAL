@@ -33,6 +33,10 @@ import type {
   OperState,
   QuotationKind,
   MtcConfig,
+  DocStyle,
+  WorkContext,
+  WorkProyeccion,
+  WorkRecursos,
   MtcFrequency,
   TermType,
 } from '../types'
@@ -241,6 +245,8 @@ export interface RawQuotation {
   show_usd_equivalent?: boolean
   display_currency?: 'CLP' | 'UF' | 'USD' | null
   mtc_config?: MtcConfig | null
+  doc_style?: DocStyle | null
+  work_context?: WorkContext | null
   invoice_count?: number
   invoice_count_max?: number
   total_con_iva?: number
@@ -550,6 +556,8 @@ function toMasterQuotation(q: RawQuotation): MasterQuotation {
     show_usd_equivalent: Boolean(q.show_usd_equivalent),
     display_currency: q.display_currency ?? 'CLP',
     mtc_config: q.mtc_config ?? null,
+    doc_style: q.doc_style ?? null,
+    work_context: q.work_context ?? null,
     mtc_active_system: 0,
     invoice_count: Number(q.invoice_count) || 0,
     invoice_count_max: Number(q.invoice_count_max) || 1,
@@ -572,6 +580,15 @@ function toMasterQuotation(q: RawQuotation): MasterQuotation {
     approved_by: q.approved_by ?? null,
     approved_at: q.approved_at ?? null,
     approval_notes: q.approval_notes ?? null,
+  }
+}
+
+// Las magnitudes incompletas (clave vacía o valor no numérico) viven en el
+// formulario pero no se envían: el backend las rechaza y bloquearían el guardado.
+function sanitizeWorkContext(wc: WorkContext): WorkContext {
+  return {
+    ...wc,
+    magnitudes: wc.magnitudes.filter(m => m.clave.trim() !== '' && Number.isFinite(m.valor)),
   }
 }
 
@@ -655,6 +672,9 @@ function fromMasterQuotation(q: MasterQuotation) {
     show_usd_equivalent: Boolean(q.show_usd_equivalent),
     display_currency: q.display_currency,
     mtc_config: q.kind === 'maintenance' ? (q.mtc_config ?? null) : null,
+    doc_style: q.doc_style ?? null,
+    // Sin contexto no se envía la clave: el backend no borra lo guardado.
+    ...(q.work_context ? { work_context: sanitizeWorkContext(q.work_context) } : {}),
   }
 }
 
@@ -1100,6 +1120,18 @@ export const api = {
     const raw = await post<RawQuotation>('/api/quotations', fromMasterQuotation(q))
     return toMasterQuotation(raw)
   },
+
+  analyzeWorkContext: (id: string, workContext: WorkContext) =>
+    post<{ proyeccion: WorkProyeccion }>(`/api/quotations/${id}/work-context/analyze`, {
+      work_context: workContext,
+    }),
+
+  // Solo recursos finales y nota: la diferencia la calcula el backend.
+  learnWorkContext: (id: string, recursosFinales: WorkRecursos, nota?: string) =>
+    post<{ id: string }>(`/api/quotations/${id}/work-context/learn`, {
+      recursos_finales: recursosFinales,
+      ...(nota ? { nota } : {}),
+    }),
 
   updateQuotation: async (q: MasterQuotation): Promise<MasterQuotation> => {
     const raw = await put<RawQuotation>(`/api/quotations/${q.id}`, fromMasterQuotation(q))

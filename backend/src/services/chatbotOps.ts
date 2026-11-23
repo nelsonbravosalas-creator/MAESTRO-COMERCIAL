@@ -17,6 +17,7 @@ import {
   chatbotPriceResponseSchema,
   chatbotPriceSampleSchema,
 } from '../schemas/chatbot'
+import { scrubPii } from './pii'
 import { recordGraphFacts, applyClientPatterns, getGraphNode, materialNodeId } from './chatbotGraph'
 
 // Operaciones de negocio del asistente, extraidas de api/chatbot.ts para que
@@ -47,24 +48,10 @@ export type ReglaKey =
 // es solo un umbral de "cuando avisar".
 export const PRECIO_STALE_DAYS = 25
 
-// RUT chileno (con o sin puntos, con guion), email, y telefono (movil +56 9
-// u otro formato de 8-9 digitos contiguos con separadores opcionales). Los
-// dias/dotacion legitimos que el parser SI debe leer son numeros cortos (1-3
-// cifras) sueltos en el texto ("5 dias", "8 tecnicos"), por lo que no caen en
-// ninguno de estos tres patrones.
-const RUT_RE = /\b\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]\b/g
-const EMAIL_RE = /[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}/g
-const PHONE_RE = /(?:\+?56[\s.-]?)?(?:9[\s.-]?)\d{4}[\s.-]?\d{4}\b/g
-
-/**
- * Enmascara RUT/email/telefono en texto libre antes de que ese texto llegue
- * al prompt de un LLM externo. No es infalible (regex, no un NER) — por eso
- * docs/RIESGOS_ACEPTADOS.md (A-21) lo documenta como "minimizado, no
- * garantizado", no como una promesa absoluta.
- */
-export function scrubPii(text: string): string {
-  return text.replace(RUT_RE, '[RUT]').replace(EMAIL_RE, '[EMAIL]').replace(PHONE_RE, '[TELEFONO]')
-}
+// scrubPii vive en ./pii (sin dependencias) para evitar el ciclo
+// api/quotations -> chatbotOps -> api/quotations; se reexporta aca para no
+// cambiar ningun import existente.
+export { scrubPii }
 
 // Persona del asistente: construye criterio con el tiempo a partir de lo
 // que este negocio le ensena (reglas, precios, patrones de clientes — ver

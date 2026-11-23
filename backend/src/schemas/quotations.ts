@@ -127,6 +127,135 @@ export const mtcConfigSchema = z
     }
   })
 
+// ── Estilo del documento (doc_style) ─────────────────────────────────
+// NULL = estilo actual. Solo afecta vista previa y PDF; no toca el motor.
+export const DOC_STYLES = ['default', 'grouped_unit_price'] as const
+export const docStyleSchema = z.enum(DOC_STYLES)
+
+// ── Contexto del trabajo (work_context) ──────────────────────────────
+// Solo datos técnicos del trabajo: nunca nombre de cliente, RUT, correo,
+// teléfono ni contacto (A-21). El texto libre igual pasa por scrubPii antes
+// de llegar al LLM.
+export const WORK_TIPOS = [
+  'correctivo',
+  'preventivo',
+  'instalacion',
+  'mantencion_contrato',
+  'otro',
+] as const
+
+const cantidadNoNeg = z.number().finite().min(0).max(1_000_000)
+
+// Mismo contrato en dos modos: `strict` (rechaza claves desconocidas) para
+// validar la respuesta del LLM, y el modo por defecto (descarta claves
+// desconocidas) para el cuerpo de la cotización, de modo que un campo extra
+// del frontend no bloquee el guardado.
+const withMode = <T extends z.ZodRawShape>(shape: T, strict: boolean) =>
+  strict ? z.object(shape).strict() : z.object(shape)
+
+const buildRecursosSchema = (strict: boolean) =>
+  withMode(
+    {
+      dotacion: z
+        .array(
+          withMode({ rol: z.string().trim().min(1).max(120), cantidad: cantidadNoNeg }, strict)
+        )
+        .max(30),
+      horas: cantidadNoNeg,
+      materiales: z
+        .array(
+          withMode(
+            {
+              desc: z.string().trim().min(1).max(300),
+              cantidad: cantidadNoNeg,
+              unidad: z.string().trim().max(30),
+            },
+            strict
+          )
+        )
+        .max(100),
+      subcontratos: z
+        .array(
+          withMode(
+            {
+              desc: z.string().trim().min(1).max(300),
+              monto_estimado: z.number().finite().min(0).max(1e12).optional(),
+            },
+            strict
+          )
+        )
+        .max(30),
+    },
+    strict
+  )
+
+const buildProyeccionSchema = (strict: boolean) =>
+  withMode(
+    {
+      generada_en: z.string().min(1).max(40),
+      recursos: buildRecursosSchema(strict),
+      justificacion: z.string().max(4000),
+    },
+    strict
+  )
+
+export const recursosSchema = buildRecursosSchema(false)
+export const proyeccionSchema = buildProyeccionSchema(false)
+
+// Respuesta cruda del LLM (antes de sellar generada_en en el servidor).
+export const llmProyeccionResponseSchema = z
+  .object({
+    recursos: buildRecursosSchema(true),
+    justificacion: z.string().trim().min(1).max(4000),
+  })
+  .strict()
+
+const magnitudSchema = z.object({
+  clave: z.string().trim().min(1).max(80),
+  valor: z.number().finite(),
+  unidad: z.string().trim().max(30),
+})
+
+const diasSchema = z.object({
+  plazo: z.number().finite().min(0).max(3650).nullable(),
+  tipo_plazo: z.enum(['corridos', 'habiles']),
+  terreno: z.number().finite().min(0).max(3650).nullable(),
+})
+
+export const workContextSchema = z.object({
+  v: z.literal(1),
+  tipo: z.enum(WORK_TIPOS),
+  tipo_otro: z.string().trim().max(120).optional(),
+  alcance: z.string().max(4000),
+  magnitudes: z.array(magnitudSchema).max(20),
+  dias: diasSchema,
+  supuestos: z.string().max(2000).optional(),
+  proyeccion: proyeccionSchema.optional(),
+  recursos_finales: recursosSchema.optional(),
+  nota: z.string().max(500).optional(),
+})
+
+export type WorkContext = z.infer<typeof workContextSchema>
+export type Recursos = z.infer<typeof recursosSchema>
+export type Proyeccion = z.infer<typeof proyeccionSchema>
+
+// Cuerpo de POST /:id/work-context/analyze. El contexto viaja en el cuerpo
+// (lo que el usuario tiene en pantalla, aunque no haya guardado); si no
+// viene, se usa el work_context guardado en la cotización.
+export const workContextAnalyzeSchema = z
+  .object({
+    work_context: workContextSchema.optional(),
+  })
+  .strict()
+
+// Cuerpo de POST /:id/work-context/learn.
+export const workContextLearnSchema = z
+  .object({
+    recursos_finales: recursosSchema,
+    nota: z.string().max(500).optional(),
+  })
+  .strict()
+
 const termInputSchema = z.object({
   term_type: z.enum(TERM_TYPES),
   content: z.string().trim().min(1).max(5000),
@@ -163,6 +292,9 @@ const quotationBodyBase = {
   usd_value: money.nullish(),
   display_currency: z.enum(['CLP', 'UF', 'USD']).default('CLP').nullish(),
   mtc_config: mtcConfigSchema.nullish(),
+  // Igual que mtc_config: se escriben solo si la clave viene en el cuerpo.
+  doc_style: docStyleSchema.nullish(),
+  work_context: workContextSchema.nullish(),
 }
 
 export const quotationCreateSchema = z.object({

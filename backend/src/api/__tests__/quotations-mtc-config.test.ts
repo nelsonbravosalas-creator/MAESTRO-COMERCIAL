@@ -36,7 +36,8 @@ const baseRow = {
   usd_value: null,
 }
 
-// El orden de las claves sigue el del esquema Zod para que JSON.stringify
+// mtc_config va en $23 del INSERT, $24/$25 del UPDATE y $25 del duplicado
+// (doc_style y work_context van despues). El orden de las claves sigue el del esquema Zod para que JSON.stringify
 // del cuerpo original y del parseado coincidan.
 const system1 = {
   id: 's1',
@@ -151,7 +152,7 @@ describe('mtc_config en POST/PUT/duplicate', () => {
       .set('Authorization', authHeader())
       .send(createBody({ mtc_config: validConfig }))
     expect(res.status).toBe(201)
-    expect(db.captured.insert[db.captured.insert.length - 1]).toBe(JSON.stringify(validConfig))
+    expect(db.captured.insert[22]).toBe(JSON.stringify(validConfig))
   })
 
   it('POST sin mtc_config manda null', async () => {
@@ -161,7 +162,7 @@ describe('mtc_config en POST/PUT/duplicate', () => {
       .set('Authorization', authHeader())
       .send(createBody())
     expect(res.status).toBe(201)
-    expect(db.captured.insert[db.captured.insert.length - 1]).toBeNull()
+    expect(db.captured.insert[22]).toBeNull()
   })
 
   it.each(['unico', 'especial'])('POST acepta frequency %s', async freq => {
@@ -183,8 +184,8 @@ describe('mtc_config en POST/PUT/duplicate', () => {
     const p = db.captured.update
     expect(p[21]).toBe(SOURCE_ID)
     expect(p[22]).toBe(1)
-    expect(p[p.length - 2]).toBe(false)
-    expect(p[p.length - 1]).toBeNull()
+    expect(p[23]).toBe(false)
+    expect(p[24]).toBeNull()
   })
 
   it('PUT con mtc_config valido manda true y el JSON', async () => {
@@ -194,8 +195,8 @@ describe('mtc_config en POST/PUT/duplicate', () => {
       .set('Authorization', authHeader())
       .send(updateBody({ mtc_config: validConfig }))
     expect(res.status).toBe(200)
-    expect(db.captured.update[db.captured.update.length - 2]).toBe(true)
-    expect(db.captured.update[db.captured.update.length - 1]).toBe(JSON.stringify(validConfig))
+    expect(db.captured.update[23]).toBe(true)
+    expect(db.captured.update[24]).toBe(JSON.stringify(validConfig))
   })
 
   it('PUT con mtc_config null manda true y null', async () => {
@@ -205,8 +206,8 @@ describe('mtc_config en POST/PUT/duplicate', () => {
       .set('Authorization', authHeader())
       .send(updateBody({ mtc_config: null }))
     expect(res.status).toBe(200)
-    expect(db.captured.update[db.captured.update.length - 2]).toBe(true)
-    expect(db.captured.update[db.captured.update.length - 1]).toBeNull()
+    expect(db.captured.update[23]).toBe(true)
+    expect(db.captured.update[24]).toBeNull()
   })
 
   it('duplicar copia el mtc_config de la fila origen', async () => {
@@ -216,7 +217,7 @@ describe('mtc_config en POST/PUT/duplicate', () => {
       .set('Authorization', authHeader())
       .send({ correlative: 'SYM-101-11-2026' })
     expect(res.status).toBe(201)
-    expect(db.captured.insert[db.captured.insert.length - 1]).toBe(JSON.stringify(validConfig))
+    expect(db.captured.insert[24]).toBe(JSON.stringify(validConfig))
   })
 
   it('POST rechaza con 400 un mtc_config sin sistemas', async () => {

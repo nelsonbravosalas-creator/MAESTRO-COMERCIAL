@@ -1,3 +1,6 @@
+import { GroupedValuation } from '../components/GroupedValuation'
+import { WorkContextCard } from '../components/WorkContextCard'
+import { isGroupedStyle } from '../utils/groupedUnitPrice'
 import React, { useState, useMemo, useRef, useCallback } from 'react'
 import '../styles/Quotations.css'
 import '../styles/Maintenance.css'
@@ -647,6 +650,7 @@ function TabBaseMtc() {
           {saving ? 'Guardando…' : 'Guardar encabezado'}
         </button>
       </div>
+      <WorkContextCard />
     </div>
   )
 }
@@ -877,11 +881,15 @@ export function TabDocumentoMtc() {
 
             <div className="doc-section">
               <div className="doc-section-title">IV. VALORIZACIÓN</div>
-              <MtcValuationSection
-                expandedCats={expandedCats}
-                onToggleCat={toggleCat}
-                disabled={isLocked}
-              />
+              {isGroupedStyle(q) ? (
+                <GroupedValuation q={q} mode="maintenance" />
+              ) : (
+                <MtcValuationSection
+                  expandedCats={expandedCats}
+                  onToggleCat={toggleCat}
+                  disabled={isLocked}
+                />
+              )}
             </div>
 
             <div className="doc-section">

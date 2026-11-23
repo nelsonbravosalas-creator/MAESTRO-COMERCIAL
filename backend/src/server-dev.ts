@@ -818,6 +818,8 @@ app.post('/api/quotations', requireAuth, (req: AuthReq, res: Response) => {
       show_uf_equivalent: Boolean(show_uf_equivalent),
       show_usd_equivalent: Boolean(show_usd_equivalent),
       mtc_config: mtc_config ?? null,
+      doc_style: req.body.doc_style ?? null,
+      work_context: req.body.work_context ?? null,
       usd_value: Number(usd_value) || Number(cfg('dolar_value')) || 950,
       // OC (Orden de Compra) / aceptación del cliente: se completa después,
       // vía PATCH /api/quotations/:id/oc — nunca al crear.
@@ -975,6 +977,8 @@ app.put('/api/quotations/:id', requireAuth, (req: AuthReq, res: Response) => {
     show_usd_equivalent: Boolean(show_usd_equivalent),
     usd_value: usd_value ?? q.usd_value ?? null,
     mtc_config: 'mtc_config' in req.body ? req.body.mtc_config : (q.mtc_config ?? null),
+    doc_style: 'doc_style' in req.body ? req.body.doc_style : (q.doc_style ?? null),
+    work_context: 'work_context' in req.body ? req.body.work_context : (q.work_context ?? null),
   })
 
   // Reemplazar categorías si vienen en el body
